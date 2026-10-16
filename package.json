@@ -1,1 +1,9 @@
-{ "name": "ski-explorer", "private": true, "version": "1.0.0", "engines": { "node": "24.x" }, "scripts": { "build": "echo static" } }
+{
+  "name": "ski-explorer",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "scripts": { "build": "echo static" },
+  "dependencies": { "@vercel/blob": "^2.0.0" }
+}

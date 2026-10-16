@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f17"><title>SkiScope · Snow alerts</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--dim:rgba(235,240,255,.6);--line:rgba(255,255,255,.1);--acc:#7cc4ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(120% 60% at 50% 0,#1a2740,#0b0f17 60%);min-height:100dvh;color:#fff;font:17px/1.45 Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 20px) 18px calc(env(safe-area-inset-bottom) + 40px)}
+a{color:var(--acc)}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.brand{font-weight:800;font-size:18px;color:#fff;text-decoration:none}
+h1{font-size:32px;letter-spacing:-.025em;margin:0 0 6px}.dim{color:var(--dim)}
+.card{background:rgba(14,18,27,.75);border:1px solid var(--line);border-radius:20px;padding:18px;margin-top:18px;backdrop-filter:blur(20px)}
+input[type=email],input[type=search]{width:100%;min-height:52px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff;font:inherit;padding:0 16px;outline:none}
+.btn{width:100%;min-height:52px;border:0;border-radius:14px;background:#fff;color:#0b0f17;font:inherit;font-weight:700;margin-top:12px;cursor:pointer}
+.btn.ghost{background:rgba(255,255,255,.08);color:#fff}.btn.danger{background:none;color:#ff8a80;border:1px solid rgba(255,138,128,.35)}
+.list{max-height:46dvh;overflow:auto;margin-top:12px;border-top:1px solid var(--line)}
+.item{display:flex;align-items:center;justify-content:space-between;min-height:54px;border-bottom:1px solid var(--line);cursor:pointer;gap:10px}
+.item b{font-weight:600}.item small{color:var(--dim);margin-left:6px}
+.item input{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:8px;border:2px solid rgba(255,255,255,.35);flex:none;display:grid;place-items:center}
+.item input:checked{background:var(--acc);border-color:var(--acc)}.item input:checked::after{content:"✓";color:#0b0f17;font-weight:800}
+.msg{margin-top:12px;color:var(--dim)}.ok{color:#7ee2a8}.pill{display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(124,196,255,.18);color:var(--acc);font-size:13px;font-weight:700}
+</style></head><body><main>
+<div class="top"><a class="brand" href="/">❄ SkiScope</a><a href="/">Open map</a></div>
+<h1>Snow alerts</h1><p class="dim">A daily email with fresh snow and the forecast at the resorts you follow, plus the top 10 snowiest Ikon resorts. Double opt-in, one-click unsubscribe.</p>
+<div id="app"></div>
+</main>
+<script type="module">
+const $ = s => document.querySelector(s), qs = new URLSearchParams(location.search), token = qs.get('token');
+const idx = await fetch('/data/resorts-index.json').then(r => r.json());
+const app = $('#app');
+function picker(sel) {
+  return `<input type="search" id="filter" placeholder="Filter resorts">
+  <div class="list" id="list">${idx.map(r => `<label class="item"><span><b>${r.name}</b><small>${r.state}</small></span><input type="checkbox" value="${r.id}" ${sel.includes(r.id) ? 'checked' : ''}></label>`).join('')}</div>`;
+}
+function wireFilter() { $('#filter').oninput = e => { const q = e.target.value.toLowerCase(); document.querySelectorAll('.item').forEach(el => el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none'); }; }
+const chosen = () => [...document.querySelectorAll('.item input:checked')].map(i => i.value);
+if (token) {
+  const r = await fetch(`/api/subscription?token=${token}`);
+  if (!r.ok) { app.innerHTML = `<div class="card"><b>Subscription not found.</b><p class="dim">It may have been unsubscribed. <a href="/alerts">Sign up again</a>.</p></div>`; }
+  else {
+    const sub = await r.json();
+    app.innerHTML = `<div class="card">${qs.get('confirmed') ? '<p class="ok"><b>✓ Confirmed.</b> Your daily digest starts tomorrow morning.</p>' : ''}
+      <div><span class="pill">${sub.status === 'active' ? 'Active' : 'Pending confirmation'}</span> <span class="dim">${sub.email}</span></div>
+      <p class="dim" style="margin-bottom:0">Resorts you follow (shown first in your digest):</p>${picker(sub.resorts)}
+      <button class="btn" id="save">Save resorts</button><div class="msg" id="msg"></div>
+      <a class="btn danger" style="display:grid;place-items:center;text-decoration:none" href="/api/unsubscribe?token=${token}">Unsubscribe from all emails</a></div>`;
+    localStorage.setItem('ss_token', token); localStorage.setItem('ss_follows', JSON.stringify(sub.resorts));
+    wireFilter();
+    $('#save').onclick = async () => { const res = await fetch('/api/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, resorts: chosen() }) }); $('#msg').textContent = res.ok ? 'Saved ✓' : 'Could not save'; if (res.ok) localStorage.setItem('ss_follows', JSON.stringify(chosen())); };
+  }
+} else {
+  const pre = JSON.parse(localStorage.getItem('ss_follows') || '[]');
+  app.innerHTML = `<div class="card"><input type="email" id="email" placeholder="you@email.com" autocomplete="email" inputmode="email" value="${localStorage.getItem('ss_email') || ''}">
+    <p class="dim" style="margin-bottom:0">Pick resorts to follow:</p>${picker(pre)}
+    <button class="btn" id="go">Subscribe</button><div class="msg" id="msg"></div>
+    <p class="dim" style="font-size:14px">Already subscribed? Use the “Manage resorts” link in any digest email.</p></div>`;
+  wireFilter();
+  $('#go').onclick = async () => {
+    const email = $('#email').value.trim(); $('#msg').textContent = 'Saving…';
+    const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resorts: chosen() }) }).then(r => r.json()).catch(() => ({ error: 'Network error' }));
+    if (res.error) { $('#msg').textContent = res.error; return; }
+    localStorage.setItem('ss_email', email); localStorage.setItem('ss_follows', JSON.stringify(chosen()));
+    $('#msg').innerHTML = res.message;
+  };
+}
+</script></body></html>

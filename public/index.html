@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css" rel="stylesheet">
+<link href="style.css?v=2" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -39,6 +39,7 @@
 </div>
 
 <div id="timeline" class="glass">
+  <button id="seasonChip" aria-label="Season"><span>2026–27</span>▾</button>
   <button id="play" aria-label="Play"><svg class="pi" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="pa" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
   <div class="tl-main">
     <div class="tl-top"><span id="tlDate">—</span><span id="tlTag"></span><span id="tlTotal"></span></div>
@@ -47,19 +48,20 @@
 </div>
 
 <section id="sheet" class="glass" data-snap="peek">
-  <div id="grab"><div class="handle"></div></div>
+  <div id="sheetHead">
+    <div class="handle"></div>
+    <div class="sh-row"><div class="h1" id="sheetTitle">Most snow · 7 days</div><div class="pill" id="countPill"></div></div>
+    <div id="tabs" class="seg"><button data-v="listView" class="on">Resorts</button><button data-v="seasonsView">Seasons</button></div>
+  </div>
   <div id="sheetBody">
-    <div id="listView">
-      <div class="sh-head"><div><div class="dim small">Ikon Pass · North America</div><div class="h1">Most snow · last 7 days</div></div><div class="pill" id="countPill"></div></div>
-      <div id="list"></div>
-      <div class="foot dim small" id="credits"></div>
-    </div>
+    <div id="listView"><div id="list"></div><div class="foot sub" id="credits"></div></div>
     <div id="detailView" class="hidden"></div>
+    <div id="seasonsView" class="hidden"></div>
   </div>
 </section>
 
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
-<script src="app.js" type="module"></script>
+<script src="app.js?v=2" type="module"></script>
 </body>
 </html>
