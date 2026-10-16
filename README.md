@@ -27,3 +27,14 @@ python3 scripts/fetch_snow.py
 - **Past seasons**: `scripts/fetch_seasons.py` pulls Nov 1–Apr 30 daily `snowfall_sum` per resort (mid-mountain point, elevation-downscaled) from the Open-Meteo historical archive (ERA5), paced to stay under the weighted rate limits (≤400/min, ≤4500/hour). Writes `public/data/seasons/<year>.json` (~33 KB each) + `summary.json` (`scripts/season_summary.py`). Already-fetched seasons are skipped, so it is safe to re-run.
 - **Email alerts**: `/alerts` page + follow button. Subscribers live in a private Vercel Blob store (`skiscope-alerts`, env `BLOB_READ_WRITE_TOKEN`). Double opt-in (`/api/subscribe` → email → `/api/confirm`), one-click unsubscribe (`/api/unsubscribe`, GET + RFC 8058 POST, `List-Unsubscribe` headers), manage via `/api/subscription?token=`.
 - **Daily digest**: Vercel Cron `30 13 * * *` (6:30 AM PDT) → `/api/cron/digest` (auth: `CRON_SECRET`). Sends through Resend when `RESEND_API_KEY` is set (`RESEND_FROM` optional, defaults to `onboarding@resend.dev`; `DIGEST_ALLOWLIST` optional comma list to restrict recipients). Preview: `/api/digest/preview?email=demo` (`&resorts=alta,snowbird`).
+
+## v3: weekly digests + "See You Up There" photos
+- **Frequency**: each subscriber has `freq` = `weekly` (default) or `daily`, chosen on the Follow form and `/alerts`. One cron (`30 13 * * *`, ~6:30 AM PT) sends daily subscribers every run and weekly subscribers only on Saturdays (Pacific). Weekly issues say "This week" in the subject and header and show 7-day totals plus next-7-day forecast. Preview: `/api/digest/preview?email=demo&freq=weekly`.
+- **Photo sign-off**: every digest ends with "See You Up There", one photo picked deterministically per issue (by day for daily, by week for weekly) from `public/photos/photos.json`.
+
+### Adding photos
+Only use images you are allowed to reuse, and credit them exactly:
+1. **Wikimedia Commons**: CC BY, CC BY-SA, CC0 or Public domain only. Record the author, file page URL, license short name and license URL. The credit renders as `Name, CC BY-SA 4.0, via Wikimedia Commons`, with links to the file page and the license.
+2. **Unsplash**: set `"source": "Unsplash"` and `sourceUrl` to the photo page. The credit renders as `Photo: Name / Unsplash`.
+3. Resize to about 1200px wide as a compressed JPG (quality around 78), save it as `public/photos/NN.jpg`, and add an entry to `photos.json`: `file`, `caption`, `location`, `photographer`, `source`, `sourceUrl`, `license`, `licenseUrl`. `scripts/fetch_photos.py` pulls candidates from Commons ski categories with license filtering.
+4. Do **not** hotlink or scrape X/Twitter, Instagram, Huckberry or Red Bull images. Brand imagery (Red Bull Content Pool, resort media kits, athlete or photographer portfolios) needs written permission or an explicitly granted license before use.

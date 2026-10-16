@@ -233,7 +233,7 @@ function followHTML(r) {
   const on = follows().includes(r.id), email = localStorage.getItem('ss_email') || '';
   return `<div class="follow" id="follow">
     <button class="fbtn ${on ? 'on' : ''}" id="fbtn">${on ? '🔔 Following' : '🔔 Follow for snow alerts'}</button>
-    <form id="fform" class="${on ? 'hidden' : 'hidden'}"><input type="email" id="femail" placeholder="you@email.com" value="${email}" required autocomplete="email" inputmode="email"><button type="submit">Subscribe</button></form>
+    <form id="fform" class="${on ? 'hidden' : 'hidden'}"><div class="freq"><label><input type="radio" name="ffreq" value="weekly" checked><span>Weekly · Sat</span></label><label><input type="radio" name="ffreq" value="daily"><span>Daily</span></label></div><input type="email" id="femail" placeholder="you@email.com" value="${email}" required autocomplete="email" inputmode="email"><button type="submit">Subscribe</button></form>
     <div class="sub" id="fmsg"></div></div>`;
 }
 function wireFollow(r) {
@@ -241,7 +241,7 @@ function wireFollow(r) {
   $('#fform').onsubmit = async e => {
     e.preventDefault(); const email = $('#femail').value.trim(); $('#fmsg').textContent = 'Saving…';
     try {
-      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resorts: [r.id] }) }).then(r => r.json());
+      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resorts: [r.id], freq: document.querySelector('input[name=ffreq]:checked')?.value || 'weekly' }) }).then(r => r.json());
       if (res.error) throw new Error(res.error);
       localStorage.setItem('ss_email', email); localStorage.setItem('ss_follows', JSON.stringify([...new Set([...follows(), r.id])]));
       $('#fmsg').innerHTML = res.message; $('#fform').classList.add('hidden'); $('#fbtn').classList.add('on'); $('#fbtn').textContent = '🔔 Following';

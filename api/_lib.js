@@ -17,8 +17,8 @@ const writeJSON = (path, obj) => put(path, JSON.stringify(obj), { ...A, addRando
 export const getSub = token => /^[a-f0-9]{32}$/.test(token || '') ? readJSON(`subs/${token}.json`) : null;
 export const saveSub = sub => writeJSON(`subs/${sub.token}.json`, sub);
 export async function findByEmail(email) { const i = await readJSON(`emails/${ehash(email)}.json`); return i ? getSub(i.token) : null; }
-export async function createSub(email, resorts) {
-  const sub = { token: crypto.randomBytes(16).toString('hex'), email: email.toLowerCase().trim(), resorts, status: 'pending', created: new Date().toISOString() };
+export async function createSub(email, resorts, freq = 'weekly') {
+  const sub = { token: crypto.randomBytes(16).toString('hex'), email: email.toLowerCase().trim(), resorts, freq: freq === 'daily' ? 'daily' : 'weekly', status: 'pending', created: new Date().toISOString() };
   await saveSub(sub); await writeJSON(`emails/${ehash(email)}.json`, { token: sub.token });
   return sub;
 }
@@ -34,14 +34,14 @@ export async function allActive() {
 
 // ---------- data ----------
 export async function loadData() {
-  const [idx, snow] = await Promise.all(['resorts-index.json', 'snow.json'].map(f => fetch(`${SITE}/data/${f}`).then(r => r.json())));
+  const [idx, snow, photos] = await Promise.all([`${SITE}/data/resorts-index.json`, `${SITE}/data/snow.json`, `${SITE}/photos/photos.json`].map(u => fetch(u).then(r => r.json())));
   const t = snow.today, D = snow.dates.length;
   const resorts = idx.map(r => {
     const sf = snow.resorts[r.id]?.sf || [];
     const sum = (a, b) => sf.slice(Math.max(0, a), b).reduce((x, y) => x + y, 0);
     return { ...r, d24: sf[t - 1] || 0, d7: sum(t - 6, t + 1), fc: sum(t + 1, D), fcDays: sf.slice(t + 1).map((v, i) => [snow.dates[t + 1 + i], v]) };
   });
-  return { resorts, byId: Object.fromEntries(resorts.map(r => [r.id, r])), date: snow.dates[t], generated: snow.generated };
+  return { resorts, byId: Object.fromEntries(resorts.map(r => [r.id, r])), date: snow.dates[t], generated: snow.generated, photos };
 }
 export const isEmail = e => typeof e === 'string' && e.length < 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
@@ -74,31 +74,58 @@ export function confirmEmail(sub) {
   <a href="${url}" style="display:inline-block;margin-top:10px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Confirm subscription</a>`,
   `You'll get nothing else unless you confirm.`);
 }
-function resortCard(r, rank) {
+function resortCard(r, rank, weekly) {
   const fc = r.fcDays.slice(0, 7).map(([d, v]) => `<td align="center" style="padding:4px 2px;font-size:11px;color:#8b93a7">${new Date(d + 'T12:00').toLocaleDateString('en-US', { weekday: 'narrow' })}<br><b style="color:${v > 0.5 ? '#d5b3ff' : '#c3c9d6'};font-size:12px">${inch(v)}</b></td>`).join('');
   return `<a href="${SITE}/?r=${r.id}" style="display:block;text-decoration:none;color:#fff;background:#141a26;border:1px solid #1f2633;border-radius:14px;padding:14px 16px;margin:0 0 10px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
     <td style="font-size:16px;font-weight:700">${rank ? `<span style="color:#8b93a7;font-weight:600">${rank}.</span> ` : ''}${esc(r.name)} <span style="font-size:12px;color:#8b93a7;font-weight:500">${esc(r.state)}</span></td>
-    <td align="right" style="white-space:nowrap"><span style="font-size:20px;font-weight:800">${inch(r.d24)}</span><span style="font-size:11px;color:#8b93a7"> 24h</span> &nbsp;<span style="font-size:20px;font-weight:800">${inch(r.d7)}</span><span style="font-size:11px;color:#8b93a7"> 7d</span></td>
+    <td align="right" style="white-space:nowrap">${weekly ? `<span style="font-size:20px;font-weight:800">${inch(r.d7)}</span><span style="font-size:11px;color:#8b93a7"> this week</span> &nbsp;<span style="font-size:20px;font-weight:800;color:#d5b3ff">${inch(r.fc)}</span><span style="font-size:11px;color:#8b93a7"> next 7d</span>` : `<span style="font-size:20px;font-weight:800">${inch(r.d24)}</span><span style="font-size:11px;color:#8b93a7"> 24h</span> &nbsp;<span style="font-size:20px;font-weight:800">${inch(r.d7)}</span><span style="font-size:11px;color:#8b93a7"> 7d</span>`}</td>
   </tr></table>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px"><tr><td style="font-size:12px;color:#8b93a7;white-space:nowrap;padding-right:8px">Next 7d <b style="color:#d5b3ff">${inch(r.fc)}</b></td>${fc}</tr></table>
   </a>`;
 }
-export function digestEmail({ data, followIds, token }) {
+// Deterministic photo per issue: daily issues rotate by day, weekly issues by week.
+export function pickPhoto(photos, date, freq) {
+  if (!photos?.length) return null;
+  const day = Math.floor(Date.parse(date + 'T12:00:00Z') / 864e5);
+  return photos[(freq === 'weekly' ? Math.floor((day + 3) / 7) : day) % photos.length];
+}
+export function photoCredit(p) {
+  const who = esc(p.photographer);
+  if (p.source === 'Unsplash') return `Photo: <a href="${p.sourceUrl}" style="color:#c3c9d6">${who}</a> / <a href="https://unsplash.com/license" style="color:#c3c9d6">Unsplash</a>`;
+  const lic = p.licenseUrl ? `<a href="${p.licenseUrl}" style="color:#c3c9d6">${esc(p.license)}</a>` : esc(p.license);
+  return `<a href="${p.sourceUrl}" style="color:#c3c9d6">${who}</a>, ${lic}, via Wikimedia Commons`;
+}
+function photoSection(p) {
+  if (!p) return '';
+  return `<div style="margin-top:30px">
+  <div class="big" style="font-size:24px;font-weight:800;margin:0 0 12px">See You Up There</div>
+  <img src="${SITE}${p.file}" width="600" alt="${esc(p.caption)}" style="display:block;width:100%;max-width:600px;height:auto;border-radius:14px;border:0">
+  <div style="font-size:15px;font-weight:600;margin-top:10px">${esc(p.caption)} <span style="color:#8b93a7;font-weight:500">· ${esc(p.location)}</span></div>
+  <div style="font-size:11px;color:#8b93a7;margin-top:4px">${photoCredit(p)}</div></div>`;
+}
+export function digestEmail({ data, followIds, token, freq = 'daily' }) {
+  const weekly = freq === 'weekly';
   const followed = followIds.map(id => data.byId[id]).filter(Boolean);
   const top = [...data.resorts].sort((a, b) => b.d7 - a.d7).slice(0, 10);
   const unsub = token ? `${SITE}/api/unsubscribe?token=${token}` : `${SITE}/alerts`;
   const manage = token ? `${SITE}/alerts?token=${token}` : `${SITE}/alerts`;
   const date = new Date(data.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const subject = followed.length ? `❄ ${followed.map(r => `${r.name.split(' (')[0]} ${inch(r.d24)}`).slice(0, 3).join(' · ')} — SkiScope daily` : 'SkiScope daily snow report';
-  const html = shell(subject, `<div style="font-size:13px;color:#8b93a7;margin-bottom:4px">${date}</div>
-  <div class="big" style="font-size:26px;font-weight:800;margin-bottom:16px">Your snow report</div>
-  ${followed.length ? `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:6px 0 10px">Resorts you follow</div>${followed.map(r => resortCard(r)).join('')}` : ''}
-  <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:22px 0 10px">Top 10 · most snow last 7 days</div>
-  ${top.map((r, i) => resortCard(r, i + 1)).join('')}
-  <a href="${SITE}" style="display:block;text-align:center;margin-top:16px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px;border-radius:12px">Open SkiScope 3D map</a>`,
-  `Modeled snowfall from Open-Meteo (NOAA GFS/HRRR, ECMWF); not resort-reported. <br>
-  <a href="${manage}" style="color:#c3c9d6">Manage resorts</a> · <a href="${unsub}" style="color:#c3c9d6">Unsubscribe with one click</a>`);
+  const lead = followed.map(r => `${r.name.split(' (')[0]} ${inch(weekly ? r.d7 : r.d24)}`).slice(0, 3).join(' · ');
+  const subject = weekly
+    ? (followed.length ? `❄ This week: ${lead} — SkiScope weekly` : '❄ This week in snow — SkiScope weekly')
+    : (followed.length ? `❄ ${lead} — SkiScope daily` : 'SkiScope daily snow report');
+  const head = weekly ? 'This week in snow' : 'Your snow report';
+  const sub = weekly ? `Week ending ${date} · 7-day totals and the week ahead` : date;
+  const html = shell(subject, `<div style="font-size:13px;color:#8b93a7;margin-bottom:4px">${sub}</div>
+  <div class="big" style="font-size:26px;font-weight:800;margin-bottom:16px">${head}</div>
+  ${followed.length ? `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:6px 0 10px">Resorts you follow</div>${followed.map(r => resortCard(r, 0, weekly)).join('')}` : ''}
+  <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:22px 0 10px">Top 10 · most snow ${weekly ? 'this week' : 'last 7 days'}</div>
+  ${top.map((r, i) => resortCard(r, i + 1, weekly)).join('')}
+  <a href="${SITE}" style="display:block;text-align:center;margin-top:16px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px;border-radius:12px">Open SkiScope 3D map</a>
+  ${photoSection(pickPhoto(data.photos, data.date, freq))}`,
+  `You're getting the ${weekly ? 'weekly (Saturday)' : 'daily'} digest. Modeled snowfall from Open-Meteo (NOAA GFS/HRRR, ECMWF); not resort-reported. <br>
+  <a href="${manage}" style="color:#c3c9d6">Manage resorts &amp; frequency</a> · <a href="${unsub}" style="color:#c3c9d6">Unsubscribe with one click</a>`);
   return { subject, html, unsubscribeUrl: unsub };
 }
 export const page = (title, body) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head>

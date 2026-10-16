@@ -19,6 +19,7 @@ input[type=email],input[type=search]{width:100%;min-height:52px;border-radius:14
 .item input{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:8px;border:2px solid rgba(255,255,255,.35);flex:none;display:grid;place-items:center}
 .item input:checked{background:var(--acc);border-color:var(--acc)}.item input:checked::after{content:"✓";color:#0b0f17;font-weight:800}
 .msg{margin-top:12px;color:var(--dim)}.ok{color:#7ee2a8}.pill{display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(124,196,255,.18);color:var(--acc);font-size:13px;font-weight:700}
+.seg{display:flex;gap:6px;padding:4px;margin-top:14px;background:rgba(255,255,255,.07);border-radius:14px}.seg label{flex:1}.seg input{display:none}.seg span{display:grid;place-items:center;min-height:46px;border-radius:11px;font-weight:600;color:var(--dim);cursor:pointer}.seg input:checked+span{background:rgba(255,255,255,.16);color:#fff}
 </style></head><body><main>
 <div class="top"><a class="brand" href="/">❄ SkiScope</a><a href="/">Open map</a></div>
 <h1>Snow alerts</h1><p class="dim">A daily email with fresh snow and the forecast at the resorts you follow, plus the top 10 snowiest Ikon resorts. Double opt-in, one-click unsubscribe.</p>
@@ -33,6 +34,8 @@ function picker(sel) {
   <div class="list" id="list">${idx.map(r => `<label class="item"><span><b>${r.name}</b><small>${r.state}</small></span><input type="checkbox" value="${r.id}" ${sel.includes(r.id) ? 'checked' : ''}></label>`).join('')}</div>`;
 }
 function wireFilter() { $('#filter').oninput = e => { const q = e.target.value.toLowerCase(); document.querySelectorAll('.item').forEach(el => el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none'); }; }
+const freqHTML = f => `<div class="seg">${['weekly', 'daily'].map(v => `<label><input type="radio" name="freq" value="${v}" ${f === v ? 'checked' : ''}><span>${v === 'weekly' ? 'Weekly · Saturday' : 'Daily'}</span></label>`).join('')}</div>`;
+const freqVal = () => document.querySelector('input[name=freq]:checked')?.value || 'weekly';
 const chosen = () => [...document.querySelectorAll('.item input:checked')].map(i => i.value);
 if (token) {
   const r = await fetch(`/api/subscription?token=${token}`);
@@ -41,23 +44,23 @@ if (token) {
     const sub = await r.json();
     app.innerHTML = `<div class="card">${qs.get('confirmed') ? '<p class="ok"><b>✓ Confirmed.</b> Your daily digest starts tomorrow morning.</p>' : ''}
       <div><span class="pill">${sub.status === 'active' ? 'Active' : 'Pending confirmation'}</span> <span class="dim">${sub.email}</span></div>
-      <p class="dim" style="margin-bottom:0">Resorts you follow (shown first in your digest):</p>${picker(sub.resorts)}
+      ${freqHTML(sub.freq || 'daily')}<p class="dim" style="margin-bottom:0">Resorts you follow (shown first in your digest):</p>${picker(sub.resorts)}
       <button class="btn" id="save">Save resorts</button><div class="msg" id="msg"></div>
       <a class="btn danger" style="display:grid;place-items:center;text-decoration:none" href="/api/unsubscribe?token=${token}">Unsubscribe from all emails</a></div>`;
     localStorage.setItem('ss_token', token); localStorage.setItem('ss_follows', JSON.stringify(sub.resorts));
     wireFilter();
-    $('#save').onclick = async () => { const res = await fetch('/api/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, resorts: chosen() }) }); $('#msg').textContent = res.ok ? 'Saved ✓' : 'Could not save'; if (res.ok) localStorage.setItem('ss_follows', JSON.stringify(chosen())); };
+    $('#save').onclick = async () => { const res = await fetch('/api/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, resorts: chosen(), freq: freqVal() }) }); $('#msg').textContent = res.ok ? 'Saved ✓' : 'Could not save'; if (res.ok) localStorage.setItem('ss_follows', JSON.stringify(chosen())); };
   }
 } else {
   const pre = JSON.parse(localStorage.getItem('ss_follows') || '[]');
   app.innerHTML = `<div class="card"><input type="email" id="email" placeholder="you@email.com" autocomplete="email" inputmode="email" value="${localStorage.getItem('ss_email') || ''}">
-    <p class="dim" style="margin-bottom:0">Pick resorts to follow:</p>${picker(pre)}
+    ${freqHTML('weekly')}<p class="dim" style="margin-bottom:0">Pick resorts to follow:</p>${picker(pre)}
     <button class="btn" id="go">Subscribe</button><div class="msg" id="msg"></div>
     <p class="dim" style="font-size:14px">Already subscribed? Use the “Manage resorts” link in any digest email.</p></div>`;
   wireFilter();
   $('#go').onclick = async () => {
     const email = $('#email').value.trim(); $('#msg').textContent = 'Saving…';
-    const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resorts: chosen() }) }).then(r => r.json()).catch(() => ({ error: 'Network error' }));
+    const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resorts: chosen(), freq: freqVal() }) }).then(r => r.json()).catch(() => ({ error: 'Network error' }));
     if (res.error) { $('#msg').textContent = res.error; return; }
     localStorage.setItem('ss_email', email); localStorage.setItem('ss_follows', JSON.stringify(chosen()));
     $('#msg').innerHTML = res.message;

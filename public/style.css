@@ -119,7 +119,7 @@ body.sheet-full #timeline{opacity:0;pointer-events:none}
 .sbar.sel{background:rgba(255,255,255,.1)}.sbar.sel .sy{color:#fff}
 .follow{margin:14px 0 4px}.fbtn{width:100%;min-height:50px;border-radius:14px;background:#fff;color:#0b0f17;font-weight:700;font-size:16px}
 .fbtn.on{background:rgba(255,255,255,.1);color:#fff}
-#fform{display:flex;gap:8px;margin-top:10px}#fform input{flex:1;min-width:0;min-height:48px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:16px;padding:0 14px}
+#fform{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}#fform input{flex:1;min-width:0;min-height:48px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:16px;padding:0 14px}
 #fform button{min-height:48px;padding:0 16px;border-radius:12px;background:var(--acc);color:#0b0f17;font-weight:700}
 #fmsg{margin-top:8px}#fmsg a{color:var(--acc)}
 .seasonlink{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:14px;border-radius:14px;background:rgba(255,255,255,.06);text-align:left;font-size:22px;color:var(--dim)}
@@ -129,3 +129,7 @@ body.sheet-full #timeline{opacity:0;pointer-events:none}
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}
 .maplibregl-ctrl-top-left{top:calc(var(--st) + 72px);left:var(--sl)}
 @media (min-width:900px){.maplibregl-ctrl-top-left{left:auto;right:56px;top:8px}}
+
+.freq{display:flex;gap:6px;width:100%;padding:4px;background:rgba(255,255,255,.07);border-radius:12px}
+.freq label{flex:1}.freq input{display:none}.freq span{display:grid;place-items:center;min-height:42px;border-radius:9px;font-weight:600;color:var(--dim);cursor:pointer}
+.freq input:checked+span{background:rgba(255,255,255,.16);color:#fff}

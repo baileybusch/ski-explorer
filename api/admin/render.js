@@ -1,4 +1,4 @@
-import { findByEmail, confirmEmail, digestEmail, loadData, SITE } from '../_lib.js';
+import { saveSub, findByEmail, confirmEmail, digestEmail, loadData, SITE } from '../_lib.js';
 // Admin-only: render the confirmation + digest emails for an allowlisted subscriber so they can be
 // sent out-of-band. Auth: Bearer CRON_SECRET. Only emails in DIGEST_ALLOWLIST are served.
 export default async function handler(req, res) {
@@ -9,7 +9,8 @@ export default async function handler(req, res) {
   if (!allow.includes(email)) return res.status(403).json({ error: 'not allowlisted' });
   const sub = await findByEmail(email);
   if (!sub) return res.status(404).json({ error: 'no subscription' });
+  if (req.query.setFreq === 'weekly' || req.query.setFreq === 'daily') { sub.freq = req.query.setFreq; await saveSub(sub); }
   const data = await loadData();
-  const d = digestEmail({ data, followIds: sub.resorts || [], token: sub.token });
-  res.json({ status: sub.status, confirm: { subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(sub) }, digest: d });
+  const d = digestEmail({ data, followIds: sub.resorts || [], token: sub.token, freq: sub.freq || 'daily' });
+  res.json({ status: sub.status, freq: sub.freq, confirm: { subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(sub) }, digest: d });
 }
