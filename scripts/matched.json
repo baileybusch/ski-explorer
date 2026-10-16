@@ -1,0 +1,482 @@
+[
+{
+"id": "alta",
+"name": "Alta",
+"state": "UT",
+"ikon": "7 days (shared w/ Snowbird)",
+"osm": "80b43d73222ff9f4c560fcb7417278f351f5b64c",
+"osmName": "Alta Ski Area"
+},
+{
+"id": "snowbird",
+"name": "Snowbird",
+"state": "UT",
+"ikon": "7 days (shared w/ Alta)",
+"osm": "3c02f21915683b910d389339bda960dc05e18314",
+"osmName": "Snowbird"
+},
+{
+"id": "brighton",
+"name": "Brighton",
+"state": "UT",
+"ikon": "7 days",
+"osm": "ab2b5807422f8a412c013e32e73b521f76a65d98",
+"osmName": "Brighton Resort"
+},
+{
+"id": "solitude",
+"name": "Solitude",
+"state": "UT",
+"ikon": "Unlimited",
+"osm": "b40e925163e2330550f940711b8571409fafb3a4",
+"osmName": "Solitude Mountain Resort"
+},
+{
+"id": "deer-valley",
+"name": "Deer Valley",
+"state": "UT",
+"ikon": "7 days \u00b7 reservations",
+"osm": "b7a200210f3dac1b9a5ca7b71429e6205c8c413e",
+"osmName": "Deer Valley Resort"
+},
+{
+"id": "snowbasin",
+"name": "Snowbasin",
+"state": "UT",
+"ikon": "7 days",
+"osm": "423504a1fa53bcfbe5bf956f0cd48c12868c7f06",
+"osmName": "Snowbasin Resort"
+},
+{
+"id": "eagle-point",
+"name": "Eagle Point",
+"state": "UT",
+"ikon": "Not Ikon \u00b7 featured",
+"osm": "72510c18b4eb758d0daab8290bda044c27c5405f",
+"osmName": "Eagle Point"
+},
+{
+"id": "arapahoe-basin",
+"name": "Arapahoe Basin",
+"state": "CO",
+"ikon": "Unlimited",
+"osm": "1e281ff389476a82150ad7ef7be5f1ea48edd5e5",
+"osmName": "Arapahoe Basin"
+},
+{
+"id": "copper",
+"name": "Copper Mountain",
+"state": "CO",
+"ikon": "Unlimited",
+"osm": "0bab3102857cf4c7243d3db844c283a24413fa28",
+"osmName": "Copper Mountain"
+},
+{
+"id": "eldora",
+"name": "Eldora",
+"state": "CO",
+"ikon": "Unlimited",
+"osm": "1f25a1eacb8cc9814282d91ae00fd9af7a533d0e",
+"osmName": "Eldora"
+},
+{
+"id": "steamboat",
+"name": "Steamboat",
+"state": "CO",
+"ikon": "Unlimited",
+"osm": "1b452491f464540026e80e10ab6d7290b414c1f6",
+"osmName": "Steamboat Ski Resort"
+},
+{
+"id": "winter-park",
+"name": "Winter Park",
+"state": "CO",
+"ikon": "Unlimited",
+"osm": "eac3283b22abc1d56081b11e2c4867209961f982",
+"osmName": "Winter Park Resort"
+},
+{
+"id": "aspen-mountain",
+"name": "Aspen Mountain",
+"state": "CO",
+"ikon": "7 days (Aspen Snowmass)",
+"osm": "2a2d5ad1138c3aac0abe644e073bee96589412d4",
+"osmName": "Aspen Mountain"
+},
+{
+"id": "snowmass",
+"name": "Snowmass",
+"state": "CO",
+"ikon": "7 days (Aspen Snowmass)",
+"osm": "ab35349ba4e03d734a486561e99d5be0b772449f",
+"osmName": "Aspen Snowmass"
+},
+{
+"id": "aspen-highlands",
+"name": "Aspen Highlands",
+"state": "CO",
+"ikon": "7 days (Aspen Snowmass)",
+"osm": "0469463129ab65721499780f98a6394662564f32",
+"osmName": "Aspen Highlands"
+},
+{
+"id": "buttermilk",
+"name": "Buttermilk",
+"state": "CO",
+"ikon": "7 days (Aspen Snowmass)",
+"osm": "aecc514c89c8ea9a6b3b8bac5e7468ef23917b60",
+"osmName": "Buttermilk"
+},
+{
+"id": "taos",
+"name": "Taos Ski Valley",
+"state": "NM",
+"ikon": "7 days",
+"osm": "8faa21d51bf5725e795c0972acbe92178a458347",
+"osmName": "Taos Ski Valley"
+},
+{
+"id": "jackson-hole",
+"name": "Jackson Hole",
+"state": "WY",
+"ikon": "7 days \u00b7 reservations",
+"osm": "2b812055300b5107fc2ffed8f5ae27a4c4f94f0a",
+"osmName": "Jackson Hole Mountain Resort"
+},
+{
+"id": "big-sky",
+"name": "Big Sky",
+"state": "MT",
+"ikon": "7 days",
+"osm": "d4086b2e9d44022ca27bde811816b5a4fc859c87",
+"osmName": "Big Sky Resort"
+},
+{
+"id": "sun-valley",
+"name": "Sun Valley",
+"state": "ID",
+"ikon": "7 days",
+"osm": "b9ec1edd75823059c063c7c7b2a4078cf82542ab",
+"osmName": "Sun Valley - Bald Mountain"
+},
+{
+"id": "schweitzer",
+"name": "Schweitzer",
+"state": "ID",
+"ikon": "Unlimited",
+"osm": "13b3d7f0eedbbdcdfc35e91a0bd55523e2d448ad",
+"osmName": "Schweitzer Mountain Resort"
+},
+{
+"id": "mammoth",
+"name": "Mammoth Mountain",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "ba4944ecd2e640acedf666287f228427b607680e",
+"osmName": "Mammoth Mountain"
+},
+{
+"id": "june",
+"name": "June Mountain",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "1f94daed2b308fa325be064eebc82535fcc3861b",
+"osmName": "June Mountain"
+},
+{
+"id": "palisades",
+"name": "Palisades Tahoe",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "fa7bea0bfe372c06b3cccc3e8113949837d688fb",
+"osmName": "Palisades Tahoe Olympic Valley"
+},
+{
+"id": "alpine-meadows",
+"name": "Alpine Meadows (Palisades)",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "86d9955c744d7672adf80944769b57a90fcbefec",
+"osmName": "Palisades Tahoe Alpine Meadows"
+},
+{
+"id": "sierra-at-tahoe",
+"name": "Sierra-at-Tahoe",
+"state": "CA",
+"ikon": "7 days",
+"osm": "0558a46359e12971010ba1ba17046a6bf304e6af",
+"osmName": "Sierra-at-Tahoe Ski Resort"
+},
+{
+"id": "big-bear",
+"name": "Big Bear Mountain",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "78bac1237b378a398d712ba2cc962ddf9d1c6479",
+"osmName": "Bear Mountain"
+},
+{
+"id": "snow-summit",
+"name": "Snow Summit (Big Bear)",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "553e5c0881466894501e5f56ab41ba951300fc75",
+"osmName": "Snow Summit"
+},
+{
+"id": "snow-valley",
+"name": "Snow Valley",
+"state": "CA",
+"ikon": "Unlimited",
+"osm": "11f2099ea10957844765b5bea3bbb1f13fd592b7",
+"osmName": "Snow Valley Mountain Resort"
+},
+{
+"id": "crystal",
+"name": "Crystal Mountain",
+"state": "WA",
+"ikon": "Unlimited",
+"osm": "89f555b5b8a62c0c002adaa796997b635f38e6da",
+"osmName": "Crystal Mountain"
+},
+{
+"id": "snoqualmie",
+"name": "Summit at Snoqualmie",
+"state": "WA",
+"ikon": "7 days \u00b7 reservations",
+"osm": "bd78d22761819b620dbaca7bdbdafc9205b08a32",
+"osmName": "Three Summits"
+},
+{
+"id": "bachelor",
+"name": "Mt. Bachelor",
+"state": "OR",
+"ikon": "7 days",
+"osm": "df0ebcea3daf2a4ad2c46e99f043d37d57cf1b9b",
+"osmName": "Mt. Bachelor"
+},
+{
+"id": "alyeska",
+"name": "Alyeska",
+"state": "AK",
+"ikon": "7 days",
+"osm": "bb50116ee40d5f4ce92b57c3ee028302748c77dd",
+"osmName": "Alyeska Resort"
+},
+{
+"id": "killington",
+"name": "Killington",
+"state": "VT",
+"ikon": "7 days",
+"osm": "ac774efde21231d04a2cd3a7b6cfd380dfcb4bef",
+"osmName": "Killington Resort"
+},
+{
+"id": "pico",
+"name": "Pico",
+"state": "VT",
+"ikon": "7 days",
+"osm": "5263141e47dd13bf5e7529ecdeb1d1f61aecb0ae",
+"osmName": "Pico Mountain Resort"
+},
+{
+"id": "stratton",
+"name": "Stratton",
+"state": "VT",
+"ikon": "Unlimited",
+"osm": "856ac5fd0830012a280f9d3939ff687676b429c1",
+"osmName": "Stratton Mountain Resort"
+},
+{
+"id": "sugarbush",
+"name": "Sugarbush",
+"state": "VT",
+"ikon": "Unlimited",
+"osm": "51088afbd7eaf31cf6e677c0b2b6e3ca621754ba",
+"osmName": "Sugarbush Resort"
+},
+{
+"id": "sugarloaf",
+"name": "Sugarloaf",
+"state": "ME",
+"ikon": "7 days",
+"osm": "ba6f009c039cdf1008684fbf790a3fef14ec068a",
+"osmName": "Sugarloaf"
+},
+{
+"id": "sunday-river",
+"name": "Sunday River",
+"state": "ME",
+"ikon": "7 days",
+"osm": "54bceeb62ccd2209e50b8dc7e06b8daa1727ce34",
+"osmName": "Sunday River"
+},
+{
+"id": "loon",
+"name": "Loon Mountain",
+"state": "NH",
+"ikon": "7 days \u00b7 reservations",
+"osm": "84db66751dfc13969441d94cb66617193fe7407d",
+"osmName": "Loon Mountain Resort"
+},
+{
+"id": "snowshoe",
+"name": "Snowshoe",
+"state": "WV",
+"ikon": "Unlimited",
+"osm": "1facaf3d92da6719b1c7aa95f763fbeda72222b3",
+"osmName": "Snowshoe Mountain"
+},
+{
+"id": "blue-mountain-pa",
+"name": "Blue Mountain PA",
+"state": "PA",
+"ikon": "7 days",
+"osm": "4bca16dce4783e4eab06c9a39ee02168c67ca488",
+"osmName": "Blue Mountain Resort"
+},
+{
+"id": "camelback",
+"name": "Camelback",
+"state": "PA",
+"ikon": "7 days",
+"osm": "f34b05b63db9dcbcc7e3ba106a82072ec6a197f9",
+"osmName": "Camelback Mountain Resort"
+},
+{
+"id": "boyne",
+"name": "Boyne Mountain",
+"state": "MI",
+"ikon": "7 days",
+"osm": "449aa402eafd646e49025b6afbcd4962c77096e3",
+"osmName": "Boyne Mountain"
+},
+{
+"id": "highlands-mi",
+"name": "The Highlands",
+"state": "MI",
+"ikon": "7 days",
+"osm": "d70a38efa1745a52727cf449eb7a657610ebab1c",
+"osmName": "Boyne Highlands Resort"
+},
+{
+"id": "snowriver",
+"name": "Snowriver",
+"state": "MI",
+"ikon": "7 days \u00b7 new",
+"osm": "f2b439be0d3871653a7185642c5b80ecede02cb1",
+"osmName": "Jackson Creek Summit"
+},
+{
+"id": "lutsen",
+"name": "Lutsen Mountains",
+"state": "MN",
+"ikon": "7 days \u00b7 new",
+"osm": "952dd7481a7a4aa784a4c61a385afa70238836a3",
+"osmName": "Lutsen Mountains"
+},
+{
+"id": "granite-peak",
+"name": "Granite Peak",
+"state": "WI",
+"ikon": "7 days \u00b7 new",
+"osm": "462af6084a39a9d577327662f54101082cade2f7",
+"osmName": "Granite Peak Ski Area"
+},
+{
+"id": "tremblant",
+"name": "Tremblant",
+"state": "QC",
+"ikon": "Unlimited",
+"osm": "b7cad93e857de92335debf15f4d0bfe9a04f4d1b",
+"osmName": "Mont Tremblant Resort, Station Mont Tremblant"
+},
+{
+"id": "le-massif",
+"name": "Le Massif",
+"state": "QC",
+"ikon": "7 days",
+"osm": "ef6c8dc160b9330d799cf95bf76ae29b58d33c5c",
+"osmName": "Le Massif"
+},
+{
+"id": "blue-mountain-on",
+"name": "Blue Mountain ON",
+"state": "ON",
+"ikon": "Unlimited",
+"osm": "c5f70b639b76f6496d08a74e0691d5d71836cb4d",
+"osmName": "Blue Mountain Ski Resort"
+},
+{
+"id": "revelstoke",
+"name": "Revelstoke",
+"state": "BC",
+"ikon": "7 days",
+"osm": "f2df72ab0a583e1183c56c0a84810bf686d2eb9c",
+"osmName": "Revelstoke Mountain Resort"
+},
+{
+"id": "red",
+"name": "RED Mountain",
+"state": "BC",
+"ikon": "7 days",
+"osm": "d43bd0f16a1d4436ace9396379fcdfa999dd8033",
+"osmName": "Red Mountain Resort"
+},
+{
+"id": "panorama",
+"name": "Panorama",
+"state": "BC",
+"ikon": "7 days",
+"osm": "7f0f9748509826cf58fa1961ee12560933bbf7ab",
+"osmName": "Panorama Mountain Resort"
+},
+{
+"id": "sun-peaks",
+"name": "Sun Peaks",
+"state": "BC",
+"ikon": "7 days",
+"osm": "9f1d79969a331ae7d0969bf41f5d4910c7d07a0d",
+"osmName": "Sun Peaks Resort"
+},
+{
+"id": "silverstar",
+"name": "SilverStar",
+"state": "BC",
+"ikon": "7 days \u00b7 new",
+"osm": "ca99961abe8fc871ad3abe87479e4dbb2875d978",
+"osmName": "Silver Star Mountain Resort"
+},
+{
+"id": "cypress",
+"name": "Cypress Mountain",
+"state": "BC",
+"ikon": "7 days",
+"osm": "7599cb6e98e206b310f1be3d95fe1e27fa08f307",
+"osmName": "Cypress Mountain"
+},
+{
+"id": "lake-louise",
+"name": "Lake Louise (SkiBig3)",
+"state": "AB",
+"ikon": "7 days (SkiBig3)",
+"osm": "c6d20c505a085bb9b9f6c6c8630c084b84ba7565",
+"osmName": "Lake Louise Ski Area"
+},
+{
+"id": "sunshine",
+"name": "Banff Sunshine (SkiBig3)",
+"state": "AB",
+"ikon": "7 days (SkiBig3)",
+"osm": "7df6d649ccd61056844b92208038a03c0d6c6091",
+"osmName": "Banff Sunshine Village"
+},
+{
+"id": "norquay",
+"name": "Mt. Norquay (SkiBig3)",
+"state": "AB",
+"ikon": "7 days (SkiBig3)",
+"osm": "aedc10b0b4b20c17f083be799be906cc5fdb41ac",
+"osmName": "Mt Norquay"
+}
+]

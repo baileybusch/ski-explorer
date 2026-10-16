@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SkiScope · 3D Ikon snow explorer</title>
+<meta name="description" content="3D terrain explorer for Ikon Pass resorts with real snowfall history and forecast.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<div id="map"></div>
+<div id="vignette"></div>
+
+<header id="topbar" class="glass">
+  <div class="brand">❄ <b>SkiScope</b></div>
+  <button id="searchBtn" class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="searchLabel">Search resorts</span></button>
+  <button id="layersBtn" class="iconbtn" aria-label="Layers"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>
+</header>
+
+<div id="layers" class="glass hidden">
+  <div class="ltitle">Layers</div>
+  <label><span><i class="sw snow"></i>Snowfall</span><input type="checkbox" data-layer="snow" checked></label>
+  <label><span><i class="sw runs"></i>Runs &amp; lifts</span><input type="checkbox" data-layer="runs" checked></label>
+  <label><span><i class="sw burn"></i>Burn scar</span><input type="checkbox" data-layer="burn" checked></label>
+  <label><span><i class="sw cont"></i>Contours</span><input type="checkbox" data-layer="contours"></label>
+  <label><span><i class="sw sat"></i>Satellite</span><input type="checkbox" data-layer="sat" checked></label>
+</div>
+
+<div id="search" class="hidden">
+  <div class="glass searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Alta, Revelstoke, Utah…" autocomplete="off"><button id="qClose">Cancel</button></div>
+  <div id="qResults" class="glass"></div>
+</div>
+
+<div id="timeline" class="glass">
+  <button id="play" aria-label="Play"><svg class="pi" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="pa" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
+  <div class="tl-main">
+    <div class="tl-top"><span id="tlDate">—</span><span id="tlTag"></span><span id="tlTotal"></span></div>
+    <div class="tl-track"><div id="tlBars"></div><div id="tlFc"></div><div id="tlToday"></div><input id="scrub" type="range" min="0" max="36" step="0.01" value="30"></div>
+  </div>
+</div>
+
+<section id="sheet" class="glass" data-snap="peek">
+  <div id="grab"><div class="handle"></div></div>
+  <div id="sheetBody">
+    <div id="listView">
+      <div class="sh-head"><div><div class="dim small">Ikon Pass · North America</div><div class="h1">Most snow · last 7 days</div></div><div class="pill" id="countPill"></div></div>
+      <div id="list"></div>
+      <div class="foot dim small" id="credits"></div>
+    </div>
+    <div id="detailView" class="hidden"></div>
+  </div>
+</section>
+
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
+<script src="app.js" type="module"></script>
+</body>
+</html>
