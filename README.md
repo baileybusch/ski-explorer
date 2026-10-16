@@ -9,7 +9,7 @@ Static site (no build step): `public/index.html`, `app.js`, `style.css` + precom
 |---|---|
 | Terrain / hillshade / contours | AWS Open Data Terrarium DEM tiles (Mapzen), contours generated client-side with `maplibre-contour` |
 | Imagery | Esri World Imagery (attribution in map); CARTO Dark as non-satellite fallback |
-| Snowfall + snow depth | [Open-Meteo](https://open-meteo.com) forecast API (`past_days=30`, `forecast_days=7`, daily `snowfall_sum`, hourly `snow_depth`), which blends NOAA GFS/HRRR and ECMWF models. 4×4 grid of points around each resort + one mid-mountain point (elevation-downscaled). Refreshed daily by a GitHub Action (`scripts/fetch_snow.py`) → commit → Vercel redeploy. |
+| Snowfall + snow depth | [Open-Meteo](https://open-meteo.com) forecast API (`past_days=30`, `forecast_days=7`, daily `snowfall_sum`, hourly `snow_depth`), which blends NOAA GFS/HRRR and ECMWF models. 4×4 grid of points around each resort + one mid-mountain point (elevation-downscaled). Snapshot committed to the repo (`scripts/fetch_snow.py`); to refresh daily, add `docs/github-action-snow.yml.example` as `.github/workflows/snow.yml` (needs a token with `workflow` scope). A live serverless fetch was tried but Open-Meteo rate-limits Vercel's shared egress IPs. |
 | Runs, lifts, ski-area stats | [OpenSkiMap](https://openskimap.org) GeoJSON (© OpenStreetMap contributors, ODbL), clipped per resort by `scripts/process_osm.py` |
 | Cottonwood Fire perimeter | NIFC WFIGS Interagency Perimeters FeatureServer, IRWIN {B1B09572-CD77-4B0A-8E06-71284617A28F} |
 | Resort list | ikonpass.com 26/27 destinations (North America; bonus mountains excluded) |

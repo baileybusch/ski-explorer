@@ -5,11 +5,7 @@ const fmtFt = m => m == null ? '—' : Math.round(FT(m)).toLocaleString();
 const isDesk = () => matchMedia('(min-width:900px)').matches;
 
 const [IDX, SNOW0, FIRE] = await Promise.all(['data/resorts-index.json', 'data/snow.json', 'data/cottonwood-fire.json'].map(u => fetch(u).then(r => r.json())));
-// Prefer the live CDN-cached snow feed if it answers quickly; otherwise use the build-time snapshot.
-const SNOW = await Promise.race([
-  fetch('/api/snow').then(r => r.ok ? r.json() : null).catch(() => null),
-  new Promise(r => setTimeout(() => r(null), 2500)),
-]).then(s => s && s.grid?.length && s.generated > SNOW0.generated ? s : SNOW0);
+const SNOW = SNOW0;
 const D = SNOW.dates.length, TODAY = SNOW.today;
 const byId = Object.fromEntries(IDX.map(r => [r.id, r]));
 for (const r of IDX) {
