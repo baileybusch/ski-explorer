@@ -17,6 +17,15 @@ for (const r of IDX) {
   r.base_depth = r.depth[TODAY];
 }
 const sorted = [...IDX].sort((a, b) => b.d7 - a.d7 || b.d30 - a.d30);
+// ---------- pass filter (All / Ikon / Epic) ----------
+const PASSES = ['all', 'ikon', 'epic'];
+const qsPass = new URLSearchParams(location.search).get('pass');
+let PASS = PASSES.includes(qsPass) ? qsPass : (PASSES.includes(localStorage.getItem('ss_pass')) ? localStorage.getItem('ss_pass') : 'all');
+const passOK = r => PASS === 'all' || (r.passes || []).includes(PASS);
+const VIS = () => IDX.filter(passOK);
+const passTags = r => r.id === 'eagle-point' ? '' : (r.passes || []).map(p => `<span class="tag ${p}">${p.toUpperCase()}</span>`).join(' ');
+const passCount = p => p === 'all' ? IDX.length : IDX.filter(r => (r.passes || []).includes(p)).length;
+const chipsHTML = () => PASSES.map(p => `<button data-pass="${p}" class="${p} ${PASS === p ? 'on' : ''}" aria-pressed="${PASS === p}">${p === 'all' ? 'All' : p[0].toUpperCase() + p.slice(1)}<small>${passCount(p)}</small></button>`).join('');
 
 // ---------- map ----------
 const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
@@ -62,7 +71,7 @@ const map = new maplibregl.Map({
       { id: 'lifts', type: 'line', source: 'osm', filter: ['==', ['get', 'k'], 'lift'], paint: { 'line-color': '#ff5a5f', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 16, 2.6], 'line-dasharray': [3, 1] } },
       { id: 'run-labels', type: 'symbol', source: 'osm', minzoom: 14, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Regular'], 'text-size': 11 }, paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(0,0,0,.75)', 'text-halo-width': 1.2 } },
       { id: 'resort-hit', type: 'circle', source: 'resorts', paint: { 'circle-radius': 26, 'circle-opacity': 0, 'circle-pitch-alignment': 'viewport' } },
-      { id: 'resort-dot', type: 'circle', source: 'resorts', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 9, 7], 'circle-color': ['case', ['==', ['get', 'id'], 'eagle-point'], '#ff6b3d', '#fff'], 'circle-stroke-color': 'rgba(10,14,22,.8)', 'circle-stroke-width': 2, 'circle-pitch-alignment': 'viewport' } },
+      { id: 'resort-dot', type: 'circle', source: 'resorts', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 9, 7], 'circle-color': ['case', ['==', ['get', 'id'], 'eagle-point'], '#ff6b3d', ['==', ['get', 'pass'], 'ikon+epic'], '#7cf0c8', ['==', ['get', 'pass'], 'epic'], '#8fb8ff', '#ffe08a'], 'circle-stroke-color': 'rgba(10,14,22,.8)', 'circle-stroke-width': 2, 'circle-pitch-alignment': 'viewport' } },
       { id: 'resort-label', type: 'symbol', source: 'resorts', layout: { 'text-field': ['format', ['get', 'name'], { 'font-scale': 1 }, '\n', {}, ['get', 'lbl'], { 'font-scale': 0.92, 'text-color': '#bfe3ff' }], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 10, 10, 13], 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-allow-overlap': false, 'text-optional': true, 'symbol-sort-key': ['-', 0, ['get', 'v']] }, paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(5,8,14,.85)', 'text-halo-width': 1.4 } },
     ],
   },
@@ -95,7 +104,7 @@ const nD = () => DS.dates.length;
 const fmtDate = (i, wd = true) => new Date(DS.dates[i] + 'T12:00').toLocaleDateString('en-US', wd ? { month: 'short', day: 'numeric', weekday: 'short' } : { month: 'short', day: 'numeric' });
 let bars = [];
 function buildTimeline() {
-  const n = nD(), tot = DS.dates.map((_, i) => IDX.reduce((a, r) => a + ((DS.sf[r.id] || [])[i] || 0), 0) / IDX.length);
+  const vis = VIS(), n = nD(), tot = DS.dates.map((_, i) => vis.reduce((a, r) => a + ((DS.sf[r.id] || [])[i] || 0), 0) / Math.max(1, vis.length));
   const mx = Math.max(...tot, 0.5);
   $('#tlBars').innerHTML = tot.map((v, i) => `<i class="${i > DS.today ? 'f' : ''}" style="height:${Math.max(8, v / mx * 100)}%"></i>`).join('');
   bars = [...$('#tlBars').children];
@@ -114,9 +123,9 @@ function render() {
   bars.forEach((b, i) => b.classList.toggle('on', i <= fl));
   const tot = selected ? accum(DS.sf[selected.id], T) : null;
   $('#tlTotal').innerHTML = selected ? `<span class="hide-s">${selected.name.split(' (')[0]} </span><b>${fmtIn(tot)}″</b>` : `<b>${DS === current ? `${n - DS.today - 1}d forecast` : 'All resorts'}</b>`;
-  const pts = DS.grid ? DS.grid.map(([x, y, sf]) => [x, y, accum(sf, T)]) : IDX.map(r => [r.center[0], r.center[1], accum(DS.sf[r.id], T) / 6]);
+  const pts = DS.grid ? DS.grid.map(([x, y, sf]) => [x, y, accum(sf, T)]) : VIS().map(r => [r.center[0], r.center[1], accum(DS.sf[r.id], T) / 6]);
   map.getSource('snow')?.setData({ type: 'FeatureCollection', features: pts.map(([x, y, v]) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [x, y] }, properties: { v } })) });
-  map.getSource('resorts')?.setData({ type: 'FeatureCollection', features: IDX.map(r => { const v = accum(DS.sf[r.id], T); return { type: 'Feature', geometry: { type: 'Point', coordinates: r.center }, properties: { id: r.id, name: r.name.replace(/ \(.*\)/, ''), v, lbl: r.id === 'eagle-point' && DS === current ? 'Closed 26/27' : `${fmtIn(v)}″` } }; }) });
+  map.getSource('resorts')?.setData({ type: 'FeatureCollection', features: VIS().map(r => { const v = accum(DS.sf[r.id], T); return { type: 'Feature', geometry: { type: 'Point', coordinates: r.center }, properties: { id: r.id, pass: (r.passes || []).join('+'), name: r.name.replace(/ \(.*\)/, ''), v, lbl: r.id === 'eagle-point' && DS === current ? 'Closed 26/27' : `${fmtIn(v)}″` } }; }) });
 }
 let playing = false, last = 0;
 function tick(ts) { if (!playing) return; const dt = last ? (ts - last) / 1000 : 0; last = ts; T += dt * (nD() > 60 ? 12 : 3); if (T >= nD() - 1) { T = nD() - 1; stop(); } $('#scrub').value = T; render(); if (playing) requestAnimationFrame(tick); }
@@ -130,8 +139,22 @@ function sparkSVG(r) {
   const m = Math.max(...r.sf, 1), w = 70, h = 28, bw = w / D;
   return `<svg class="spark" viewBox="0 0 ${w} ${h}">${r.sf.map((v, i) => `<rect x="${i * bw}" y="${h - Math.max(1, v / m * h)}" width="${bw - .5}" height="${Math.max(1, v / m * h)}" rx=".6" fill="${i > TODAY ? '#c48cff' : i === TODAY ? '#fff' : '#7cc4ff'}" opacity="${i > TODAY ? .7 : 1}"/>`).join('')}</svg>`;
 }
-$('#countPill').textContent = `${IDX.length} areas`;
-$('#list').innerHTML = sorted.map((r, i) => `<div class="row" data-id="${r.id}"><div class="rk">${i + 1}</div><div class="nm"><b>${r.name}</b><span class="sub">${r.state} · ${r.id === 'eagle-point' ? '<span class="tag fire">BURN SCAR</span>' : '<span class="tag">IKON</span>'}</span></div>${sparkSVG(r)}<div class="val"><b>${fmtIn(r.d7)}″</b><div class="sub">7 day</div></div></div>`).join('');
+function renderList() {
+  const rows = sorted.filter(passOK);
+  $('#countPill').textContent = `${rows.length} areas`;
+  $('#list').innerHTML = rows.map((r, i) => `<div class="row" data-id="${r.id}"><div class="rk">${i + 1}</div><div class="nm"><b>${r.name}</b><span class="sub">${r.state} · ${r.id === 'eagle-point' ? '<span class="tag fire">BURN SCAR</span>' : passTags(r)}</span></div>${sparkSVG(r)}<div class="val"><b>${fmtIn(r.d7)}″</b><div class="sub">7 day</div></div></div>`).join('') || '<p class="sub" style="padding:16px 0">No resorts for this pass.</p>';
+}
+function setPass(p, save = true) {
+  if (!PASSES.includes(p)) return; PASS = p;
+  if (save) localStorage.setItem('ss_pass', p);
+  document.querySelectorAll('.passchips').forEach(el => el.innerHTML = chipsHTML());
+  const qs = new URLSearchParams(location.search); if (p === 'all') qs.delete('pass'); else qs.set('pass', p);
+  history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : ''));
+  renderList(); buildTimeline(); render();
+  if (!$('#seasonsView').classList.contains('hidden')) renderSeasons();
+}
+document.querySelectorAll('.passchips').forEach(el => { el.innerHTML = chipsHTML(); el.onclick = e => { const b = e.target.closest('button[data-pass]'); if (b) { e.stopPropagation(); setPass(b.dataset.pass); } }; });
+renderList();
 $('#list').onclick = e => { const row = e.target.closest('.row'); if (row) select(row.dataset.id); };
 $('#credits').innerHTML = `Snow: Open-Meteo forecast API (NOAA GFS/HRRR + ECMWF models), updated ${new Date(SNOW.generated).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. Past seasons: Open-Meteo historical archive (ERA5). Runs/lifts: OpenSkiMap / OSM (ODbL). Terrain: AWS Terrarium. Imagery: Esri. Fire: NIFC WFIGS. <a href="/alerts">Email alerts</a> · <a href="https://github.com/baileybusch/ski-explorer">Source</a>`;
 
@@ -183,9 +206,10 @@ $('#seasonChip').onclick = () => { renderSeasons(); showView('seasonsView'); if 
 
 function seasonTotals(rid) {
   const ys = [...SUMMARY.seasons];
-  const val = y => rid ? (SUMMARY.totals[rid]?.[y] ?? 0) : IDX.reduce((a, r) => a + (SUMMARY.totals[r.id]?.[y] ?? 0), 0) / IDX.length;
+  const vis = VIS().filter(r => r.id !== 'eagle-point' || PASS === 'all'), withY = y => vis.filter(r => SUMMARY.totals[r.id]?.[y] != null);
+  const val = y => rid ? (SUMMARY.totals[rid]?.[y] ?? 0) : withY(y).reduce((a, r) => a + SUMMARY.totals[r.id][y], 0) / Math.max(1, withY(y).length);
   const out = ys.map(y => ({ y, v: val(y) }));
-  out.push({ y: CUR_SEASON, v: rid ? accum(current.sf[rid], TODAY) : IDX.reduce((a, r) => a + accum(current.sf[r.id], TODAY), 0) / IDX.length, cur: true });
+  out.push({ y: CUR_SEASON, v: rid ? accum(current.sf[rid], TODAY) : vis.reduce((a, r) => a + accum(current.sf[r.id], TODAY), 0) / Math.max(1, vis.length), cur: true });
   return out;
 }
 let seasonScope = 'resort';
@@ -196,10 +220,10 @@ function barsHTML(rows) {
 }
 function renderSeasons() {
   const rid = seasonScope === 'resort' && selected ? selected.id : null;
-  const rows = seasonTotals(rid), past = rows.filter(r => !r.cur);
+  const rows = seasonTotals(rid).filter(r => r.cur || !rid || SUMMARY.totals[rid]?.[r.y] != null), past = rows.filter(r => !r.cur);
   const best = past.reduce((a, b) => b.v > a.v ? b : a, { v: -1 }), avg = past.reduce((a, b) => a + b.v, 0) / Math.max(1, past.length);
   $('#seasonsView').innerHTML = `
-    <div class="seg"><button data-s="resort" class="${rid ? 'on' : ''}" ${selected ? '' : 'disabled'}>${selected ? selected.name.split(' (')[0] : 'Pick a resort'}</button><button data-s="all" class="${rid ? '' : 'on'}">All resorts (avg)</button></div>
+    <div class="seg"><button data-s="resort" class="${rid ? 'on' : ''}" ${selected ? '' : 'disabled'}>${selected ? selected.name.split(' (')[0] : 'Pick a resort'}</button><button data-s="all" class="${rid ? '' : 'on'}">${PASS === 'all' ? 'All resorts' : PASS === 'ikon' ? 'Ikon' : 'Epic'} (avg)</button></div>
     ${past.length ? `<div class="grid"><div class="stat"><b>${Math.round(IN(best.v))}<small>″</small></b><span>Best · ${best.y}–${String(best.y + 1).slice(2)}</span></div><div class="stat"><b>${Math.round(IN(avg))}<small>″</small></b><span>Avg season</span></div><div class="stat"><b>${past.length}</b><span>Seasons</span></div></div>` : '<p class="sub">Historical seasons are still being generated.</p>'}
     <div class="sec">Total snowfall · Nov 1 – Apr 30</div>${barsHTML(rows)}
     <p class="sub">Tap a season to load it into the timeline and play it back. Modeled snowfall at mid-mountain from the Open-Meteo historical archive (ERA5 reanalysis); 2026–27 is season-to-date plus forecast.</p>`;
@@ -251,9 +275,9 @@ function wireFollow(r) {
 function detailHTML(r) {
   const fc = r.sf.slice(TODAY + 1), fm = Math.max(...fc, 1);
   const vert = r.summit && r.base ? r.summit - r.base : null;
-  const best = SUMMARY.seasons.length ? SUMMARY.seasons.reduce((a, y) => (SUMMARY.totals[r.id]?.[y] ?? 0) > (SUMMARY.totals[r.id]?.[a] ?? 0) ? y : a) : null;
+  const ys = SUMMARY.seasons.filter(y => SUMMARY.totals[r.id]?.[y] != null), best = ys.length ? ys.reduce((a, y) => SUMMARY.totals[r.id][y] > SUMMARY.totals[r.id][a] ? y : a) : null;
   return `<button class="back" id="back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>All resorts</button>
-  <div class="dh"><div><h2>${r.name}</h2><div class="sub" style="margin-top:4px">${r.state} · ${r.id === 'eagle-point' ? '<span class="tag fire">CLOSED 26/27</span> Not on Ikon' : `<span class="tag">IKON</span> ${r.ikon}`}</div></div></div>
+  <div class="dh"><div><h2>${r.name}</h2><div class="sub" style="margin-top:4px">${r.state} · ${r.id === 'eagle-point' ? '<span class="tag fire">CLOSED 26/27</span> Not on Ikon or Epic' : [r.ikon && `<span class="tag ikon">IKON</span> ${r.ikon}`, r.epic && `<span class="tag epic">EPIC</span> ${r.epic}`].filter(Boolean).join(' · ')}</div></div></div>
   ${followHTML(r)}
   <div class="grid">
     <div class="stat"><b>${fmtIn(r.d24)}<small>″</small></b><span>Last 24h</span></div>
@@ -324,8 +348,8 @@ const openSearch = () => { $('#search').classList.remove('hidden'); $('#q').valu
 const closeSearch = () => { $('#search').classList.add('hidden'); $('#q').blur(); };
 function doSearch() {
   const q = $('#q').value.trim().toLowerCase();
-  const res = (q ? IDX.filter(r => (r.name + ' ' + r.state).toLowerCase().includes(q)) : sorted).slice(0, 30);
-  $('#qResults').innerHTML = res.map(r => `<div class="qr" data-id="${r.id}"><span><b>${r.name}</b> <span class="sub">${r.state}</span></span><span class="sub">${fmtIn(r.d7)}″ 7d</span></div>`).join('');
+  const res = (q ? IDX.filter(r => (r.name + ' ' + r.state + ' ' + (r.passes || []).join(' ')).toLowerCase().includes(q)) : sorted.filter(passOK)).slice(0, 30);
+  $('#qResults').innerHTML = res.map(r => `<div class="qr" data-id="${r.id}"><span><b>${r.name}</b> <span class="sub">${r.state} ${passTags(r)}</span></span><span class="sub">${fmtIn(r.d7)}″ 7d</span></div>`).join('');
 }
 $('#searchBtn').onclick = openSearch; $('#qClose').onclick = closeSearch; $('#q').oninput = doSearch;
 $('#search').onclick = e => { const it = e.target.closest('.qr'); if (it) { closeSearch(); select(it.dataset.id); } else if (e.target.id === 'search') closeSearch(); };
@@ -351,4 +375,4 @@ map.on('load', () => {
   const qs = new URLSearchParams(location.search), want = qs.get('r') || location.hash.slice(1);
   setTimeout(() => { select(byId[want] ? want : 'eagle-point'); if (qs.get('view') === 'seasons') { renderSeasons(); showView('seasonsView'); } if (qs.get('sheet')) setSnap(qs.get('sheet')); }, 600);
 });
-window.__app = { map, select, setSnap, loadSeason, renderSeasons, showView, setT: t => { T = t; $('#scrub').value = t; render(); } };
+window.__app = { map, select, setPass, setSnap, loadSeason, renderSeasons, showView, setT: t => { T = t; $('#scrub').value = t; render(); } };

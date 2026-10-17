@@ -45,7 +45,8 @@ for m in M:
   c=(p.get('viewportHint') or {}).get('center') or a['geometry']['coordinates']
   bbox=[min(xs),min(ys),max(xs),max(ys)] if xs else [c[0]-.02,c[1]-.02,c[0]+.02,c[1]+.02]
   top=st.get('maxElevation');bot=st.get('minElevation')
-  idx.append(dict(id=m['id'],name=m['name'],state=m['state'],ikon=m['ikon'],center=[round(c[0],5),round(c[1],5)],bbox=[round(v,4) for v in bbox],
+  passes=[k for k in ('ikon','epic') if m.get(k) and not (k=='ikon' and m['id']=='eagle-point')]
+  idx.append(dict(id=m['id'],name=m['name'],state=m['state'],ikon=m['ikon'],epic=m.get('epic'),passes=passes,center=[round(c[0],5),round(c[1],5)],bbox=[round(v,4) for v in bbox],
     summit=round(top) if top else None,base=round(bot) if bot else None,
     runs=len(fs['runs']),lifts=len(fs['lifts']),bearing=round((p.get('viewportHint') or {}).get('bearing') or 0),web=(p.get('websites') or [None])[0]))
   json.dump({'type':'FeatureCollection','features':[{**f,'properties':{**f['properties'],'k':'run'}} for f in fs['runs']]+[{**f,'properties':{**f['properties'],'k':'lift'}} for f in fs['lifts']]},open(f"public/data/resorts/{m['id']}.json",'w'),separators=(',',':'))

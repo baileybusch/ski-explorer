@@ -1,6 +1,6 @@
-# SkiScope — 3D Ikon snow explorer
+# SkiScope — 3D Ikon & Epic snow explorer
 
-iPhone-first 3D terrain explorer for the 26/27 Ikon Pass North American resorts (plus Eagle Point, UT), with a play/scrub timeline of the last 30 days of snowfall and the 7-day forecast. Inspired by Dilum Sanjaya's wildfire-spread prototype, rebuilt from scratch on real data.
+iPhone-first 3D terrain explorer for the 26/27 Ikon Pass and Epic Pass North American resorts (plus Eagle Point, UT), with a play/scrub timeline of the last 30 days of snowfall and the 7-day forecast. Inspired by Dilum Sanjaya's wildfire-spread prototype, rebuilt from scratch on real data.
 
 Static site (no build step): `public/index.html`, `app.js`, `style.css` + precomputed JSON in `public/data/`.
 
@@ -12,7 +12,7 @@ Static site (no build step): `public/index.html`, `app.js`, `style.css` + precom
 | Snowfall + snow depth | [Open-Meteo](https://open-meteo.com) forecast API (`past_days=30`, `forecast_days=7`, daily `snowfall_sum`, hourly `snow_depth`), which blends NOAA GFS/HRRR and ECMWF models. 4×4 grid of points around each resort + one mid-mountain point (elevation-downscaled). Snapshot committed to the repo (`scripts/fetch_snow.py`); to refresh daily, add `docs/github-action-snow.yml.example` as `.github/workflows/snow.yml` (needs a token with `workflow` scope). A live serverless fetch was tried but Open-Meteo rate-limits Vercel's shared egress IPs. |
 | Runs, lifts, ski-area stats | [OpenSkiMap](https://openskimap.org) GeoJSON (© OpenStreetMap contributors, ODbL), clipped per resort by `scripts/process_osm.py` |
 | Cottonwood Fire perimeter | NIFC WFIGS Interagency Perimeters FeatureServer, IRWIN {B1B09572-CD77-4B0A-8E06-71284617A28F} |
-| Resort list | ikonpass.com 26/27 destinations (North America; bonus mountains excluded) |
+| Resort list | ikonpass.com 26/27 destinations (North America; bonus mountains excluded) + epicpass.com 26/27 Epic Pass "Unlimited access" resorts in North America (37 Vail Resorts-owned; 7-day partner access at Telluride and Resorts of the Canadian Rockies excluded) |
 
 Snow depth is modeled (not resort-reported). NOAA NOHRSC/SNOTEL are not yet integrated.
 
@@ -20,8 +20,10 @@ Snow depth is modeled (not resort-reported). NOAA NOHRSC/SNOTEL are not yet inte
 ```
 curl -O https://tiles.openskimap.org/geojson/{ski_areas,runs,lifts}.geojson  # into raw/
 python3 scripts/match.py && python3 scripts/process_osm.py && cp scripts/index_osm.json public/data/resorts-index.json
-python3 scripts/fetch_snow.py
+python3 scripts/fetch_snow.py            # full refresh; add --missing to fetch only resorts not yet in snow.json
+python3 scripts/fetch_seasons.py         # fetches only seasons/resorts missing from public/data/seasons/
 ```
+`scripts/resorts.json` rows are `[id, name, OSM name token, state, lat, lon, ikonAccess|null, epicAccess|null]`; a resort on both passes has both fields set and gets both tags. The index carries `ikon`, `epic` and `passes` (`["ikon"]`, `["epic"]`, `["ikon","epic"]`, or `[]` for Eagle Point).
 
 ## v2 additions
 - **Past seasons**: `scripts/fetch_seasons.py` pulls Nov 1–Apr 30 daily `snowfall_sum` per resort (mid-mountain point, elevation-downscaled) from the Open-Meteo historical archive (ERA5), paced to stay under the weighted rate limits (≤400/min, ≤4500/hour). Writes `public/data/seasons/<year>.json` (~33 KB each) + `summary.json` (`scripts/season_summary.py`). Already-fetched seasons are skipped, so it is safe to re-run.
@@ -38,3 +40,8 @@ Only use images you are allowed to reuse, and credit them exactly:
 2. **Unsplash**: set `"source": "Unsplash"` and `sourceUrl` to the photo page. The credit renders as `Photo: Name / Unsplash`.
 3. Resize to about 1200px wide as a compressed JPG (quality around 78), save it as `public/photos/NN.jpg`, and add an entry to `photos.json`: `file`, `caption`, `location`, `photographer`, `source`, `sourceUrl`, `license`, `licenseUrl`. `scripts/fetch_photos.py` pulls candidates from Commons ski categories with license filtering.
 4. Do **not** hotlink or scrape X/Twitter, Instagram, Huckberry or Red Bull images. Brand imagery (Red Bull Content Pool, resort media kits, athlete or photographer portfolios) needs written permission or an explicitly granted license before use.
+
+## v4: Epic Pass resorts + pass filter
+- Added the 37 Epic Pass 26/27 unlimited-access North American resorts (Vail, Beaver Creek, Breckenridge, Keystone, Crested Butte, Park City, Heavenly, Northstar, Kirkwood, Stevens Pass, Whistler Blackcomb, Stowe, Okemo, Mount Snow, Mount Sunapee, Attitash, Wildcat, Crotched, Hunter, Liberty, Roundtop, Whitetail, Jack Frost, Big Boulder, Seven Springs, Laurel Mountain, Hidden Valley PA, Afton Alps, Mt Brighton, Wilmot, Alpine Valley OH, Boston Mills, Brandywine, Mad River, Hidden Valley MO, Snow Creek, Paoli Peaks). No North American resort is on both passes' full lists for 26/27.
+- **All / Ikon / Epic** chips float on the map (under the search bar) and sit at the top of the resort list; they stay in sync, filter list, map dots and the timeline / season averages, persist in `localStorage`, and deep-link via `?pass=ikon|epic`. Map dots: Ikon gold, Epic blue (both-pass resorts would be mint).
+- `fetch_snow.py` and `fetch_seasons.py` now pace weighted Open-Meteo calls and can fill in only missing resorts.

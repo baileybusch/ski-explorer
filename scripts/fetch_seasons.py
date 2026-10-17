@@ -1,6 +1,7 @@
 """Fetch past-season daily snowfall (Nov 1 - Apr 30) per resort at the mid-mountain point
 from the Open-Meteo historical archive API. Writes public/data/seasons/<startYear>.json and
-public/data/seasons/summary.json. Skips seasons already on disk (pass --force to refetch).
+public/data/seasons/summary.json. Skips seasons already on disk (pass --force to refetch); for an
+existing season file, only resorts missing from it are fetched and merged in (new resorts).
 Rate limits: archive calls are weighted (~days/14 per location), so we pace requests to stay
 well under 600/min and 5000/hour."""
 import json,urllib.request,urllib.parse,time,datetime,os,sys
@@ -10,22 +11,24 @@ first=int(os.environ.get('FIRST',2015)); last=int(os.environ.get('LAST',2025))
 force='--force' in sys.argv
 UA={'User-Agent':'ski-explorer (github.com/baileybusch/ski-explorer)'}
 B=10  # locations per request -> weight ~ 10*181/14 = ~130
-PER_MIN=400; used=[]  # (ts, weight)
+PER_MIN=int(os.environ.get('PER_MIN',400)); PER_HOUR=int(os.environ.get('PER_HOUR',4500)); used=[]  # (ts, weight)
 def throttle(w):
   while True:
     now=time.time(); used[:]=[u for u in used if now-u[0]<3600]
     m=sum(x for t,x in used if now-t<60); h=sum(x for t,x in used)
-    if m+w<=PER_MIN and h+w<=4500: used.append((now,w)); return
+    if m+w<=PER_MIN and h+w<=PER_HOUR: used.append((now,w)); return
     time.sleep(5)
 def elev(r): return round(r['base']+0.6*(r['summit']-r['base'])) if r['summit'] and r['base'] else 'nan'
 for y in range(last,first-1,-1):
   fn=f'{OUT}/{y}.json'
-  if os.path.exists(fn) and not force: continue
+  old=json.load(open(fn)) if os.path.exists(fn) and not force else None
+  todo=[r for r in idx if not old or r['id'] not in old['resorts']]
+  if not todo: continue
   s,e=f'{y}-11-01',f'{y+1}-04-30'
   days=(datetime.date(y+1,4,30)-datetime.date(y,11,1)).days+1
-  res={}
-  for k in range(0,len(idx),B):
-    ch=idx[k:k+B]
+  res=dict(old['resorts']) if old else {}
+  for k in range(0,len(todo),B):
+    ch=todo[k:k+B]
     q={'latitude':','.join(str(r['center'][1]) for r in ch),'longitude':','.join(str(r['center'][0]) for r in ch),
        'elevation':','.join(str(elev(r)) for r in ch),'start_date':s,'end_date':e,'daily':'snowfall_sum','timezone':'America/Denver'}
     url='https://archive-api.open-meteo.com/v1/archive?'+urllib.parse.urlencode(q)

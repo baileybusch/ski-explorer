@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#0b0f17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SkiScope · 3D Ikon snow explorer</title>
-<meta name="description" content="3D terrain explorer for Ikon Pass resorts with real snowfall history and forecast.">
+<title>SkiScope · 3D Ikon &amp; Epic snow explorer</title>
+<meta name="description" content="3D terrain explorer for Ikon Pass and Epic Pass resorts with real snowfall history and forecast.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=2" rel="stylesheet">
+<link href="style.css?v=4" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -24,6 +24,8 @@
   <button id="layersBtn" class="iconbtn" aria-label="Layers"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>
 </header>
 
+<nav id="mapChips" class="passchips glass" aria-label="Filter map by pass"></nav>
+
 <div id="layers" class="glass hidden">
   <div class="ltitle">Layers</div>
   <label><span><i class="sw snow"></i>Snowfall</span><input type="checkbox" data-layer="snow" checked></label>
@@ -34,7 +36,7 @@
 </div>
 
 <div id="search" class="hidden">
-  <div class="glass searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Alta, Revelstoke, Utah…" autocomplete="off"><button id="qClose">Cancel</button></div>
+  <div class="glass searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Alta, Vail, Epic, Utah…" autocomplete="off"><button id="qClose">Cancel</button></div>
   <div id="qResults" class="glass"></div>
 </div>
 
@@ -54,7 +56,7 @@
     <div id="tabs" class="seg"><button data-v="listView" class="on">Resorts</button><button data-v="seasonsView">Seasons</button></div>
   </div>
   <div id="sheetBody">
-    <div id="listView"><div id="list"></div><div class="foot sub" id="credits"></div></div>
+    <div id="listView"><div class="passchips listchips" aria-label="Filter list by pass"></div><div id="list"></div><div class="foot sub" id="credits"></div></div>
     <div id="detailView" class="hidden"></div>
     <div id="seasonsView" class="hidden"></div>
   </div>
@@ -62,6 +64,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
-<script src="app.js?v=2" type="module"></script>
+<script src="app.js?v=4" type="module"></script>
 </body>
 </html>

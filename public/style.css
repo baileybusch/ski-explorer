@@ -133,3 +133,17 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,
 .freq{display:flex;gap:6px;width:100%;padding:4px;background:rgba(255,255,255,.07);border-radius:12px}
 .freq label{flex:1}.freq input{display:none}.freq span{display:grid;place-items:center;min-height:42px;border-radius:9px;font-weight:600;color:var(--dim);cursor:pointer}
 .freq input:checked+span{background:rgba(255,255,255,.16);color:#fff}
+
+/* v4: pass filter chips + tags */
+.tag.ikon{background:#f2c94c;color:#111}.tag.epic{background:#8fb8ff;color:#0b1730}
+.passchips{display:flex;gap:6px}
+.passchips button{min-height:36px;padding:0 13px;border-radius:999px;font-weight:700;font-size:14px;color:rgba(235,240,255,.75);background:rgba(255,255,255,.08);border:1px solid var(--line);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.passchips button small{font-size:11px;font-weight:700;opacity:.65}
+.passchips button.on{background:#fff;color:#0b0f17;border-color:#fff}
+.passchips button.ikon.on{background:#f2c94c;border-color:#f2c94c}
+.passchips button.epic.on{background:#8fb8ff;border-color:#8fb8ff}
+#mapChips{position:fixed;z-index:9;top:calc(var(--st) + 72px);left:calc(var(--sl) + 10px);padding:5px;border-radius:999px;transition:opacity .2s}
+.listchips{padding:2px 0 10px}
+.maplibregl-ctrl-top-left{top:calc(var(--st) + 122px)}
+body.sheet-full #mapChips{opacity:0;pointer-events:none}
+@media (min-width:900px){#mapChips{left:calc(var(--sl) + 404px);top:12px}.maplibregl-ctrl-top-left{top:8px}}

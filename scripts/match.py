@@ -3,7 +3,8 @@ areas=json.load(open('raw/ski_areas.geojson'))['features']
 R=json.load(open('scripts/resorts.json'))
 def dist(a,b,c,d): return math.hypot((a-c)*111,(b-d)*111*math.cos(math.radians(a)))
 out=[]
-for sid,name,tok,st,lat,lon,ikon in R:
+for row in R:
+  sid,name,tok,st,lat,lon,ikon=row[:7]; epic=row[7] if len(row)>7 else None
   best=None
   for a in areas:
     p=a['properties']
@@ -22,5 +23,5 @@ for sid,name,tok,st,lat,lon,ikon in R:
     if not best or score>best[0]: best=(score,a,nm,n,d)
   if not best: print('MISS',name); continue
   print(f"{name:30} -> {best[2]:40} runs={best[3]} d={best[4]:.1f}")
-  out.append(dict(id=sid,name=name,state=st,ikon=ikon,osm=best[1]['properties']['id'],osmName=best[2]))
+  out.append(dict(id=sid,name=name,state=st,ikon=ikon,epic=epic,osm=best[1]['properties']['id'],osmName=best[2]))
 json.dump(out,open('scripts/matched.json','w'),indent=0)
