@@ -1,3 +1,4 @@
+import { EMAIL_ALERTS_ENABLED } from './config.js';
 const $ = s => document.querySelector(s);
 const IN = cm => cm / 2.54, FT = m => m * 3.28084;
 const fmtIn = cm => { const v = IN(cm); return v >= 10 ? Math.round(v) : (Math.round(v * 10) / 10); };
@@ -156,7 +157,7 @@ function setPass(p, save = true) {
 document.querySelectorAll('.passchips').forEach(el => { el.innerHTML = chipsHTML(); el.onclick = e => { const b = e.target.closest('button[data-pass]'); if (b) { e.stopPropagation(); setPass(b.dataset.pass); } }; });
 renderList();
 $('#list').onclick = e => { const row = e.target.closest('.row'); if (row) select(row.dataset.id); };
-$('#credits').innerHTML = `Snow: Open-Meteo forecast API (NOAA GFS/HRRR + ECMWF models), updated ${new Date(SNOW.generated).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. Past seasons: Open-Meteo historical archive (ERA5). Runs/lifts: OpenSkiMap / OSM (ODbL). Terrain: AWS Terrarium. Imagery: Esri. Fire: NIFC WFIGS. <a href="/alerts">Email alerts</a> · <a href="https://github.com/baileybusch/ski-explorer">Source</a>`;
+$('#credits').innerHTML = `Snow: Open-Meteo forecast API (NOAA GFS/HRRR + ECMWF models), updated ${new Date(SNOW.generated).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. Past seasons: Open-Meteo historical archive (ERA5). Runs/lifts: OpenSkiMap / OSM (ODbL). Terrain: AWS Terrarium. Imagery: Esri. Fire: NIFC WFIGS. ${EMAIL_ALERTS_ENABLED ? '<a href="/alerts">Email alerts</a> · ' : ''}<a href="https://github.com/baileybusch/ski-explorer">Source</a>`;
 
 const sbpx = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sbpx')) || 0;
 const SNAPS = { collapsed: () => 64 + sbpx(), peek: () => 196 + sbpx(), half: () => Math.round(innerHeight * 0.46), full: () => sheet.offsetHeight };
@@ -254,6 +255,7 @@ const FIREHTML = `<div class="firecard"><h3>🔥 2026 Cottonwood Fire</h3><div c
 <div class="links"><a href="https://www.eaglepointresort.com/eagle-point-resort-announces-2026-27-winter-season-closure-following-cottonwood-fire/" target="_blank" rel="noopener">Resort announcement ↗</a><a href="https://inciweb.wildfire.gov/incident-information/utfif-cottonwood-fire" target="_blank" rel="noopener">InciWeb ↗</a></div></div>`;
 const follows = () => JSON.parse(localStorage.getItem('ss_follows') || '[]');
 function followHTML(r) {
+  if (!EMAIL_ALERTS_ENABLED) return '';
   const on = follows().includes(r.id), email = localStorage.getItem('ss_email') || '';
   return `<div class="follow" id="follow">
     <button class="fbtn ${on ? 'on' : ''}" id="fbtn">${on ? '🔔 Following' : '🔔 Follow for snow alerts'}</button>
@@ -261,6 +263,7 @@ function followHTML(r) {
     <div class="sub" id="fmsg"></div></div>`;
 }
 function wireFollow(r) {
+  if (!EMAIL_ALERTS_ENABLED || !$('#fbtn')) return;
   $('#fbtn').onclick = () => { if (follows().includes(r.id)) { location.href = '/alerts' + (localStorage.getItem('ss_token') ? `?token=${localStorage.getItem('ss_token')}` : ''); return; } $('#fform').classList.toggle('hidden'); $('#femail').focus(); };
   $('#fform').onsubmit = async e => {
     e.preventDefault(); const email = $('#femail').value.trim(); $('#fmsg').textContent = 'Saving…';

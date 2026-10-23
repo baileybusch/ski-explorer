@@ -22,13 +22,16 @@ input[type=email],input[type=search]{width:100%;min-height:52px;border-radius:14
 .seg{display:flex;gap:6px;padding:4px;margin-top:14px;background:rgba(255,255,255,.07);border-radius:14px}.seg label{flex:1}.seg input{display:none}.seg span{display:grid;place-items:center;min-height:46px;border-radius:11px;font-weight:600;color:var(--dim);cursor:pointer}.seg input:checked+span{background:rgba(255,255,255,.16);color:#fff}
 </style></head><body><main>
 <div class="top"><a class="brand" href="/">❄ SkiScope</a><a href="/">Open map</a></div>
-<h1>Snow alerts</h1><p class="dim">A daily email with fresh snow and the forecast at the resorts you follow, plus the top 10 snowiest Ikon &amp; Epic resorts. Double opt-in, one-click unsubscribe.</p>
+<h1>Snow alerts</h1><p class="dim" id="intro">Email alerts are paused for now. No digests are being sent, and new signups are closed.</p>
 <div id="app"></div>
 </main>
 <script type="module">
+import { EMAIL_ALERTS_ENABLED } from '/config.js';
 const $ = s => document.querySelector(s), qs = new URLSearchParams(location.search), token = qs.get('token');
 const idx = await fetch('/data/resorts-index.json').then(r => r.json());
 const app = $('#app');
+if (EMAIL_ALERTS_ENABLED) {
+$('#intro').innerHTML = 'A daily email with fresh snow and the forecast at the resorts you follow, plus the top 10 snowiest Ikon &amp; Epic resorts. Double opt-in, one-click unsubscribe.';
 function picker(sel) {
   return `<input type="search" id="filter" placeholder="Filter resorts">
   <div class="list" id="list">${idx.map(r => `<label class="item"><span><b>${r.name}</b><small>${r.state}</small></span><input type="checkbox" value="${r.id}" ${sel.includes(r.id) ? 'checked' : ''}></label>`).join('')}</div>`;
@@ -66,4 +69,5 @@ if (token) {
     $('#msg').innerHTML = res.message;
   };
 }
+} // EMAIL_ALERTS_ENABLED
 </script></body></html>

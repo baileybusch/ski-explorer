@@ -1,7 +1,9 @@
 import { loadData, digestEmail, sendEmail, allActive, emailConfigured } from '../_lib.js';
+import { EMAIL_ALERTS_ENABLED } from '../../public/config.js';
 export const config = { maxDuration: 300 };
 // Daily subscribers every run; weekly subscribers only on Saturday (Pacific). Daily at 13:30 UTC (6:30 AM PT), after the ~5 AM PT snow refresh deploys.
 export default async function handler(req, res) {
+  if (!EMAIL_ALERTS_ENABLED) return res.json({ ok: true, sent: 0, paused: true, note: 'Email alerts are paused (EMAIL_ALERTS_ENABLED=false in public/config.js)' });
   if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'unauthorized' });
   if (!emailConfigured()) return res.json({ ok: true, sent: 0, note: 'RESEND_API_KEY not set; digest not sent' });
   const allow = (process.env.DIGEST_ALLOWLIST || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);

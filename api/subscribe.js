@@ -1,5 +1,7 @@
 import { findByEmail, createSub, saveSub, sendEmail, confirmEmail, emailConfigured, isEmail, body, SITE } from './_lib.js';
+import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 export default async function handler(req, res) {
+  if (!EMAIL_ALERTS_ENABLED) return res.status(503).json({ error: 'Email alerts are paused' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const { email, resorts = [], freq } = await body(req);
   if (!isEmail(email)) return res.status(400).json({ error: 'Enter a valid email' });
