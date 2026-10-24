@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#0b0f17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SkiScope · 3D Ikon &amp; Epic snow explorer</title>
-<meta name="description" content="3D terrain explorer for Ikon Pass and Epic Pass resorts with real snowfall history and forecast.">
+<title>SkiScope · Monitor the snow</title>
+<meta name="description" content="Globe-first Ikon and Epic snow explorer: where the snow is, when you're going, and a plan you can hand to an AI.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=4" rel="stylesheet">
+<link href="style.css?v=6" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -20,24 +20,67 @@
 
 <header id="topbar" class="glass">
   <div class="brand">❄ <b>SkiScope</b></div>
-  <button id="searchBtn" class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="searchLabel">Search resorts</span></button>
+  <button id="searchBtn" class="search" aria-label="Search places"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="searchLabel">Japan, Dolomites, Utah…</span></button>
+  <button id="globeBtn" class="iconbtn" aria-label="Globe home"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></button>
   <button id="layersBtn" class="iconbtn" aria-label="Layers"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>
 </header>
 
 <nav id="mapChips" class="passchips glass" aria-label="Filter map by pass"></nav>
+<div id="whenChip" class="glass"><button id="whenBtn" type="button">When · next 7 days</button><button id="tripBtn" type="button">Trip</button></div>
 
 <div id="layers" class="glass hidden">
   <div class="ltitle">Layers</div>
   <label><span><i class="sw snow"></i>Snowfall</span><input type="checkbox" data-layer="snow" checked></label>
   <label><span><i class="sw runs"></i>Runs &amp; lifts</span><input type="checkbox" data-layer="runs" checked></label>
+  <label><span><i class="sw lodge"></i>Lodging (OSM)</span><input type="checkbox" data-layer="lodging"></label>
   <label><span><i class="sw burn"></i>Burn scar</span><input type="checkbox" data-layer="burn" checked></label>
   <label><span><i class="sw cont"></i>Contours</span><input type="checkbox" data-layer="contours"></label>
   <label><span><i class="sw sat"></i>Satellite</span><input type="checkbox" data-layer="sat" checked></label>
+  <p class="sub lodge-note">Lodging pins are OpenStreetMap hotels and chalets near the selected resort — no prices.</p>
 </div>
 
 <div id="search" class="hidden">
-  <div class="glass searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Alta, Vail, Epic, Utah…" autocomplete="off"><button id="qClose">Cancel</button></div>
+  <div class="glass searchbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Japan, Dolomites, Alps, Utah, Niseko…" autocomplete="off" enterkeyhint="search"><button id="qClose">Cancel</button></div>
   <div id="qResults" class="glass"></div>
+</div>
+
+<div id="whenPanel" class="glass hidden" role="dialog" aria-label="When are you going">
+  <div class="ltitle">When are you going?</div>
+  <div class="seg" id="whenSeg">
+    <button data-w="forecast7" class="on">Next 7 days</button>
+    <button data-w="forecast3">Next 3 days</button>
+    <button data-w="custom">Dates</button>
+  </div>
+  <div id="whenCustom" class="hidden when-dates">
+    <label>From<input type="date" id="whenStart"></label>
+    <label>To<input type="date" id="whenEnd"></label>
+  </div>
+  <p class="sub" id="whenHint">Forecast covers the next 7 days. Dates after that use typical snowfall from past seasons — labeled typical, not a forecast.</p>
+  <button class="fbtn" id="whenDone" type="button">Show snow</button>
+</div>
+
+<div id="tripPanel" class="glass hidden" role="dialog" aria-label="Trip settings">
+  <div class="ltitle">Trip basics</div>
+  <label class="field">Home airport<input id="homeAirport" maxlength="3" autocapitalize="characters" spellcheck="false" value="SAN"></label>
+  <div class="when-dates">
+    <label class="field">Adults<input id="adultsN" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
+    <label class="field">Kids<input id="kidsN" type="number" min="0" max="12" value="2" inputmode="numeric"></label>
+  </div>
+  <p class="sub">Default is SAN (San Diego) and 2 adults + 2 kids. Google Flights is the primary flight search; Booking / Airbnb / VRBO / Expedia get the same dates and people. No made-up prices.</p>
+  <button class="fbtn" id="tripDone" type="button">Save</button>
+</div>
+
+<div id="planPanel" class="glass hidden" role="dialog" aria-label="Plan this trip">
+  <div class="dh"><h2 style="font-size:22px;margin:0">Plan this trip</h2><button class="iconbtn" id="planClose" aria-label="Close">✕</button></div>
+  <p class="sub">Copy this brief, or open it in ChatGPT or Grok. Claude’s web app no longer accepts a prefilled URL — copy, then paste there.</p>
+  <textarea id="planText" readonly></textarea>
+  <div class="plan-actions">
+    <button class="fbtn" id="planCopy" type="button">Copy brief</button>
+    <a class="fbtn ghost" id="planGPT" target="_blank" rel="noopener">Open in ChatGPT</a>
+    <a class="fbtn ghost" id="planGrok" target="_blank" rel="noopener">Open in Grok</a>
+    <button class="fbtn ghost" id="planClaude" type="button">Copy for Claude</button>
+  </div>
+  <p class="sub" id="planMsg"></p>
 </div>
 
 <div id="timeline" class="glass">
@@ -52,7 +95,7 @@
 <section id="sheet" class="glass" data-snap="peek">
   <div id="sheetHead">
     <div class="handle"></div>
-    <div class="sh-row"><div class="h1" id="sheetTitle">Most snow · 7 days</div><div class="pill" id="countPill"></div></div>
+    <div class="sh-row"><div class="h1" id="sheetTitle">Most snow · next 7 days</div><div class="pill" id="countPill"></div></div>
     <div id="tabs" class="seg"><button data-v="listView" class="on">Resorts</button><button data-v="seasonsView">Seasons</button></div>
   </div>
   <div id="sheetBody">
@@ -64,6 +107,6 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
-<script src="app.js?v=5" type="module"></script>
+<script src="app.js?v=6" type="module"></script>
 </body>
 </html>
