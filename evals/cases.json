@@ -1,0 +1,95 @@
+{
+  "today": "2026-10-24",
+  "cases": [
+    {
+      "id": "japan-spring-break",
+      "text": "Japan trip for 5, spring break Mar 7-14",
+      "expect": { "region": "japan", "resort": null, "from": "2027-03-07", "to": "2027-03-14", "adults": 2, "kids": 3 }
+    },
+    {
+      "id": "japan-compact",
+      "text": "Japan trip for 5 spring break mar 7-14",
+      "expect": { "region": "japan", "resort": null, "from": "2027-03-07", "to": "2027-03-14", "people": 5 }
+    },
+    {
+      "id": "ikon-denver-weekend",
+      "text": "Best Ikon snow this weekend near Denver",
+      "expect": { "pass": "ikon", "from": "2026-10-24", "to": "2026-10-25", "sort": "snow", "nearRegion": "colorado" }
+    },
+    {
+      "id": "dolomites-valentines",
+      "text": "Dolomites, 4 people, Feb 14-21",
+      "expect": { "region": "dolomites", "from": "2027-02-14", "to": "2027-02-21", "adults": 2, "kids": 2 }
+    },
+    {
+      "id": "utah-dumping",
+      "text": "Where's it dumping in Utah right now?",
+      "expect": { "region": "utah", "sort": "snow" }
+    },
+    {
+      "id": "mammoth-family",
+      "text": "Mammoth Dec 20-27, 2 adults 2 kids",
+      "expect": { "resort": "mammoth", "from": "2026-12-20", "to": "2026-12-27", "adults": 2, "kids": 2 }
+    },
+    {
+      "id": "epic-next-week",
+      "text": "Epic pass next week",
+      "expect": { "pass": "epic", "from": "2026-10-26", "to": "2026-11-01" }
+    },
+    {
+      "id": "niseko-from-san",
+      "text": "Niseko from SAN",
+      "expect": { "resort": "niseko-hirafu", "home": "SAN" }
+    },
+    {
+      "id": "plan-alta",
+      "text": "plan Alta for 3 people",
+      "expect": { "resort": "alta", "mode": "plan", "adults": 2, "kids": 1 }
+    },
+    {
+      "id": "ikon-utah-weekend",
+      "text": "this weekend ikon utah",
+      "expect": { "region": "utah", "pass": "ikon", "from": "2026-10-24", "to": "2026-10-25" }
+    },
+    {
+      "id": "chamonix-family",
+      "text": "2 adults 1 kid chamonix",
+      "expect": { "resort": "chamonix", "adults": 2, "kids": 1 }
+    },
+    {
+      "id": "both-colorado",
+      "text": "both passes colorado",
+      "expect": { "region": "colorado", "pass": "all" }
+    },
+    {
+      "id": "hakuba-next-weekend",
+      "text": "next weekend hakuba",
+      "expect": { "resort": "hakuba-happo", "from": "2026-10-31", "to": "2026-11-01" }
+    },
+    {
+      "id": "zermatt-spring",
+      "text": "spring break zermatt",
+      "expect": { "resort": "zermatt", "from": "2027-03-07", "to": "2027-03-14" }
+    },
+    {
+      "id": "japan-dumping",
+      "text": "Where is it dumping in Japan",
+      "expect": { "region": "japan", "sort": "snow" }
+    },
+    {
+      "id": "utah-storms-week",
+      "text": "what storms are heading for Utah this week?",
+      "expect": { "region": "utah", "from": "2026-10-24", "to": "2026-10-30", "storms": true }
+    },
+    {
+      "id": "colorado-storms",
+      "text": "storms in Colorado",
+      "expect": { "region": "colorado", "storms": true }
+    },
+    {
+      "id": "japan-storm-track",
+      "text": "Any storm track for Japan next week?",
+      "expect": { "region": "japan", "storms": true, "from": "2026-10-26", "to": "2026-11-01" }
+    }
+  ]
+}
