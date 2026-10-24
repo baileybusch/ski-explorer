@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SearchBar } from '@/components/SearchBar';
+import { HomeList } from '@/components/HomeList';
+import { ResortDetail } from '@/components/ResortDetail';
 import { SettingsSheet } from '@/components/SettingsSheet';
-import { ResultsSheet } from '@/components/ResultsSheet';
-import { ResortSheet } from '@/components/ResortSheet';
 import { PlanDialog } from '@/components/PlanDialog';
+import { MapLayers } from '@/components/MapLayers';
+import { BottomChrome } from '@/components/BottomChrome';
 import { GlobeMap, type GlobeHandle } from '@/components/GlobeMap';
 import { loadCatalog } from '@/lib/catalog';
 import { askAgent } from '@/lib/agentClient';
@@ -16,9 +17,9 @@ import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { Button } from '@/components/ui/button';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
+type View = 'home' | 'search' | 'detail' | 'map';
 
 function initialPass() {
   const qs = new URLSearchParams(location.search);
@@ -32,16 +33,17 @@ function initialPass() {
 export default function App() {
   const globe = useRef<GlobeHandle>(null);
   const [catalog, setCatalog] = useState<any>(null);
+  const [view, setView] = useState<View>('home');
   const [pass, setPass] = useState(initialPass);
   const [trip, setTrip] = useState(() => loadTrip());
   const [win, setWin] = useState<any>(null);
   const [units, setUnits] = useState<'in' | 'cm'>((localStorage.getItem('ss_units') as any) || 'in');
   const [sort, setSort] = useState<'snow' | 'name'>('snow');
-  const [watchOnly, setWatchOnly] = useState(false);
   const [lodgingOn, setLodgingOn] = useState(false);
   const [radarOn, setRadarOn] = useState(false);
   const [cloudsOn, setCloudsOn] = useState(false);
   const [stormsOn, setStormsOn] = useState(false);
+  const [stormsLayerOn, setStormsLayerOn] = useState(false);
   const [nwsOn, setNwsOn] = useState(false);
   const [stormMin, setStormMin] = useState(6);
   const [nwsGeo, setNwsGeo] = useState<any>(null);
@@ -50,11 +52,9 @@ export default function App() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
-  const [snap, setSnap] = useState<'peek' | 'half' | 'full'>('peek');
   const [activeIds, setActiveIds] = useState<string[] | null>(null);
   const [listTitle, setListTitle] = useState('Most snow');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [resortOpen, setResortOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [planText, setPlanText] = useState('');
   const [planLinks, setPlanLinks] = useState<{ chatgpt?: string; grok?: string }>({});
@@ -84,8 +84,7 @@ export default function App() {
       setWin(nextWin);
       if (deep.resort) {
         setSelectedId(deep.resort);
-        setResortOpen(true);
-        setSnap('half');
+        setView('detail');
         setTimeout(() => {
           const r = c.resorts.find((x: any) => x.id === deep.resort);
           if (r) globe.current?.flyResort(r);
@@ -134,8 +133,7 @@ export default function App() {
     setActiveIds(ids);
     setListTitle(g.name);
     setSelectedId(null);
-    setResortOpen(false);
-    setSnap('half');
+    setView('search');
     globe.current?.flyRegion(g);
     writeURL({ resort: null, region: g.id });
   }
@@ -153,6 +151,15 @@ export default function App() {
     setPlanText(text);
     setPlanLinks(planHandoffLinks(text));
     setPlanOpen(true);
+  }
+
+  function openResort(id: string, mode: 'explore' | 'plan' = 'explore') {
+    setSelectedId(id);
+    setView('detail');
+    const r = catalog?.resorts.find((x: any) => x.id === id);
+    if (r) globe.current?.flyResort(r);
+    writeURL({ resort: id, mode });
+    if (mode === 'plan' && r) openPlan([r]);
   }
 
   function applyActions(actions: any[], cat = catalog) {
@@ -174,10 +181,15 @@ export default function App() {
         }
       }
       if (a.type === 'setSort' && a.sort) setSort(a.sort);
-      if (a.type === 'setWatchOnly') setWatchOnly(!!a.on);
+      if (a.type === 'setWatchOnly' && a.on) {
+        const ids = watchlist();
+        setActiveIds(ids);
+        setListTitle('My Resorts');
+        setView('search');
+      }
       if (a.type === 'setStorms') {
         setStormsOn(!!a.on);
-        if (a.on) { setListTitle('Storms'); setSnap('half'); }
+        if (a.on) { setListTitle('Storms'); setView('search'); }
       }
       if (a.type === 'setWatchlist') {
         const cur = new Set(watchlist());
@@ -196,9 +208,10 @@ export default function App() {
       if (a.type === 'showResorts') {
         setActiveIds(a.ids || []);
         setListTitle(a.title || 'Results');
-        setSnap('half');
+        setView('search');
       }
       if (a.type === 'flyTo') {
+        setView('map');
         if (a.kind === 'region') {
           const g = cat.regions.find((x: any) => x.id === a.id);
           if (g) globe.current?.flyRegion(g);
@@ -209,7 +222,7 @@ export default function App() {
       }
       if (a.type === 'openResort') {
         setSelectedId(a.id);
-        setResortOpen(true);
+        setView('detail');
         const r = cat.resorts.find((x: any) => x.id === a.id);
         if (r) globe.current?.flyResort(r);
         if (a.mode === 'plan' && r) openPlan([r], nextWin, nextTrip, cat);
@@ -217,9 +230,11 @@ export default function App() {
     }
   }
 
-  async function submit() {
-    const text = q.trim();
+  async function submit(raw?: string) {
+    const text = (raw ?? q).trim();
     if (!text || !catalog) return;
+    setQ(text);
+    setView('search');
     setLoading(true);
     setStatus('Reading that…');
     try {
@@ -237,14 +252,12 @@ export default function App() {
     }
   }
 
-  const visible = useMemo(() => {
+  const rowsAll = useMemo(() => {
     if (!catalog) return [];
-    const watch = new Set(watchlist());
     void watchTick;
     const passOK = (r: any) => pass === 'all' || (r.passes || []).includes(pass);
     let list = catalog.resorts.filter(passOK);
     if (activeIds) list = list.filter((r: any) => activeIds.includes(r.id));
-    if (watchOnly) list = list.filter((r: any) => watch.has(r.id));
     const rows = list.map((r: any) => ({
       r,
       m: windowMetrics(r, catalog.snow, win || defaultWindow(catalog.snow), catalog.typical),
@@ -257,7 +270,32 @@ export default function App() {
     else if (stormsOn) out.sort((a, b) => b.storm.max72Cm - a.storm.max72Cm);
     else out.sort((a, b) => b.m.outlookCm - a.m.outlookCm || b.m.recent - a.m.recent);
     return out;
-  }, [catalog, pass, activeIds, watchOnly, sort, win, watchTick, stormsOn, stormMin, wxById]);
+  }, [catalog, pass, activeIds, sort, win, watchTick, stormsOn, stormMin, wxById]);
+
+  const watchedRows = useMemo(() => {
+    if (!catalog) return [];
+    void watchTick;
+    const ids = watchlist();
+    return ids.map(id => {
+      const r = catalog.resorts.find((x: any) => x.id === id);
+      if (!r) return null;
+      return {
+        r,
+        m: windowMetrics(r, catalog.snow, win || defaultWindow(catalog.snow), catalog.typical),
+        storm: stormForResort(r, catalog.snow),
+        wx: wxById[r.id],
+      };
+    }).filter(Boolean) as any[];
+  }, [catalog, win, watchTick, wxById]);
+
+  const swipePages = useMemo(() => {
+    if (!catalog) return [];
+    void watchTick;
+    const ids = watchlist();
+    const ordered = [...ids];
+    if (selectedId && !ordered.includes(selectedId)) ordered.unshift(selectedId);
+    return ordered.map(id => catalog.resorts.find((x: any) => x.id === id)).filter(Boolean);
+  }, [catalog, selectedId, watchTick]);
 
   useEffect(() => {
     if (!nwsOn) return;
@@ -265,136 +303,119 @@ export default function App() {
   }, [nwsOn]);
 
   useEffect(() => {
-    if (!catalog || snap === 'peek') return;
-    const ids = visible.slice(0, 12).map(x => x.r);
-    fetchListWeather(ids, { limit: 12, batch: 8 }).then(setWxById).catch(() => { /* snapshot glyph/temp still show */ });
+    if (!catalog) return;
+    const ids = [...watchedRows.map(x => x.r), ...rowsAll.slice(0, 12).map(x => x.r)]
+      .filter((r, i, a) => a.findIndex(x => x.id === r.id) === i)
+      .slice(0, 16);
+    fetchListWeather(ids, { limit: 16, batch: 8 }).then(setWxById).catch(() => { /* snapshot glyph/temp */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, snap, pass, activeIds, stormsOn]);
+  }, [catalog, pass, activeIds, stormsOn, watchTick]);
 
-
-  const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || null;
   const title = (stormsOn ? 'Storms' : listTitle) + (win?.label ? ` · ${win.label}` : '');
+  const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || null;
+  const mapIndex = Math.max(0, swipePages.findIndex((r: any) => r.id === selectedId));
 
   return (
     <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(8,12,20,.45)_100%)]" />
       {catalog ? (
-        <GlobeMap
-          ref={globe}
-          resorts={visible.map(x => x.r)}
-          snow={catalog.snow}
-          typical={catalog.typical}
-          fire={catalog.fire}
-          win={win || catalog.win}
-          units={units}
-          lodgingOn={lodgingOn}
-          selectedId={selectedId}
-          radarOn={radarOn}
-          cloudsOn={cloudsOn}
-          stormsLayerOn={stormsOn}
-          nwsOn={nwsOn}
-          nwsGeo={nwsGeo}
-          onSelect={id => { setSelectedId(id); setResortOpen(true); writeURL({ resort: id, mode: 'explore' }); }}
-        />
+        <div className={view === 'map' ? 'absolute inset-0' : 'pointer-events-none invisible absolute inset-0'} data-testid="map-mode">
+          <GlobeMap
+            ref={globe}
+            active={view === 'map'}
+            resorts={(activeIds ? catalog.resorts.filter((r: any) => activeIds.includes(r.id)) : catalog.resorts)}
+            snow={catalog.snow}
+            typical={catalog.typical}
+            fire={catalog.fire}
+            win={win || catalog.win}
+            units={units}
+            lodgingOn={lodgingOn}
+            selectedId={selectedId}
+            radarOn={radarOn}
+            cloudsOn={cloudsOn}
+            stormsLayerOn={stormsLayerOn}
+            nwsOn={nwsOn}
+            nwsGeo={nwsGeo}
+            onSelect={id => openResort(id)}
+          />
+          <div className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 z-20">
+            <MapLayers
+              radarOn={radarOn} setRadarOn={setRadarOn}
+              cloudsOn={cloudsOn} setCloudsOn={setCloudsOn}
+              stormsLayerOn={stormsLayerOn} setStormsLayerOn={setStormsLayerOn}
+              nwsOn={nwsOn} setNwsOn={setNwsOn}
+              lodgingOn={lodgingOn} setLodgingOn={setLodgingOn}
+            />
+          </div>
+          <div className="absolute inset-x-0 bottom-0 z-20">
+            <BottomChrome
+              page={mapIndex}
+              count={Math.max(swipePages.length, 1)}
+              onList={() => setView('home')}
+              onMap={() => { /* already map */ }}
+              onDot={i => { const r = swipePages[i]; if (r) { setSelectedId(r.id); globe.current?.flyResort(r); } }}
+            />
+          </div>
+        </div>
       ) : (
-        <div className="absolute inset-0 grid place-items-center text-muted-foreground">Loading the globe…</div>
+        <div className="absolute inset-0 grid place-items-center text-muted-foreground">Loading…</div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <SearchBar
-          value={q}
-          onChange={setQ}
+      {catalog && win && (view === 'home' || view === 'search') ? (
+        <HomeList
+          mode={view}
+          q={q}
+          setQ={setQ}
           onSubmit={submit}
-          onMenu={() => setMenuOpen(true)}
+          onSettings={() => setMenuOpen(true)}
+          onActivateSearch={() => setView('search')}
+          onBackHome={() => { setView('home'); setQ(''); setStatus(''); setActiveIds(null); setListTitle('Most snow'); }}
           loading={loading}
           status={status}
-        />
-        <div className="pointer-events-auto mt-2 flex">
-          <Button
-            type="button"
-            size="sm"
-            variant={stormsOn ? 'default' : 'secondary'}
-            className="min-h-10 rounded-full px-4 text-sm font-semibold"
-            data-testid="storms-chip"
-            aria-pressed={stormsOn}
-            onClick={() => {
-              const next = !stormsOn;
-              setStormsOn(next);
-              if (next) { setListTitle('Storms'); setSnap('half'); }
-              else setListTitle(activeIds ? listTitle : 'Most snow');
-            }}
-          >
-            Storms
-          </Button>
-        </div>
-      </div>
-
-      {catalog && win ? (
-        <ResultsSheet
+          pass={pass}
+          setPass={p => { setPass(p); setActiveIds(null); }}
+          stormsOn={stormsOn}
+          setStormsOn={on => { setStormsOn(on); if (on) setListTitle('Storms'); else if (!activeIds) setListTitle('Most snow'); }}
           title={title}
-          rows={visible}
+          watched={watchedRows}
+          rows={rowsAll}
           units={units}
-          snap={snap}
-          onSnap={setSnap}
-          onExplore={id => {
-            setSelectedId(id);
-            setResortOpen(true);
-            const r = catalog.resorts.find((x: any) => x.id === id);
-            if (r) globe.current?.flyResort(r);
-            writeURL({ resort: id, mode: 'explore' });
-          }}
+          onOpen={id => openResort(id)}
+          onGhost={text => submit(text)}
+        />
+      ) : null}
+
+      {catalog && win && view === 'detail' && selected ? (
+        <ResortDetail
+          pages={swipePages.length ? swipePages : [selected]}
+          selectedId={selected.id}
+          onSelect={id => { setSelectedId(id); writeURL({ resort: id, mode: 'explore' }); }}
+          snow={catalog.snow}
+          typical={catalog.typical}
+          units={units}
+          trip={trip}
+          win={win}
+          pass={pass}
+          onPlan={r => { writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
+          onWatch={() => setWatchTick(n => n + 1)}
+          onList={() => setView('home')}
+          onMap={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}
+          onExpandMap={r => { setSelectedId(r.id); setView('map'); globe.current?.flyResort(r); }}
         />
       ) : null}
 
       <SettingsSheet
         open={menuOpen}
         onOpenChange={setMenuOpen}
-        pass={pass}
-        setPass={p => { setPass(p); setActiveIds(null); }}
         trip={trip}
         setTrip={setTrip}
         units={units}
         setUnits={setUnits}
         sort={sort}
         setSort={setSort}
-        watchOnly={watchOnly}
-        setWatchOnly={setWatchOnly}
-        lodgingOn={lodgingOn}
-        setLodgingOn={setLodgingOn}
-        radarOn={radarOn}
-        setRadarOn={setRadarOn}
-        cloudsOn={cloudsOn}
-        setCloudsOn={setCloudsOn}
-        stormsOn={stormsOn}
-        setStormsOn={on => { setStormsOn(on); if (on) { setListTitle('Storms'); setSnap('half'); } }}
-        nwsOn={nwsOn}
-        setNwsOn={setNwsOn}
         stormMin={stormMin}
         setStormMin={setStormMin}
         win={win || { start: '', end: '' }}
         setCustomDates={setCustomDates}
-        onResetGlobe={() => {
-          setActiveIds(null);
-          setListTitle('Most snow');
-          setSelectedId(null);
-          setSnap('peek');
-          globe.current?.flyHome();
-          writeURL({ resort: null, region: null });
-        }}
-      />
-
-      <ResortSheet
-        resort={selected}
-        open={!!selected && resortOpen}
-        onOpenChange={v => { setResortOpen(v); if (!v) writeURL({ resort: null }); }}
-        win={win}
-        trip={trip}
-        units={units}
-        pass={pass}
-        snow={catalog?.snow}
-        typical={catalog?.typical}
-        onPlan={() => { if (selected) { writeURL({ resort: selected.id, mode: 'plan' }); openPlan([selected]); } }}
-        onWatch={() => setWatchTick(n => n + 1)}
       />
 
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} text={planText} links={planLinks} />

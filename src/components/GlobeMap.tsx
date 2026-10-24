@@ -27,7 +27,7 @@ function padForSheet() {
 export const GlobeMap = forwardRef(function GlobeMap(
   {
     resorts, snow, typical, fire, win, units, lodgingOn, selectedId, onSelect,
-    radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo,
+    radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, active,
   }: {
     resorts: any[];
     snow: any;
@@ -43,6 +43,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     stormsLayerOn?: boolean;
     nwsOn?: boolean;
     nwsGeo?: any;
+    active?: boolean;
   },
   ref: Ref<GlobeHandle>,
 ) {
@@ -205,6 +206,13 @@ export const GlobeMap = forwardRef(function GlobeMap(
     if (map.loaded()) apply();
     else map.once('load', apply);
   }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !active) return;
+    const t = requestAnimationFrame(() => { try { map.resize(); } catch { /* */ } });
+    return () => cancelAnimationFrame(t);
+  }, [active]);
 
   return (
     <div className="absolute inset-0" data-testid="globe">

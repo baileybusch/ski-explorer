@@ -1,34 +1,22 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
 
 export function SettingsSheet({
-  open, onOpenChange, pass, setPass, trip, setTrip, units, setUnits,
-  sort, setSort, watchOnly, setWatchOnly, lodgingOn, setLodgingOn, win, setCustomDates,
-  radarOn, setRadarOn, cloudsOn, setCloudsOn, stormsOn, setStormsOn, nwsOn, setNwsOn,
-  stormMin, setStormMin, onResetGlobe,
+  open, onOpenChange, trip, setTrip, units, setUnits, sort, setSort,
+  stormMin, setStormMin, win, setCustomDates,
 }: any) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md" data-testid="settings-sheet">
         <SheetHeader>
-          <SheetTitle>Trip &amp; map</SheetTitle>
-          <SheetDescription>Pass, dates, people, and layers. The globe stays clean.</SheetDescription>
+          <SheetTitle>Trip</SheetTitle>
+          <SheetDescription>Dates, people, airport, units. Pass and storms live on the list. Map layers live on the map.</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-6 px-4 pb-8">
           <FieldGroup>
-            <Field>
-              <FieldLabel>Pass</FieldLabel>
-              <ToggleGroup type="single" value={pass} onValueChange={v => v && setPass(v)} className="w-full">
-                <ToggleGroupItem value="all" className="min-h-11 flex-1">Both</ToggleGroupItem>
-                <ToggleGroupItem value="ikon" className="min-h-11 flex-1">Ikon</ToggleGroupItem>
-                <ToggleGroupItem value="epic" className="min-h-11 flex-1">Epic</ToggleGroupItem>
-              </ToggleGroup>
-            </Field>
             <Field>
               <FieldLabel htmlFor="home">Home airport</FieldLabel>
               <Input id="home" maxLength={3} value={trip.home} className="min-h-11 uppercase" onChange={e => setTrip({ ...trip, home: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) })} />
@@ -71,30 +59,6 @@ export function SettingsSheet({
                 <ToggleGroupItem value="cm" className="min-h-11 flex-1">cm</ToggleGroupItem>
               </ToggleGroup>
             </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="watch">Watchlist only</FieldLabel>
-              <Switch id="watch" checked={watchOnly} onCheckedChange={setWatchOnly} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="lodge">Lodging pins (OSM)</FieldLabel>
-              <Switch id="lodge" checked={lodgingOn} onCheckedChange={setLodgingOn} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="radar">Radar (RainViewer)</FieldLabel>
-              <Switch id="radar" checked={radarOn} onCheckedChange={setRadarOn} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="clouds">Clouds / IR sat</FieldLabel>
-              <Switch id="clouds" checked={cloudsOn} onCheckedChange={setCloudsOn} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="storms">Storm rings</FieldLabel>
-              <Switch id="storms" checked={stormsOn} onCheckedChange={setStormsOn} />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="nws">NWS winter alerts (US only)</FieldLabel>
-              <Switch id="nws" checked={nwsOn} onCheckedChange={setNwsOn} />
-            </Field>
             <Field>
               <FieldLabel>Storm badge minimum (72h forecast)</FieldLabel>
               <ToggleGroup type="single" value={String(stormMin)} onValueChange={v => v && setStormMin(+v)} className="w-full">
@@ -102,17 +66,9 @@ export function SettingsSheet({
                 <ToggleGroupItem value="12" className="min-h-11 flex-1">12″</ToggleGroupItem>
                 <ToggleGroupItem value="18" className="min-h-11 flex-1">18″</ToggleGroupItem>
               </ToggleGroup>
-              <FieldDescription>From the Open-Meteo forecast snapshot. No wind tiles (no free no-key source). No named tropical tracks.</FieldDescription>
+              <FieldDescription>Open-Meteo forecast snapshot. Not typical, not observed.</FieldDescription>
             </Field>
           </FieldGroup>
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-12 w-full text-base"
-            onClick={() => { onResetGlobe?.(); onOpenChange(false); }}
-          >
-            Reset globe
-          </Button>
         </div>
       </SheetContent>
     </Sheet>

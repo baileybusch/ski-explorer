@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 export function PlanDialog({ open, onOpenChange, text, links }: { open: boolean; onOpenChange: (v: boolean) => void; text: string; links: { chatgpt?: string; grok?: string } }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[88dvh]">
+      <SheetContent side="bottom" className="max-h-[88dvh]" data-testid="plan-sheet">
         <SheetHeader>
           <SheetTitle>Plan this trip</SheetTitle>
           <SheetDescription>Copy the brief, or open ChatGPT / Grok. Claude no longer takes a prefilled URL.</SheetDescription>

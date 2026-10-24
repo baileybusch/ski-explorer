@@ -81,7 +81,7 @@ Do not commit secrets. Public affiliate ids are fine. The commission line only a
 
 ## v6: one search bar + agent harness
 
-- **Clean home**: full-screen globe, one chat/search bar, hamburger Sheet for pass / dates / people / airport / sort / watchlist / lodging / units. List rows are name + pass + snow + Explore. Plan / flights / lodging live in the resort sheet.
+- **Clean home** (later replaced by the Weather-style list in the same PR): one chat/search bar, rotating ghosts, agent harness. See below.
 - **Rotating ghost text** on the bar (pauses on focus): Japan spring break, Ikon near Denver, Dolomites, Utah dumping, Mammoth family.
 - **Natural-language bar**: a sentence like `Japan trip for 5 spring break mar 7-14` is parsed into trip state, flies the globe, fills the list, and writes the menu values.
 - **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. See [docs/agent-harness.md](docs/agent-harness.md).
@@ -94,6 +94,10 @@ On the Vercel project: **Settings → Security → OIDC Federation** (AI Gateway
 Locally: `vercel link && vercel env pull`, **or** set `AI_GATEWAY_API_KEY` from the AI Gateway dashboard (do not commit it). Optional `AI_GATEWAY_MODEL` (default `openai/gpt-5.4-mini`).
 
 Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `this week` / `mar 7-14`). “What storms are heading for Utah this week?” turns on the Storms chip and flies to Utah.
+
+## v7: Weather-style list → detail → map
+
+Home is a vertical list of location cards (My Resorts first), not the globe. Search is a full state. A card opens a paged resort detail (stacked tiles, swipe watched resorts). The globe is a full-screen mode from the bottom map button; layers sit in a popover. Settings (dates, people, airport, units) are one Sheet. Pass and Storms are list filters. Palette is monochrome slate — [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 
