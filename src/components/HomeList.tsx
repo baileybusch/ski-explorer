@@ -55,7 +55,7 @@ export function HomeList({
       </header>
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-3 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-          {mode === 'search' && !rows.length && !q ? (
+          {mode === 'search' && !q ? (
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-muted-foreground">Try asking</p>
               {GHOSTS.map(g => (
@@ -81,7 +81,7 @@ export function HomeList({
             </section>
           ) : null}
 
-          {mode === 'home' || rows.length ? (
+          {mode === 'home' || (mode === 'search' && q) ? (
             <section className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{title}</h2>
               {rows.length ? rows.map(row => (
