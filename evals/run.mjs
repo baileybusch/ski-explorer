@@ -17,6 +17,7 @@ const ctx = { resorts, regions, today };
 function check(parsed, expect) {
   const miss = [];
   if (expect.region && parsed.region?.id !== expect.region) miss.push(`region ${parsed.region?.id} != ${expect.region}`);
+  if (expect.resort === null && parsed.resort) miss.push(`resort ${parsed.resort.id} should be empty`);
   if (expect.resort && parsed.resort?.id !== expect.resort) miss.push(`resort ${parsed.resort?.id} != ${expect.resort}`);
   if (expect.from && parsed.from !== expect.from) miss.push(`from ${parsed.from} != ${expect.from}`);
   if (expect.to && parsed.to !== expect.to) miss.push(`to ${parsed.to} != ${expect.to}`);

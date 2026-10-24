@@ -4,12 +4,12 @@
     {
       "id": "japan-spring-break",
       "text": "Japan trip for 5, spring break Mar 7-14",
-      "expect": { "region": "japan", "from": "2027-03-07", "to": "2027-03-14", "adults": 2, "kids": 3 }
+      "expect": { "region": "japan", "resort": null, "from": "2027-03-07", "to": "2027-03-14", "adults": 2, "kids": 3 }
     },
     {
       "id": "japan-compact",
       "text": "Japan trip for 5 spring break mar 7-14",
-      "expect": { "region": "japan", "from": "2027-03-07", "to": "2027-03-14", "people": 5 }
+      "expect": { "region": "japan", "resort": null, "from": "2027-03-07", "to": "2027-03-14", "people": 5 }
     },
     {
       "id": "ikon-denver-weekend",

@@ -276,7 +276,7 @@ export default function App() {
   const title = (stormsOn ? 'Storms' : listTitle) + (win?.label ? ` · ${win.label}` : '');
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-background">
+    <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(8,12,20,.45)_100%)]" />
       {catalog ? (
         <GlobeMap
