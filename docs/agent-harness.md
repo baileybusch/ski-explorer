@@ -30,7 +30,7 @@ If `/api/agent` is down (or you are on `vite` without `vercel dev`), the browser
 | `lib/agent/rateLimit.js` | In-memory 30 requests / 10 minutes / IP. Fluid Compute reuses isolates, so this slows casual abuse. Not a global quota. |
 | `api/agent.js` | Public POST. Streams NDJSON. Email `/api/*` files are untouched. |
 | `src/lib/agentClient.ts` | Fetch + apply stream; fall back to `parseTripSentence`. |
-| `evals/cases.json` + `evals/run.mjs` | ~15 sentences → expected trip state. `npm run eval`. |
+| `evals/cases.json` + `evals/run.mjs` | 18 sentences → expected trip state (includes Utah/Colorado/Japan storms). `npm run eval`. |
 
 ## Actions the UI understands
 
@@ -70,7 +70,7 @@ If neither OIDC nor the key is present, `/api/agent` still works: it returns `mo
 ## Evals
 
 ```
-npm run eval                 # parser only (must stay 15/15)
+npm run eval                 # parser only (must stay 18/18)
 RUN_LLM=1 npm run eval       # also tries 3 LLM cases; does not fail the suite
 ```
 
