@@ -31,11 +31,11 @@ export function wrapAffiliate(provider, href) {
 }
 
 export function outboundRel(sponsored) {
-  return sponsored || affiliateConfigured() && sponsored ? 'sponsored noopener' : 'noopener';
+  return sponsored || affiliateConfigured() ? 'sponsored noopener' : 'noopener';
 }
 
 export function outboundHTML(link, extraClass = '') {
-  const rel = link.sponsored ? 'sponsored noopener' : 'noopener';
+  const rel = outboundRel(link.sponsored);
   const cls = extraClass ? ` class="${extraClass}"` : '';
   const primary = link.primary ? ' data-primary="1"' : '';
   return `<a${cls}${primary} href="${link.href.replace(/"/g, '&quot;')}" target="_blank" rel="${rel}">${link.label}</a>`;
@@ -91,8 +91,9 @@ export function parseTripQuery(search = location.search) {
   let kids = q.get('kids');
   const people = q.get('people');
   if (adults == null && kids == null && people != null) {
-    adults = people;
-    kids = 0;
+    const n = clamp(people, 1, 24);
+    adults = Math.min(n, 2);
+    kids = Math.max(0, n - adults);
   }
   return {
     resort,

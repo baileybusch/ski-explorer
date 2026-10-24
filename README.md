@@ -59,7 +59,7 @@ Only use images you are allowed to reuse, and credit them exactly:
 - **Shared trip state** (every list row + detail): location, snowfall for the chosen window, dates, **adults + kids** (default 2 + 2, editable, `localStorage`), flights, lodging. People flow into Google Flights (primary), Kayak/Skyscanner, and Booking/Airbnb/VRBO/Expedia (`group_adults` / `children` / `no_rooms` where those sites support them) and into the Plan brief.
 - **Explore resort** vs **Plan trip**: Explore is the detail view (facts, snow, map, lodging layer). Plan opens the AI brief (ChatGPT / Grok deep links + copy; Claude is copy-only).
 - **Outbound links** all go through `public/lib/links.js`. Affiliate wrap is config-driven via `AFFILIATES` in `public/config.js` (empty now). When any id/template is set, links get `rel="sponsored noopener"` and the footer shows “we may earn a commission.”
-- **Share / inbound URLs**: `/?resort=mammoth&from=2026-12-20&to=2026-12-27&adults=2&kids=2&people=4&home=SAN&mode=explore|plan` (`r=` still works). Share-link button copies this. Future snow-threshold emails can use the same URLs; email stays **off**.
+- **Share / inbound URLs**: `/?resort=mammoth&from=2026-12-20&to=2026-12-27&people=4&mode=explore|plan` (`adults`/`kids`/`home`/`pass` also work; `r=` still works). `people` alone keeps the family split (2 adults + the rest kids, so `people=4` → 2+2). Share-link button copies the full URL. Future snow-threshold emails can use the same URLs; email stays **off**.
 - **Lodging layer**: optional OSM hotels/chalets via Overpass, labeled as OSM, no prices. Fails soft if Overpass is down.
 - Search does not need an LLM. A future parser can sit behind a user-supplied key; nothing in the repo requires a new secret.
 
