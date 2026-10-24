@@ -13,6 +13,10 @@ import { parseTripQuery, shareSearch } from '../lib/links.js';
 import { defaultWindow, forecastEnd, windowMetrics } from '../lib/snowWindow.js';
 import { fmtShort } from '../lib/util.js';
 import { toast } from 'sonner';
+import { stormForResort } from '../lib/storms.js';
+import { fetchListWeather } from '../lib/weather.js';
+import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
+import { Button } from '@/components/ui/button';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 
@@ -35,6 +39,13 @@ export default function App() {
   const [sort, setSort] = useState<'snow' | 'name'>('snow');
   const [watchOnly, setWatchOnly] = useState(false);
   const [lodgingOn, setLodgingOn] = useState(false);
+  const [radarOn, setRadarOn] = useState(false);
+  const [cloudsOn, setCloudsOn] = useState(false);
+  const [stormsOn, setStormsOn] = useState(false);
+  const [nwsOn, setNwsOn] = useState(false);
+  const [stormMin, setStormMin] = useState(6);
+  const [nwsGeo, setNwsGeo] = useState<any>(null);
+  const [wxById, setWxById] = useState<Record<string, any>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
@@ -164,6 +175,10 @@ export default function App() {
       }
       if (a.type === 'setSort' && a.sort) setSort(a.sort);
       if (a.type === 'setWatchOnly') setWatchOnly(!!a.on);
+      if (a.type === 'setStorms') {
+        setStormsOn(!!a.on);
+        if (a.on) { setListTitle('Storms'); setSnap('half'); }
+      }
       if (a.type === 'setWatchlist') {
         const cur = new Set(watchlist());
         for (const id of a.add || []) cur.add(id);
@@ -230,14 +245,35 @@ export default function App() {
     let list = catalog.resorts.filter(passOK);
     if (activeIds) list = list.filter((r: any) => activeIds.includes(r.id));
     if (watchOnly) list = list.filter((r: any) => watch.has(r.id));
-    const rows = list.map((r: any) => ({ r, m: windowMetrics(r, catalog.snow, win || defaultWindow(catalog.snow), catalog.typical) }));
-    if (sort === 'name') rows.sort((a, b) => a.r.name.localeCompare(b.r.name));
-    else rows.sort((a, b) => b.m.outlookCm - a.m.outlookCm || b.m.recent - a.m.recent);
-    return rows;
-  }, [catalog, pass, activeIds, watchOnly, sort, win, watchTick]);
+    const rows = list.map((r: any) => ({
+      r,
+      m: windowMetrics(r, catalog.snow, win || defaultWindow(catalog.snow), catalog.typical),
+      storm: stormForResort(r, catalog.snow),
+      wx: wxById[r.id],
+    }));
+    let out = rows;
+    if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
+    if (sort === 'name') out.sort((a, b) => a.r.name.localeCompare(b.r.name));
+    else if (stormsOn) out.sort((a, b) => b.storm.max72Cm - a.storm.max72Cm);
+    else out.sort((a, b) => b.m.outlookCm - a.m.outlookCm || b.m.recent - a.m.recent);
+    return out;
+  }, [catalog, pass, activeIds, watchOnly, sort, win, watchTick, stormsOn, stormMin, wxById]);
+
+  useEffect(() => {
+    if (!nwsOn) return;
+    fetchNwsWinterAlerts().then(setNwsGeo).catch(() => setNwsGeo(null));
+  }, [nwsOn]);
+
+  useEffect(() => {
+    if (!catalog || snap === 'peek') return;
+    const ids = visible.slice(0, 12).map(x => x.r);
+    fetchListWeather(ids, { limit: 12, batch: 8 }).then(setWxById).catch(() => { /* snapshot glyph/temp still show */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, snap, pass, activeIds, stormsOn]);
+
 
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || null;
-  const title = listTitle + (win?.label ? ` · ${win.label}` : '');
+  const title = (stormsOn ? 'Storms' : listTitle) + (win?.label ? ` · ${win.label}` : '');
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-background">
@@ -253,6 +289,11 @@ export default function App() {
           units={units}
           lodgingOn={lodgingOn}
           selectedId={selectedId}
+          radarOn={radarOn}
+          cloudsOn={cloudsOn}
+          stormsLayerOn={stormsOn}
+          nwsOn={nwsOn}
+          nwsGeo={nwsGeo}
           onSelect={id => { setSelectedId(id); setResortOpen(true); writeURL({ resort: id, mode: 'explore' }); }}
         />
       ) : (
@@ -268,6 +309,24 @@ export default function App() {
           loading={loading}
           status={status}
         />
+        <div className="pointer-events-auto mt-2 flex">
+          <Button
+            type="button"
+            size="sm"
+            variant={stormsOn ? 'default' : 'secondary'}
+            className="min-h-10 rounded-full px-4 text-sm font-semibold"
+            data-testid="storms-chip"
+            aria-pressed={stormsOn}
+            onClick={() => {
+              const next = !stormsOn;
+              setStormsOn(next);
+              if (next) { setListTitle('Storms'); setSnap('half'); }
+              else setListTitle(activeIds ? listTitle : 'Most snow');
+            }}
+          >
+            Storms
+          </Button>
+        </div>
       </div>
 
       {catalog && win ? (
@@ -302,6 +361,16 @@ export default function App() {
         setWatchOnly={setWatchOnly}
         lodgingOn={lodgingOn}
         setLodgingOn={setLodgingOn}
+        radarOn={radarOn}
+        setRadarOn={setRadarOn}
+        cloudsOn={cloudsOn}
+        setCloudsOn={setCloudsOn}
+        stormsOn={stormsOn}
+        setStormsOn={on => { setStormsOn(on); if (on) { setListTitle('Storms'); setSnap('half'); } }}
+        nwsOn={nwsOn}
+        setNwsOn={setNwsOn}
+        stormMin={stormMin}
+        setStormMin={setStormMin}
         win={win || { start: '', end: '' }}
         setCustomDates={setCustomDates}
         onResetGlobe={() => {

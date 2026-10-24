@@ -93,7 +93,17 @@ On the Vercel project: **Settings → Security → OIDC Federation** (AI Gateway
 
 Locally: `vercel link && vercel env pull`, **or** set `AI_GATEWAY_API_KEY` from the AI Gateway dashboard (do not commit it). Optional `AI_GATEWAY_MODEL` (default `openai/gpt-5.4-mini`).
 
-Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `mar 7-14`).
+Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `this week` / `mar 7-14`). “What storms are heading for Utah this week?” turns on the Storms chip and flies to Utah.
+
+## Weather and storms
+
+Snow is still the center. Weather is a menu + one **Storms** chip.
+
+- **List / resort sheet**: glyph + temp from the snow snapshot (no extra call). Opening a resort fetches live Open-Meteo current + 7-day + 48h hourly (wind, freezing level), cached 40 minutes. Visible list rows batch current+daily in groups of 8, only when the sheet is open, never a catalog firehose.
+- **Map layers** (menu): RainViewer radar and IR satellite (free, no key, attribution on the map). Storm rings from the forecast snapshot. NWS winter watches/warnings (**US only**, public domain). No free no-key global **wind tiles**; no named tropical tracks (NHC is seasonal/basin-specific — skipped).
+- **Storm badges**: 72h forecast snowfall ≥ 6 / 12 / 18 inches (configurable). International = forecast badges only. Labeled as Open-Meteo forecast, not typical, not observed.
+
+Credits: Open-Meteo (CC BY 4.0), RainViewer tiles, NWS alerts.
 
 ## Email alerts paused
 - `EMAIL_ALERTS_ENABLED = false` in `public/config.js` (shared by the browser and `/api`). Follow button, footer link and `/alerts` signup are hidden (`/alerts` shows a paused note); `/api/subscribe` returns 503; `/api/cron/digest` is a no-op; the cron entry is removed from `vercel.json`.

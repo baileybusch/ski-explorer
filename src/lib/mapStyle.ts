@@ -8,6 +8,9 @@ export function buildStyle({ contourUrl, fire }: { contourUrl?: string; fire?: a
     hs: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 },
     snow: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     resorts: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    radar: { type: 'raster', tiles: ['https://tilecache.rainviewer.com/v2/radar/0/256/{z}/{x}/{y}/2/1_1.png'], tileSize: 256, maxzoom: 7, attribution: 'Radar © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
+    clouds: { type: 'raster', tiles: ['https://tilecache.rainviewer.com/v2/satellite/0/256/{z}/{x}/{y}/0/0_0.png'], tileSize: 256, maxzoom: 7, attribution: 'Satellite © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
+    nws: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: 'Alerts: NWS (US only)' },
     osm: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: 'Runs & lifts © <a href="https://openskimap.org">OpenSkiMap</a>, © OpenStreetMap contributors (ODbL)' },
     fire: { type: 'geojson', data: fire || { type: 'FeatureCollection', features: [] }, attribution: 'Fire perimeter: NIFC WFIGS' },
     lodging: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: 'Lodging © OpenStreetMap contributors (ODbL) via Overpass' },
@@ -20,6 +23,8 @@ export function buildStyle({ contourUrl, fire }: { contourUrl?: string; fire?: a
     { id: 'bg', type: 'background', paint: { 'background-color': '#0b0f17' } },
     { id: 'dark', type: 'raster', source: 'dark', layout: { visibility: 'none' } },
     { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-brightness-max': 0.82, 'raster-saturation': -0.25, 'raster-contrast': 0.05 } },
+    { id: 'clouds', type: 'raster', source: 'clouds', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.45 } },
+    { id: 'radar', type: 'raster', source: 'radar', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.72 } },
     { id: 'hillshade', type: 'hillshade', source: 'hs', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#05070c', 'hillshade-highlight-color': 'rgba(255,255,255,.25)' } },
   ];
   if (contourUrl) {
@@ -29,6 +34,8 @@ export function buildStyle({ contourUrl, fire }: { contourUrl?: string; fire?: a
     );
   }
   layers.push(
+    { id: 'nws-fill', type: 'fill', source: 'nws', layout: { visibility: 'none' }, paint: { 'fill-color': '#7cf0c8', 'fill-opacity': 0.18 } },
+    { id: 'nws-line', type: 'line', source: 'nws', layout: { visibility: 'none' }, paint: { 'line-color': '#7cf0c8', 'line-width': 1.6 } },
     { id: 'fire-fill', type: 'fill', source: 'fire', paint: { 'fill-color': '#ff4d1f', 'fill-opacity': 0.28 } },
     { id: 'fire-line', type: 'line', source: 'fire', paint: { 'line-color': '#ff7a45', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.5], 'line-opacity': .95 } },
     { id: 'snow', type: 'heatmap', source: 'snow', paint: {
@@ -44,6 +51,7 @@ export function buildStyle({ contourUrl, fire }: { contourUrl?: string; fire?: a
     { id: 'run-labels', type: 'symbol', source: 'osm', minzoom: 14, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Regular'], 'text-size': 11 }, paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(0,0,0,.75)', 'text-halo-width': 1.2 } },
     { id: 'lodge-dot', type: 'circle', source: 'lodging', layout: { visibility: 'none' }, paint: { 'circle-radius': 6, 'circle-color': '#f0c27a', 'circle-stroke-color': 'rgba(10,14,22,.8)', 'circle-stroke-width': 1.5, 'circle-pitch-alignment': 'viewport' } },
     { id: 'lodge-label', type: 'symbol', source: 'lodging', minzoom: 11, layout: { visibility: 'none', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top' }, paint: { 'text-color': '#f6e6c4', 'text-halo-color': 'rgba(5,8,14,.85)', 'text-halo-width': 1 } },
+    { id: 'storm-ring', type: 'circle', source: 'resorts', filter: ['>', ['get', 'tier'], 0], layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'tier'], 6, 10, 18, 16], 'circle-color': 'rgba(160,210,255,0)', 'circle-stroke-color': ['step', ['get', 'tier'], '#7cc4ff', 12, '#fff', 18, '#c48cff'], 'circle-stroke-width': 2.4, 'circle-pitch-alignment': 'viewport' } },
     { id: 'resort-hit', type: 'circle', source: 'resorts', paint: { 'circle-radius': 26, 'circle-opacity': 0, 'circle-pitch-alignment': 'viewport' } },
     { id: 'resort-dot', type: 'circle', source: 'resorts', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 3, 3, 4.5, 9, 7], 'circle-color': ['case', ['==', ['get', 'id'], 'eagle-point'], '#ff6b3d', ['==', ['get', 'pass'], 'ikon+epic'], '#7cf0c8', ['==', ['get', 'pass'], 'epic'], '#8fb8ff', '#ffe08a'], 'circle-stroke-color': 'rgba(10,14,22,.8)', 'circle-stroke-width': 2, 'circle-pitch-alignment': 'viewport' } },
     { id: 'resort-label', type: 'symbol', source: 'resorts', layout: { 'text-field': ['format', ['get', 'name'], { 'font-scale': 1 }, '\n', {}, ['get', 'lbl'], { 'font-scale': 0.92, 'text-color': '#bfe3ff' }], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 9, 4, 10, 10, 13], 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-allow-overlap': false, 'text-optional': true, 'symbol-sort-key': ['-', 0, ['get', 'v']] }, paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(5,8,14,.85)', 'text-halo-width': 1.4 } },

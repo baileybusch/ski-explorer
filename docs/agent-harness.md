@@ -22,8 +22,10 @@ If `/api/agent` is down (or you are on `vite` without `vercel dev`), the browser
 
 | File | What it does |
 |---|---|
-| `lib/agent/parseTrip.js` | Gazetteer + date + people + pass parser. No LLM. Handles `spring break`, `this weekend`, `next week`, `mar 7-14`, `for 5`, `2 adults 2 kids`, `from SAN`. |
-| `lib/agent/tools.js` | AI SDK `tool()` wrappers: `search_resorts`, `get_snow`, `build_trip_links` (Google Flights first), `make_plan_prompt`, `get_watchlist` / `update_watchlist` (watchlist is client-side; tools return UI actions). |
+| `lib/agent/parseTrip.js` | Gazetteer + date + people + pass parser. No LLM. Handles `spring break`, `this weekend`, `next week`, `this week`, `mar 7-14`, `for 5`, `2 adults 2 kids`, `from SAN`, and “storms heading for Utah”. |
+| `lib/storms.js` | 72h forecast snowfall tiers (6/12/18″) from the snow snapshot. |
+| `lib/weather.js` | On-demand Open-Meteo (40 min cache). List = small batches, no hourly. Opened resort = +48h hourly. |
+| `lib/agent/tools.js` | AI SDK `tool()` wrappers: `search_resorts`, `get_snow`, `get_weather`, `find_storms`, `build_trip_links` (Google Flights first), `make_plan_prompt`, `get_watchlist` / `update_watchlist` (watchlist is client-side; tools return UI actions). |
 | `lib/agent/runAgent.js` | `runDeterministic` always. `runLlm` only when `llmAvailable()`. Same `{ mode, parsed, actions }` shape either way. |
 | `lib/agent/rateLimit.js` | In-memory 30 requests / 10 minutes / IP. Fluid Compute reuses isolates, so this slows casual abuse. Not a global quota. |
 | `api/agent.js` | Public POST. Streams NDJSON. Email `/api/*` files are untouched. |
@@ -40,6 +42,7 @@ If `/api/agent` is down (or you are on `vite` without `vercel dev`), the browser
 { "type": "setWatchlist", "add": ["alta"], "remove": [] }
 { "type": "setWatchOnly", "on": true }
 { "type": "setSort", "sort": "snow" }
+{ "type": "setStorms", "on": true }
 ```
 
 ## Deterministic vs LLM

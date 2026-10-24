@@ -3,6 +3,8 @@ import { Map as MapLibreMap, AttributionControl } from 'maplibre-gl';
 import { windowMetrics } from '../../lib/snowWindow.js';
 import { snowAmount } from '@/lib/format';
 import { buildStyle } from '@/lib/mapStyle';
+import { stormForResort } from '../../lib/storms.js';
+import { rainviewerMaps, radarTileUrl, satelliteTileUrl } from '@/lib/rainviewer';
 
 const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const EXAG = 1.35;
@@ -25,6 +27,7 @@ function padForSheet() {
 export const GlobeMap = forwardRef(function GlobeMap(
   {
     resorts, snow, typical, fire, win, units, lodgingOn, selectedId, onSelect,
+    radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo,
   }: {
     resorts: any[];
     snow: any;
@@ -35,6 +38,11 @@ export const GlobeMap = forwardRef(function GlobeMap(
     lodgingOn: boolean;
     selectedId: string | null;
     onSelect: (id: string) => void;
+    radarOn?: boolean;
+    cloudsOn?: boolean;
+    stormsLayerOn?: boolean;
+    nwsOn?: boolean;
+    nwsGeo?: any;
   },
   ref: Ref<GlobeHandle>,
 ) {
@@ -140,8 +148,9 @@ export const GlobeMap = forwardRef(function GlobeMap(
         features: resorts.map(r => {
           const m = windowMetrics(r, snow, win, typical);
           const v = m.windowCm;
+          const storm = stormForResort(r, snow);
           const lbl = r.id === 'eagle-point' ? 'Closed 26/27' : `${snowAmount(v, units)}${m.usedTypical ? ' typ' : ''}`;
-          return { type: 'Feature', geometry: { type: 'Point', coordinates: r.center }, properties: { id: r.id, pass: (r.passes || []).join('+'), name: r.name.replace(/ \(.*\)/, ''), v, lbl } };
+          return { type: 'Feature', geometry: { type: 'Point', coordinates: r.center }, properties: { id: r.id, pass: (r.passes || []).join('+'), name: r.name.replace(/ \(.*\)/, ''), v, lbl, tier: storm.tier } };
         }),
       });
     };
@@ -168,6 +177,33 @@ export const GlobeMap = forwardRef(function GlobeMap(
     if (map.loaded()) apply();
     else map.once('load', apply);
   }, [lodgingOn, selectedId, resorts]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = async () => {
+      const vis = (on: boolean) => (on ? 'visible' : 'none');
+      try {
+        map.setLayoutProperty('radar', 'visibility', vis(!!radarOn));
+        map.setLayoutProperty('clouds', 'visibility', vis(!!cloudsOn));
+        map.setLayoutProperty('storm-ring', 'visibility', vis(!!stormsLayerOn));
+        map.setLayoutProperty('nws-fill', 'visibility', vis(!!nwsOn));
+        map.setLayoutProperty('nws-line', 'visibility', vis(!!nwsOn));
+      } catch { /* style not ready */ }
+      if (radarOn || cloudsOn) {
+        try {
+          const maps = await rainviewerMaps();
+          const rUrl = radarTileUrl(maps);
+          const cUrl = satelliteTileUrl(maps);
+          if (rUrl && map.getSource('radar')) (map.getSource('radar') as any).setTiles([rUrl]);
+          if (cUrl && map.getSource('clouds')) (map.getSource('clouds') as any).setTiles([cUrl]);
+        } catch { /* radar optional */ }
+      }
+      if (nwsGeo && map.getSource('nws')) (map.getSource('nws') as any).setData(nwsGeo);
+    };
+    if (map.loaded()) apply();
+    else map.once('load', apply);
+  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo]);
 
   return <div ref={el} className="absolute inset-0" data-testid="globe" />;
 });

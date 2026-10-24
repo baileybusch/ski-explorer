@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 export function SettingsSheet({
   open, onOpenChange, pass, setPass, trip, setTrip, units, setUnits,
   sort, setSort, watchOnly, setWatchOnly, lodgingOn, setLodgingOn, win, setCustomDates,
-  onResetGlobe,
+  radarOn, setRadarOn, cloudsOn, setCloudsOn, stormsOn, setStormsOn, nwsOn, setNwsOn,
+  stormMin, setStormMin, onResetGlobe,
 }: any) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -77,6 +78,31 @@ export function SettingsSheet({
             <Field orientation="horizontal">
               <FieldLabel htmlFor="lodge">Lodging pins (OSM)</FieldLabel>
               <Switch id="lodge" checked={lodgingOn} onCheckedChange={setLodgingOn} />
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel htmlFor="radar">Radar (RainViewer)</FieldLabel>
+              <Switch id="radar" checked={radarOn} onCheckedChange={setRadarOn} />
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel htmlFor="clouds">Clouds / IR sat</FieldLabel>
+              <Switch id="clouds" checked={cloudsOn} onCheckedChange={setCloudsOn} />
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel htmlFor="storms">Storm rings</FieldLabel>
+              <Switch id="storms" checked={stormsOn} onCheckedChange={setStormsOn} />
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel htmlFor="nws">NWS winter alerts (US only)</FieldLabel>
+              <Switch id="nws" checked={nwsOn} onCheckedChange={setNwsOn} />
+            </Field>
+            <Field>
+              <FieldLabel>Storm badge minimum (72h forecast)</FieldLabel>
+              <ToggleGroup type="single" value={String(stormMin)} onValueChange={v => v && setStormMin(+v)} className="w-full">
+                <ToggleGroupItem value="6" className="min-h-11 flex-1">6″</ToggleGroupItem>
+                <ToggleGroupItem value="12" className="min-h-11 flex-1">12″</ToggleGroupItem>
+                <ToggleGroupItem value="18" className="min-h-11 flex-1">18″</ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>From the Open-Meteo forecast snapshot. No wind tiles (no free no-key source). No named tropical tracks.</FieldDescription>
             </Field>
           </FieldGroup>
           <Button

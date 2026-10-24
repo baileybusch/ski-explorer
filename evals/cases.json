@@ -75,6 +75,21 @@
       "id": "japan-dumping",
       "text": "Where is it dumping in Japan",
       "expect": { "region": "japan", "sort": "snow" }
+    },
+    {
+      "id": "utah-storms-week",
+      "text": "what storms are heading for Utah this week?",
+      "expect": { "region": "utah", "from": "2026-10-24", "to": "2026-10-30", "storms": true }
+    },
+    {
+      "id": "colorado-storms",
+      "text": "storms in Colorado",
+      "expect": { "region": "colorado", "storms": true }
+    },
+    {
+      "id": "japan-storm-track",
+      "text": "Any storm track for Japan next week?",
+      "expect": { "region": "japan", "storms": true, "from": "2026-10-26", "to": "2026-11-01" }
     }
   ]
 }

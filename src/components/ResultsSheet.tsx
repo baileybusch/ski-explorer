@@ -1,13 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { snowAmount, passLabel } from '@/lib/format';
+import { snowAmount, passLabel, tempLabel, stormBadge } from '@/lib/format';
 import { weatherGlyph } from '../../lib/snowWindow.js';
 
 export function ResultsSheet({
   title, rows, units, snap, onSnap, onExplore,
 }: {
   title: string;
-  rows: { r: any; m: any }[];
+  rows: { r: any; m: any; storm?: any; wx?: any }[];
   units: 'in' | 'cm';
   snap: 'peek' | 'half' | 'full';
   onSnap: (s: 'peek' | 'half' | 'full') => void;
@@ -36,16 +36,24 @@ export function ResultsSheet({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {rows.length === 0 ? (
           <p className="px-2 py-4 text-base text-muted-foreground">No matching resorts. Open the menu and try Both passes.</p>
-        ) : rows.map(({ r, m }) => {
+        ) : rows.map(({ r, m, storm, wx }) => {
           const outlook = m.usedTypical && !m.usedForecast ? `Typical ${snowAmount(m.typicalCm, units)}` : snowAmount(m.outlookCm, units);
           const pass = passLabel(r);
+          const tempC = wx?.current?.tempC ?? m.tmax;
+          const glyph = weatherGlyph({ ...m, wcode: wx?.current?.wcode ?? m.wcode });
+          const badge = storm?.tier ? stormBadge(storm.tier) : '';
           return (
             <div key={r.id} className="flex items-center gap-3 border-b border-border/60 py-2.5" data-resort={r.id}>
+              <div className="w-12 shrink-0 text-center">
+                <div className="text-xl leading-none">{glyph}</div>
+                <div className="text-xs font-semibold">{tempLabel(tempC, units)}</div>
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-base font-semibold">{r.name}</div>
-                <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   {pass ? <Badge variant={pass.startsWith('Epic') ? 'secondary' : 'default'} className="h-6 px-2 text-[11px]">{pass}</Badge> : null}
-                  <span>{weatherGlyph(m)} {outlook}</span>
+                  <span>{outlook}</span>
+                  {badge ? <Badge variant="outline" className="h-6 border-accent/50 text-[11px]">Storm {badge}</Badge> : null}
                 </div>
               </div>
               <Button className="min-h-11 min-w-[5.5rem] shrink-0 text-base" onClick={() => onExplore(r.id)}>Explore</Button>

@@ -8,6 +8,7 @@ import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/tri
 import { flightLinks, lodgingLinks, outboundRel, shareURL } from '../../lib/links.js';
 import { fmtFt, fmtShort } from '../../lib/util.js';
 import { isWatched, toggleWatch } from '@/lib/watchlist';
+import { WeatherPanel } from '@/components/WeatherPanel';
 import { useState } from 'react';
 
 function Outbound({ link }: { link: any }) {
@@ -60,6 +61,7 @@ export function ResortSheet({
             <Stat label="Next 7d" value={outlook} />
             <Stat label="Vertical" value={resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'} />
           </div>
+          <WeatherPanel resort={resort} snow={snow} units={units} />
           <p className="text-sm text-muted-foreground">
             {fmtShort(start)}–{fmtShort(end)} · {peopleLabel(trip)}
             {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}

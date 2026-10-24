@@ -28,6 +28,7 @@ function check(parsed, expect) {
   if (expect.sort && parsed.sort !== expect.sort) miss.push(`sort ${parsed.sort} != ${expect.sort}`);
   if (expect.mode && parsed.mode !== expect.mode) miss.push(`mode ${parsed.mode} != ${expect.mode}`);
   if (expect.nearRegion && parsed.near?.region !== expect.nearRegion) miss.push(`near ${parsed.near?.region} != ${expect.nearRegion}`);
+  if (expect.storms != null && !!parsed.storms !== !!expect.storms) miss.push(`storms ${parsed.storms} != ${expect.storms}`);
   return miss;
 }
 
@@ -41,7 +42,7 @@ for (const c of cases.cases) {
     console.log(`FAIL  ${c.id}`);
     console.log(`  text: ${c.text}`);
     console.log(`  ${miss.join('; ')}`);
-    console.log(`  got: ${JSON.stringify({ region: parsed.region, resort: parsed.resort, from: parsed.from, to: parsed.to, adults: parsed.adults, kids: parsed.kids, pass: parsed.pass, home: parsed.home, sort: parsed.sort, mode: parsed.mode, near: parsed.near })}`);
+    console.log(`  got: ${JSON.stringify({ region: parsed.region, resort: parsed.resort, from: parsed.from, to: parsed.to, adults: parsed.adults, kids: parsed.kids, pass: parsed.pass, home: parsed.home, sort: parsed.sort, mode: parsed.mode, near: parsed.near, storms: parsed.storms })}`);
   } else {
     console.log(`ok    ${c.id}`);
   }
