@@ -2,16 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { BottomChrome } from '@/components/BottomChrome';
-import { snowAmount, passLabel, tempLabel, windLabel, fzlLabel, stormBadge } from '@/lib/format';
+import { snowAmount, passLabel, tempLabel, fzlLabel, stormBadge } from '@/lib/format';
 import { weatherGlyph } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
 import { stormForResort } from '../../lib/storms.js';
 import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
 import { flightLinks, lodgingLinks, outboundRel, shareURL } from '../../lib/links.js';
-import { fmtFt, fmtShort } from '../../lib/util.js';
+import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
 import { isWatched, toggleWatch } from '@/lib/watchlist';
 import { toast } from 'sonner';
 
@@ -55,10 +54,10 @@ export function ResortDetail({
 
   return (
     <div className="flex h-full min-h-dvh flex-col bg-background" data-testid="resort-detail">
-      <Carousel className="min-h-0 flex-1" opts={{ align: 'start' }} setApi={setApi}>
+      <Carousel className="min-h-0 flex-1 overflow-hidden" opts={{ align: 'start', containScroll: 'trimSnaps' }} setApi={setApi}>
         <CarouselContent className="-ml-0 h-full">
           {pages.map(r => (
-            <CarouselItem key={r.id} className="pl-0">
+            <CarouselItem key={r.id} className="pl-0 basis-full">
               <ResortPage
                 resort={r}
                 active={r.id === selectedId}
@@ -115,7 +114,7 @@ function ResortPage({
   const lo = daily[0]?.tmin ?? resort.tmin;
 
   return (
-    <ScrollArea className="h-[calc(100dvh-4.25rem)]">
+    <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto overscroll-y-contain">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6">
         <Card data-testid="tile-hero">
           <CardHeader>
@@ -140,15 +139,15 @@ function ResortPage({
               <Badge variant="outline" className="text-sm">Storm {stormBadge(storm.tier)}</Badge>
             ) : null}
           </CardContent>
-          <CardFooter className="gap-2">
+          <CardFooter className="flex-col items-stretch gap-2">
+            <Button className="min-h-11 w-full shrink text-base" onClick={onPlan}>Plan trip</Button>
             <Button
-              variant={watched ? 'secondary' : 'outline'}
-              className="min-h-11 flex-1 text-base"
+              variant={watched ? 'secondary' : 'ghost'}
+              className="min-h-11 w-full shrink text-base"
               onClick={() => { setWatched(toggleWatch(resort.id)); onWatch(); }}
             >
               {watched ? 'Watching' : 'Watch'}
             </Button>
-            <Button className="min-h-11 flex-1 text-base" onClick={onPlan}>Plan trip</Button>
           </CardFooter>
         </Card>
 
@@ -180,9 +179,11 @@ function ResortPage({
           <CardContent className="flex flex-col gap-2">
             {daily.map((d: any) => (
               <div key={d.date} className="flex items-center gap-3">
-                <div className="w-14 text-sm font-medium">{fmtShort(d.date).split(' ')[0]}</div>
-                <div className="w-8 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
-                <div className="w-12 text-sm">{tempLabel(d.tmax, units)}</div>
+                <div className="w-10 shrink-0 text-sm font-medium">
+                  {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                </div>
+                <div className="w-8 shrink-0 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
+                <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, units)}</div>
                 <div className="min-w-0 flex-1">
                   <div className="h-2 rounded-full bg-muted">
                     <div
@@ -191,8 +192,7 @@ function ResortPage({
                     />
                   </div>
                 </div>
-                <div className="w-14 text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</div>
-                <div className="hidden w-14 text-right text-xs text-muted-foreground sm:block">{windLabel(d.windKmh, units)}</div>
+                <div className="w-12 shrink-0 text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</div>
               </div>
             ))}
           </CardContent>
@@ -272,6 +272,6 @@ function ResortPage({
           </CardContent>
         </Card>
       </div>
-    </ScrollArea>
+    </div>
   );
 }

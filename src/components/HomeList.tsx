@@ -1,6 +1,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { SearchBar } from '@/components/SearchBar';
 import { LocationCard } from '@/components/LocationCard';
 import { ListFilters } from '@/components/ListFilters';
@@ -31,45 +32,62 @@ export function HomeList({
   onOpen: (id: string) => void;
   onGhost: (text: string) => void;
 }) {
+  const needle = q.trim().toLowerCase();
+  const visibleRows = mode === 'search' && needle
+    ? (() => {
+        const hit = rows.filter(({ r }) =>
+          [r.name, r.town, r.region, r.state, r.country, r.subregion]
+            .some(s => s && String(s).toLowerCase().includes(needle))
+        );
+        return hit.length ? hit : rows;
+      })()
+    : rows;
+
   return (
     <div className="flex h-full min-h-dvh flex-col bg-background" data-testid={mode === 'search' ? 'search' : 'home'}>
       <header
         className="mx-auto flex w-full max-w-xl flex-col gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
       >
-        <SearchBar
-          value={q}
-          onChange={setQ}
-          onSubmit={onSubmit}
-          onSettings={onSettings}
-          onActivate={onActivateSearch}
-          loading={loading}
-          status={status}
-          autoFocus={mode === 'search'}
-        />
-        {mode === 'search' ? (
-          <Button type="button" variant="ghost" className="min-h-11 self-start px-1 text-base" onClick={onBackHome}>
-            Cancel
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              value={q}
+              onChange={setQ}
+              onSubmit={onSubmit}
+              onSettings={onSettings}
+              onActivate={onActivateSearch}
+              loading={loading}
+              status={status}
+              autoFocus={mode === 'search'}
+            />
+          </div>
+          {mode === 'search' ? (
+            <Button type="button" variant="ghost" className="min-h-11 shrink-0 px-2 text-base" onClick={onBackHome}>
+              Cancel
+            </Button>
+          ) : null}
+        </div>
         <ListFilters pass={pass} setPass={setPass} stormsOn={stormsOn} setStormsOn={setStormsOn} />
       </header>
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-3 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           {mode === 'search' && !q ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium text-muted-foreground">Try asking</p>
-              {GHOSTS.map(g => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant="secondary"
-                  className="min-h-12 justify-start text-left text-base font-normal whitespace-normal"
-                  onClick={() => onGhost(g)}
-                >
-                  {g}
-                </Button>
-              ))}
-            </div>
+            <Command shouldFilter={false} className="bg-transparent p-0">
+              <CommandList className="max-h-none overflow-visible">
+                <CommandGroup heading="Try asking">
+                  {GHOSTS.map(g => (
+                    <CommandItem
+                      key={g}
+                      value={g}
+                      className="min-h-12 items-start whitespace-normal py-3 text-base"
+                      onSelect={() => onGhost(g)}
+                    >
+                      {g}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
           ) : null}
 
           {mode === 'home' && watched.length ? (
@@ -84,7 +102,7 @@ export function HomeList({
           {mode === 'home' || (mode === 'search' && q) ? (
             <section className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{title}</h2>
-              {rows.length ? rows.map(row => (
+              {visibleRows.length ? visibleRows.map(row => (
                 <LocationCard key={row.r.id} row={row} units={units} onOpen={onOpen} />
               )) : (
                 <Empty className="border">

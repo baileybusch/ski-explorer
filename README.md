@@ -101,10 +101,10 @@ Home is a vertical list of location cards (My Resorts first), not the globe. Sea
 
 ## Weather and storms
 
-Snow is still the center. Weather is a menu + one **Storms** chip.
+Snow is still the center. Storms is a list/search filter (still `data-testid="storms-chip"`), plus a tile on the resort card when a pulse is on.
 
-- **List / resort sheet**: glyph + temp from the snow snapshot (no extra call). Opening a resort fetches live Open-Meteo current + 7-day + 48h hourly (wind, freezing level), cached 40 minutes. Visible list rows batch current+daily in groups of 8, only when the sheet is open, never a catalog firehose.
-- **Map layers** (menu): RainViewer radar and IR satellite (free, no key, attribution on the map). Storm rings from the forecast snapshot. NWS winter watches/warnings (**US only**, public domain). No free no-key global **wind tiles**; no named tropical tracks (NHC is seasonal/basin-specific — skipped).
+- **List / resort detail**: glyph + temp from the snow snapshot (no extra call). Opening a resort fetches live Open-Meteo current + 7-day + 48h hourly (wind, freezing level), cached 40 minutes. Visible list rows batch current+daily in groups of 8, never a catalog firehose.
+- **Map layers** (popover in map mode): RainViewer radar and IR satellite (free, no key, attribution on the map). Storm rings from the forecast snapshot. NWS winter watches/warnings (**US only**, public domain). No free no-key global **wind tiles**; no named tropical tracks (NHC is seasonal/basin-specific — skipped).
 - **Storm badges**: 72h forecast snowfall ≥ 6 / 12 / 18 inches (configurable). International = forecast badges only. Labeled as Open-Meteo forecast, not typical, not observed.
 
 Credits: Open-Meteo (CC BY 4.0), RainViewer tiles, NWS alerts.
