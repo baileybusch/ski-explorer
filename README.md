@@ -4,7 +4,7 @@ iPhone-first globe for the 26/27 Ikon Pass and Epic Pass: where good snow is or 
 
 Home is an interactive **MapLibre globe**. Search “Japan”, “Dolomites”, “Alps”, “Utah”, “Hokkaido”, “Colorado” (gazetteer + fuzzy resort names — no LLM key) and the globe flies there, pins the matching resorts, and opens the list (bottom sheet on iPhone, side panel on desktop). Zooming in flattens into the existing 3D terrain map. Tapping a pin opens the same detail view as before (timeline, past seasons, Eagle Point fire card).
 
-Static site (no build step): `public/index.html`, `app.js`, `style.css`, `public/lib/*` + precomputed JSON in `public/data/`.
+Front end is **Vite + React + Tailwind + shadcn/ui** (`src/`, build → `dist/`). Vanilla JS could not use shadcn components, so we migrated rather than faking the tokens. Data, photos, `/alerts`, and `public/config.js` stay in `public/` and are copied into `dist/`. Vercel still auto-deploys; `/api/*` (email + agent) stay as serverless functions. Email remains **paused**.
 
 ## Data sources
 | Layer | Source |
@@ -58,7 +58,7 @@ Only use images you are allowed to reuse, and credit them exactly:
 - **Watchlist**: stars, `localStorage` only (`ss_watch`) — no accounts, no email.
 - **Shared trip state** (every list row + detail): location, snowfall for the chosen window, dates, **adults + kids** (default 2 + 2, editable, `localStorage`), flights, lodging. People flow into Google Flights (primary), Kayak/Skyscanner, and Booking/Airbnb/VRBO/Expedia (`group_adults` / `children` / `no_rooms` where those sites support them) and into the Plan brief.
 - **Explore resort** vs **Plan trip**: Explore is the detail view (facts, snow, map, lodging layer). Plan opens the AI brief (ChatGPT / Grok deep links + copy; Claude is copy-only).
-- **Outbound links** all go through `public/lib/links.js`. Affiliate wrap is config-driven via `AFFILIATES` in `public/config.js` (empty now). When any id/template is set, links get `rel="sponsored noopener"` and the footer shows “we may earn a commission.”
+- **Outbound links** all go through `lib/links.js`. Affiliate wrap is config-driven via `AFFILIATES` in `public/config.js` (empty now). When any id/template is set, links get `rel="sponsored noopener"` and the footer shows “we may earn a commission.”
 - **Share / inbound URLs**: `/?resort=mammoth&from=2026-12-20&to=2026-12-27&people=4&mode=explore|plan` (`adults`/`kids`/`home`/`pass` also work; `r=` still works). `people` alone keeps the family split (2 adults + the rest kids, so `people=4` → 2+2). Share-link button copies the full URL. Future snow-threshold emails can use the same URLs; email stays **off**.
 - **Lodging layer**: optional OSM hotels/chalets via Overpass, labeled as OSM, no prices. Fails soft if Overpass is down.
 - Search does not need an LLM. A future parser can sit behind a user-supplied key; nothing in the repo requires a new secret.
@@ -78,6 +78,22 @@ Where to apply (public programs; approval required):
 - [Travelpayouts](https://www.travelpayouts.com/) (Kayak, Skyscanner, and others behind one wrap)
 
 Do not commit secrets. Public affiliate ids are fine. The commission line only appears when at least one `AFFILIATES` value is non-empty.
+
+## v6: one search bar + agent harness
+
+- **Clean home**: full-screen globe, one chat/search bar, hamburger Sheet for pass / dates / people / airport / sort / watchlist / lodging / units. List rows are name + pass + snow + Explore. Plan / flights / lodging live in the resort sheet.
+- **Rotating ghost text** on the bar (pauses on focus): Japan spring break, Ikon near Denver, Dolomites, Utah dumping, Mammoth family.
+- **Natural-language bar**: a sentence like `Japan trip for 5 spring break mar 7-14` is parsed into trip state, flies the globe, fills the list, and writes the menu values.
+- **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. See [docs/agent-harness.md](docs/agent-harness.md).
+- **Evals**: `npm run eval` (15 sentences, pinned date). Optional `RUN_LLM=1`.
+
+### Bailey setup for the LLM path
+
+On the Vercel project: **Settings → Security → OIDC Federation** (AI Gateway uses the injected `VERCEL_OIDC_TOKEN`). That is enough on a deployed preview/prod — no new secret.
+
+Locally: `vercel link && vercel env pull`, **or** set `AI_GATEWAY_API_KEY` from the AI Gateway dashboard (do not commit it). Optional `AI_GATEWAY_MODEL` (default `openai/gpt-5.4-mini`).
+
+Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `mar 7-14`).
 
 ## Email alerts paused
 - `EMAIL_ALERTS_ENABLED = false` in `public/config.js` (shared by the browser and `/api`). Follow button, footer link and `/alerts` signup are hidden (`/alerts` shows a paused note); `/api/subscribe` returns 503; `/api/cron/digest` is a no-op; the cron entry is removed from `vercel.json`.
