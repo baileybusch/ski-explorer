@@ -318,7 +318,7 @@ export default function App() {
   return (
     <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
       {catalog ? (
-        <div className={view === 'map' ? 'absolute inset-0' : 'pointer-events-none invisible absolute inset-0'} data-testid="map-mode">
+        <div className={view === 'map' ? 'absolute inset-0 z-10' : 'hidden'} data-testid="map-mode">
           <GlobeMap
             ref={globe}
             active={view === 'map'}
