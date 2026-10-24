@@ -99,6 +99,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
 
     map.on('load', () => {
       ready.current = true;
+      try { map.resize(); } catch { /* */ }
       try {
         import('maplibre-contour').then(mlcontour => {
           const demSource = new mlcontour.default.DemSource({ url: DEM, encoding: 'terrarium', maxzoom: 13, worker: true });
@@ -205,7 +206,11 @@ export const GlobeMap = forwardRef(function GlobeMap(
     else map.once('load', apply);
   }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo]);
 
-  return <div ref={el} className="absolute inset-0" data-testid="globe" />;
+  return (
+    <div className="absolute inset-0" data-testid="globe">
+      <div ref={el} className="h-full w-full" />
+    </div>
+  );
 });
 
 function syncTerrain(map: MapLibreMap) {

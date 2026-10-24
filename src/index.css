@@ -134,6 +134,13 @@ html, body, #root {
 
 body { overscroll-behavior: none; }
 
+.maplibregl-map,
+.maplibregl-canvas-container,
+.maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .maplibregl-ctrl-attrib {
   background: color-mix(in oklch, var(--background) 90%, transparent) !important;
   color: var(--muted-foreground) !important;
