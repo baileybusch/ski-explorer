@@ -97,7 +97,16 @@ Without either, the bar still works in **deterministic-only** mode (regex + gaze
 
 ## v7: Weather-style list → detail → map
 
-Home is a vertical list of location cards (My Resorts first), not the globe. Search is a full state. A card opens a paged resort detail (stacked tiles, swipe watched resorts). The globe is a full-screen mode from the bottom map button; layers sit in a popover. Settings (dates, people, airport, units) are one Sheet. Pass and Storms are list filters. Palette is monochrome slate — [docs/design-tokens.md](docs/design-tokens.md).
+Replaced in this PR by the scoreboard concepts below. The Weather chrome was too busy for a glance-at-the-snow monitor.
+
+## v8: two scoreboard concepts
+
+Home is a **snowfall leaderboard**, not a weather-app list and not the globe.
+
+- **A** (`?design=a`, default): full-screen snap cards, one resort, huge snow number, tap to flip.
+- **B** (`?design=b`): 2-column blocks, top card double-width, tap expands into the A card.
+
+Time window (24h / 72h / 7d / Next 7), pass, and the agent bar sit at the top. People and dates are a Trip pill. Map is one floating button. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 
