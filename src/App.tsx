@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MoreHorizontalIcon, MapIcon, ListIcon } from 'lucide-react';
+import { MapIcon, ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { Leaderboard } from '@/components/Leaderboard';
@@ -371,6 +371,7 @@ export default function App() {
           <BoardChrome
             q={q}
             onOpenSearch={() => setSearchOpen(true)}
+            onSettings={() => setMenuOpen(true)}
             loading={loading}
             pass={pass}
             setPass={p => { setPass(p); setActiveIds(null); }}
@@ -433,11 +434,8 @@ export default function App() {
       ) : null}
 
       {view === 'board' ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-between px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" variant="secondary" className="pointer-events-auto min-h-12 min-w-12 rounded-full" aria-label="Settings" onClick={() => setMenuOpen(true)}>
-            <MoreHorizontalIcon />
-          </Button>
-          <Button type="button" className="pointer-events-auto min-h-12 min-w-12 rounded-full" aria-label="Map" data-testid="map-button" onClick={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button type="button" className="pointer-events-auto min-h-12 min-w-12 rounded-full shadow-lg" aria-label="Map" data-testid="map-button" onClick={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}>
             <MapIcon />
           </Button>
         </div>

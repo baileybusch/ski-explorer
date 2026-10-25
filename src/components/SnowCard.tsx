@@ -59,7 +59,7 @@ export function SnowCard({
       <div className={`flip-card ${flipped ? 'is-flipped' : ''}`}>
         <button
           type="button"
-          className="flip-face flip-front flex h-full w-full flex-col justify-between p-5 text-left"
+          className="flip-face flip-front flex h-full w-full flex-col p-5 text-left"
           style={{ background: `oklch(${tone.l} ${tone.hero ? 0.018 : 0.012} 255)`, color: fg }}
           onClick={onFlip}
           data-testid="card-front"
@@ -75,13 +75,13 @@ export function SnowCard({
               {pass ? <Badge variant="secondary" className="text-sm">{pass}</Badge> : null}
             </div>
           </div>
-          <div>
+          <div className="flex min-h-0 flex-1 flex-col justify-end">
             <div className="text-[clamp(1.6rem,6vw,2.15rem)] font-semibold leading-none tracking-tight">{r.name}</div>
             <div className="mt-2 text-base" style={{ color: muted }}>
               {r.town ? `${r.town}  ` : ''}{r.region || r.state}
             </div>
-            <div className="mt-5 flex items-end justify-between gap-3">
-              <div className="font-display leading-none tracking-tight" style={{ fontSize: 'clamp(5.4rem, 22vw, 8.2rem)' }}>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="font-display leading-[0.85] tracking-tight" style={{ fontSize: 'clamp(6.2rem, 26vw, 9rem)' }}>
                 {num}<span className="text-[0.38em]">{unit}</span>
               </div>
               {storm.tier ? (
@@ -140,7 +140,7 @@ export function SnowCard({
               {trip.home}{r.iata ? ` → ${r.iata}` : ''}  {adults}+{kids}
             </p>
             {fl[0] ? (
-              <Button className="min-h-12 w-full text-base" variant="secondary" asChild>
+              <Button className="min-h-12 w-full text-base" asChild>
                 <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>{fl[0].label}</a>
               </Button>
             ) : null}

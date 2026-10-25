@@ -1,15 +1,18 @@
-import { SearchIcon, SparklesIcon } from 'lucide-react';
+import { MoreHorizontalIcon, SearchIcon, SparklesIcon } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { SNOW_PRESETS } from '../../lib/snowWindow.js';
-import { fmtShort } from '../../lib/util.js';
+import { parseISO } from '../../lib/util.js';
 import { partyOf, tripDates } from '../../lib/trip.js';
 
+const PASS_CYCLE = ['ikon', 'epic', 'all'] as const;
+
 export function BoardChrome({
-  q, onOpenSearch, loading, pass, setPass, preset, setPreset, trip, win, onTrip, stormsOn,
+  q, onOpenSearch, onSettings, loading, pass, setPass, preset, setPreset, trip, win, onTrip, stormsOn,
 }: {
   q: string;
   onOpenSearch: () => void;
+  onSettings: () => void;
   loading?: boolean;
   pass: string;
   setPass: (p: string) => void;
@@ -22,6 +25,10 @@ export function BoardChrome({
 }) {
   const { adults, kids } = partyOf(trip);
   const { start, end } = tripDates(trip, win || { start: '', end: '' });
+  const from = start ? parseISO(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'dates';
+  const to = end ? String(parseISO(end).getDate()) : '';
+  const passLabel = pass === 'epic' ? 'Epic' : pass === 'all' ? 'All' : 'Ikon';
+  const nextPass = PASS_CYCLE[(PASS_CYCLE.indexOf(pass as any) + 1) % PASS_CYCLE.length];
   return (
     <header
       className="mx-auto flex w-full max-w-xl flex-col gap-2 px-3 pt-[max(0.55rem,env(safe-area-inset-top))]"
@@ -35,7 +42,7 @@ export function BoardChrome({
           onClick={onTrip}
           data-testid="trip-pill"
         >
-          {adults}+{kids}  {start ? fmtShort(start) : 'dates'}–{end ? fmtShort(end).replace(/^[A-Za-z]+ /, '') : ''}
+          {adults}+{kids}&nbsp;&nbsp;{from}–{to}
         </Button>
         <button
           type="button"
@@ -48,6 +55,9 @@ export function BoardChrome({
             {q || 'Ask where the snow is'}
           </span>
         </button>
+        <Button type="button" variant="ghost" className="min-h-11 min-w-11 rounded-full" aria-label="Settings" onClick={onSettings}>
+          <MoreHorizontalIcon />
+        </Button>
       </div>
       <div className="flex items-center gap-2">
         <ToggleGroup type="single" value={preset} onValueChange={v => v && setPreset(v)} className="min-w-0 flex-1">
@@ -57,11 +67,15 @@ export function BoardChrome({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <ToggleGroup type="single" value={pass} onValueChange={v => v && setPass(v)} className="shrink-0">
-          <ToggleGroupItem value="all" className="min-h-11 px-2.5 text-sm">All</ToggleGroupItem>
-          <ToggleGroupItem value="ikon" className="min-h-11 px-2.5 text-sm">Ikon</ToggleGroupItem>
-          <ToggleGroupItem value="epic" className="min-h-11 px-2.5 text-sm">Epic</ToggleGroupItem>
-        </ToggleGroup>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-11 shrink-0 rounded-full px-3 text-sm"
+          onClick={() => setPass(nextPass)}
+          data-testid="pass-chip"
+        >
+          {passLabel}
+        </Button>
       </div>
       {stormsOn ? <p className="px-1 text-xs text-muted-foreground">Storms filter on — ranked by 72h pulse.</p> : null}
     </header>

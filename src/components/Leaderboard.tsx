@@ -30,7 +30,7 @@ export function Leaderboard({
       data-testid="board-a"
     >
       {rows.map((row, i) => (
-        <section key={row.r.id} className="snap-card h-full px-3 pb-20 pt-2">
+        <section key={row.r.id} className="snap-card mx-auto h-full w-full max-w-xl px-3 pb-20 pt-2">
           <SnowCard
             row={row}
             rank={i + 1}
