@@ -8,7 +8,10 @@ Primary job: friends and families glance at a phone and see **who is winning the
 
 A packing grid that **always fills the viewport**. No leftover empty cells.
 
-- Ranked by the selected window (24h / 72h / 7d observed, or Next 7 forecast).
+- Default list is the **top 11** (2×2 leader + five complete pairs on a phone). **Show more** adds the next 10, then the rest. 11 not 12: twelve left a leftover cell that had to stretch.
+- Two ranks: **Recent snow** (selected window) and **Incoming** (modeled next-7 forecast from snow.json, storm badge + start day).
+- Each block is name, snow number, and a short forecast strip. The leader also loads one lazy RainViewer radar tile.
+- Ranked by the selected window (24h / 72h / 7d observed, or Next 7 forecast) on Recent snow.
 - Leader is double-width / double-tall when the count is 3 or 5+. Four resorts on a phone are an even 2×2. One or two results scale up to fill.
 - Remaining blocks share rows; the last row stretches so it is never half-empty.
 - If a filter yields few resorts, blocks grow. If there are many, the first screen still tiles edge-to-edge and the rest is continuous scroll (same row size, same no-gap rule at the end).

@@ -8,7 +8,7 @@ import { partyOf, tripDates } from '../../lib/trip.js';
 import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
-  q, onOpenSearch, onMenu, loading, preset, setPreset, trip, win, onTrip, stormsOn,
+  q, onOpenSearch, onMenu, loading, preset, setPreset, trip, win, onTrip, boardMode, setBoardMode,
 }: {
   q: string;
   onOpenSearch: () => void;
@@ -19,7 +19,8 @@ export function BoardChrome({
   trip: any;
   win: any;
   onTrip: () => void;
-  stormsOn?: boolean;
+  boardMode: 'recent' | 'incoming';
+  setBoardMode: (m: 'recent' | 'incoming') => void;
 }) {
   const { adults, kids } = partyOf(trip);
   const { start, end } = tripDates(trip, win || { start: '', end: '' });
@@ -38,12 +39,9 @@ export function BoardChrome({
       data-testid="board-chrome"
     >
       <div className="flex items-center gap-2">
-        <ToggleGroup type="single" value={preset} onValueChange={v => v && setPreset(v)} className="min-w-0 flex-1">
-          {SNOW_PRESETS.map(p => (
-            <ToggleGroupItem key={p.id} value={p.id} className="min-h-11 flex-1 px-1 text-sm" data-testid={`window-${p.id}`}>
-              {p.label}
-            </ToggleGroupItem>
-          ))}
+        <ToggleGroup type="single" value={boardMode} onValueChange={v => (v === 'recent' || v === 'incoming') && setBoardMode(v)} className="min-w-0 flex-1">
+          <ToggleGroupItem value="recent" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-recent">Recent snow</ToggleGroupItem>
+          <ToggleGroupItem value="incoming" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-incoming">Incoming</ToggleGroupItem>
         </ToggleGroup>
         <Button
           type="button"
@@ -56,6 +54,19 @@ export function BoardChrome({
           <MenuIcon />
         </Button>
       </div>
+      {boardMode === 'recent' ? (
+        <ToggleGroup type="single" value={preset} onValueChange={v => v && setPreset(v)} className="w-full">
+          {SNOW_PRESETS.map(p => (
+            <ToggleGroupItem key={p.id} value={p.id} className="min-h-11 flex-1 px-1 text-sm" data-testid={`window-${p.id}`}>
+              {p.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      ) : (
+        <p className="px-1 text-xs text-muted-foreground" data-testid="incoming-caption">
+          Modeled next-7 forecast — not exact totals. Storm badge = 6″+ in any 72h.
+        </p>
+      )}
       <button
         type="button"
         className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-sm ring-1 ring-foreground/12"
@@ -77,7 +88,6 @@ export function BoardChrome({
         >
           {adults}+{kids}&nbsp;&nbsp;{from}–{to}
         </Button>
-        {stormsOn ? <p className="text-xs text-muted-foreground">Storms on — ranked by 72h pulse.</p> : null}
       </div>
     </header>
   );

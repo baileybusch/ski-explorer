@@ -1,7 +1,14 @@
 /** Shared board ranking, tone, and gap-free pack layout. */
 
+export const BOARD_PAGE = 11;
+export const BOARD_MORE = 10;
+
 export function snowScore(row: { m: any }) {
   return row.m.windowCm || 0;
+}
+
+export function incomingScore(row: { storm?: any }) {
+  return row.storm?.totalCm || 0;
 }
 
 export function cardTone(rank: number, score: number, max: number) {

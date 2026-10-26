@@ -3,19 +3,17 @@ import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { RadarPlayer } from '@/components/RadarPlayer';
 import { snowAmount, passLabel, tempLabel, fzlLabel, stormBadge, windLabel } from '@/lib/format';
 import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
 import { stormForResort } from '../../lib/storms.js';
 import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
-import { flightLinks, lodgingLinks, outboundRel, shareURL } from '../../lib/links.js';
+import { flightLinks, lodgingLinks, outboundRel } from '../../lib/links.js';
 import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
 import { isWatched, toggleWatch } from '@/lib/watchlist';
 import { snowScore } from '@/lib/board';
-import { toast } from 'sonner';
 
 export function ResortProfile({
   pages, selectedId, onSelect, onBack, onPlan, onWatch, onScroll, snow, typical, units, trip, win, pass,
@@ -85,9 +83,8 @@ export function ResortProfile({
                   trip={trip}
                   win={win}
                   pass={pass}
-                  lodgingOn={lodgingOn}
-                  setLodgingOn={setLodgingOn}
                   onWatch={onWatch}
+                  onPlan={() => onPlan(row.r)}
                   onShowMap={() => onShowMap(row.r)}
                   onBack={onBack}
                   onPrev={() => { const prev = pages[i - 1]; if (prev) onSelect(prev.r.id); }}
@@ -115,8 +112,8 @@ export function ResortProfile({
 }
 
 function ProfilePage({
-  row, rank, active, snow, typical, units, trip, win, pass, lodgingOn, setLodgingOn,
-  onWatch, onShowMap, onBack, onPrev, onNext, canPrev, canNext, onScroll,
+  row, rank, active, snow, typical, units, trip, win, pass,
+  onWatch, onPlan, onShowMap, onBack, onPrev, onNext, canPrev, canNext, onScroll,
 }: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -226,27 +223,9 @@ function ProfilePage({
       </section>
 
       <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[5.8rem] pt-4">
-        <Card data-testid="tile-snow">
-          <CardHeader>
-            <CardTitle>Snow</CardTitle>
-            <CardDescription>Observed windows and the next-7 forecast.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex h-24 items-end gap-2">
-            {windows.map(w => (
-              <div key={w.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div className="flex h-16 w-full items-end rounded-md bg-muted">
-                  <div className="w-full rounded-md bg-accent" style={{ height: `${Math.max(8, Math.round((w.cm / maxWin) * 100))}%` }} />
-                </div>
-                <span className="text-[11px] text-muted-foreground">{w.label}</span>
-                <span className="text-xs font-semibold">{snowAmount(w.cm, units)}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
         <Card data-testid="weather-panel">
           <CardHeader>
-            <CardTitle>Weather</CardTitle>
+            <CardTitle>Forecast</CardTitle>
             <CardDescription>{wx?.source === 'Open-Meteo forecast' ? 'Live Open-Meteo. Swipe hourly / 7-day.' : 'Snapshot until live weather loads.'}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -291,6 +270,16 @@ function ProfilePage({
           </CardContent>
         </Card>
 
+        <Card data-testid="tile-radar">
+          <CardHeader>
+            <CardTitle>Radar</CardTitle>
+            <CardDescription>RainViewer near the mountain. Play/pause the last frames.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadarPlayer lon={resort.center[0]} lat={resort.center[1]} active={active} />
+          </CardContent>
+        </Card>
+
         <Card data-testid="tile-storm">
           <CardHeader>
             <CardTitle>Storm timeline</CardTitle>
@@ -305,6 +294,24 @@ function ProfilePage({
           </CardContent>
         </Card>
 
+        <Card data-testid="tile-snow">
+          <CardHeader>
+            <CardTitle>Snow history</CardTitle>
+            <CardDescription>Observed windows and the next-7 forecast.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex h-24 items-end gap-2">
+            {windows.map(w => (
+              <div key={w.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                <div className="flex h-16 w-full items-end rounded-md bg-muted">
+                  <div className="w-full rounded-md bg-accent" style={{ height: `${Math.max(8, Math.round((w.cm / maxWin) * 100))}%` }} />
+                </div>
+                <span className="text-[11px] text-muted-foreground">{w.label}</span>
+                <span className="text-xs font-semibold">{snowAmount(w.cm, units)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <Card data-testid="tile-trip">
           <CardHeader>
             <CardTitle>Trip</CardTitle>
@@ -314,27 +321,20 @@ function ProfilePage({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">Google Flights first. Search links only — no invented prices.</p>
-            {fl.map((link: any) => (
-              <Button key={link.id} variant={link.primary ? 'default' : 'outline'} className="min-h-12 w-full text-base" asChild>
-                <a href={link.href} target="_blank" rel={outboundRel(link.sponsored)}>{link.label}</a>
+            {fl[0] ? (
+              <Button className="min-h-12 w-full text-base" asChild>
+                <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>Flights</a>
               </Button>
-            ))}
-            {ld.map((link: any) => (
-              <Button key={link.id} variant="outline" className="min-h-12 w-full text-base" asChild>
-                <a href={link.href} target="_blank" rel={outboundRel(link.sponsored)}>{link.label}</a>
+            ) : (
+              <p className="text-sm text-muted-foreground">No nearby airport on file.</p>
+            )}
+            {ld[0] ? (
+              <Button variant="outline" className="min-h-12 w-full text-base" asChild>
+                <a href={ld[0].href} target="_blank" rel={outboundRel(ld[0].sponsored)}>Stays</a>
               </Button>
-            ))}
-            <Button
-              variant="outline"
-              className="min-h-12 text-base"
-              onClick={async () => {
-                const url = shareURL({ resort: resort.id, from, to, adults, kids, home: trip.home, mode: 'explore', pass });
-                try { await navigator.clipboard.writeText(url); toast('Link copied'); }
-                catch { toast(url); }
-              }}
-            >
-              Share link
+            ) : null}
+            <Button variant="outline" className="min-h-12 w-full text-base" onClick={onPlan}>
+              Plan with an AI agent
             </Button>
           </CardContent>
         </Card>
@@ -342,40 +342,14 @@ function ProfilePage({
         <Card data-testid="tile-facts">
           <CardHeader>
             <CardTitle>Facts</CardTitle>
-            <CardDescription>Swipe for mountain stats.</CardDescription>
+            <CardDescription>OpenSkiMap stats. Open the globe for lodging pins.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Carousel opts={{ align: 'start' }} onPointerDown={e => e.stopPropagation()}>
-              <CarouselContent>
-                <CarouselItem>
-                  <p className="text-base">{interestingBlurb(resort) || 'OpenSkiMap facts when we have a match.'}</p>
-                  {resort.id === 'eagle-point' ? <p className="mt-2 text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
-                </CarouselItem>
-                <CarouselItem>
-                  <div className="flex flex-col gap-2 text-base">
-                    <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
-                    {resort.runs ? <div>{resort.runs} runs mapped</div> : null}
-                    {resort.lifts ? <div>{resort.lifts} lifts</div> : null}
-                    {resort.web ? <a className="underline" href={resort.web} target="_blank" rel="noopener">Resort site</a> : null}
-                    <a className="underline" href={`https://openskimap.org/#13/${resort.center[1]}/${resort.center[0]}`} target="_blank" rel="noopener">OpenSkiMap</a>
-                  </div>
-                </CarouselItem>
-              </CarouselContent>
-            </Carousel>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-lodging-map">
-          <CardHeader>
-            <CardTitle>Lodging map</CardTitle>
-            <CardDescription>OSM hotels near the village. Toggle pins, then open the globe.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor={`lodge-${resort.id}`}>Show lodging pins</FieldLabel>
-              <Switch id={`lodge-${resort.id}`} checked={lodgingOn} onCheckedChange={setLodgingOn} />
-            </Field>
-            <Button type="button" variant="secondary" className="min-h-12 w-full text-base" onClick={onShowMap}>
+          <CardContent className="flex flex-col gap-2 text-base">
+            <p>{interestingBlurb(resort) || 'OpenSkiMap facts when we have a match.'}</p>
+            {resort.id === 'eagle-point' ? <p className="text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
+            <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
+            {resort.web ? <a className="underline" href={resort.web} target="_blank" rel="noopener">Resort site</a> : null}
+            <Button type="button" variant="secondary" className="min-h-11 w-full text-base" onClick={onShowMap}>
               Open map
             </Button>
           </CardContent>

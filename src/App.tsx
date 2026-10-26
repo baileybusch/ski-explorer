@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { snowScore } from '@/lib/board';
+import { BOARD_MORE, BOARD_PAGE, incomingScore, snowScore } from '@/lib/board';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 type View = 'board' | 'profile' | 'map';
@@ -70,6 +70,8 @@ export default function App() {
   const [watchTick, setWatchTick] = useState(0);
   const [heroParallax, setHeroParallax] = useState(0);
   const [restoreTop, setRestoreTop] = useState(0);
+  const [boardMode, setBoardMode] = useState<'recent' | 'incoming'>('recent');
+  const [shown, setShown] = useState(BOARD_PAGE);
 
   useEffect(() => {
     loadCatalog().then(c => {
@@ -222,7 +224,10 @@ export default function App() {
       }
       if (a.type === 'setStorms') {
         setStormsOn(!!a.on);
-        if (a.on) setSearchOpen(false);
+        if (a.on) {
+          setBoardMode('incoming');
+          setSearchOpen(false);
+        }
       }
       if (a.type === 'setWatchlist') {
         const cur = new Set(watchlist());
@@ -301,14 +306,18 @@ export default function App() {
       wx: wxById[r.id],
     }));
     let out = rows;
-    if (stormsOn) {
-      out = out.filter(x => x.storm.tier >= stormMin);
-      out.sort((a, b) => b.storm.max72Cm - a.storm.max72Cm);
+    if (boardMode === 'incoming' || stormsOn) {
+      if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
+      out.sort((a, b) => incomingScore(b) - incomingScore(a) || b.storm.max72Cm - a.storm.max72Cm || a.r.name.localeCompare(b.r.name));
     } else {
       out.sort((a, b) => snowScore(b) - snowScore(a) || a.r.name.localeCompare(b.r.name));
     }
     return out;
-  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById]);
+  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardMode]);
+
+  useEffect(() => {
+    setShown(BOARD_PAGE);
+  }, [pass, activeIds, stormsOn, boardMode, preset]);
 
   useEffect(() => {
     if (!nwsOn) return;
@@ -322,9 +331,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, pass, activeIds, stormsOn, preset]);
 
-  const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || rowsAll[0]?.r || null;
-  const max = Math.max(0, ...rowsAll.map(snowScore));
-  const zeroHint = max === 0 && preset !== 'fc7';
+  const visibleRows = rowsAll.slice(0, shown);
+  const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
+  const max = Math.max(0, ...rowsAll.map(boardMode === 'incoming' ? incomingScore : snowScore));
+  const zeroHint = boardMode === 'recent' && max === 0 && preset !== 'fc7';
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
 
   function selectProfile(id: string) {
@@ -398,17 +408,21 @@ export default function App() {
             trip={trip}
             win={win}
             onTrip={() => setTripOpen(true)}
-            stormsOn={stormsOn}
+            boardMode={boardMode}
+            setBoardMode={m => { setBoardMode(m); setStormsOn(false); }}
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet on this window. Try Next 7.
+              Quiet on this window. Try Next 7 or Incoming.
             </p>
           ) : null}
           <BlockBoard
-            rows={rowsAll}
+            rows={visibleRows}
             units={units}
             snow={catalog.snow}
+            mode={boardMode}
+            hasMore={shown < rowsAll.length}
+            onMore={() => setShown(n => Math.min(rowsAll.length, n === BOARD_PAGE ? BOARD_PAGE + BOARD_MORE : rowsAll.length))}
             onOpen={id => openResort(id)}
             scrollerRef={boardScroll}
             restoreTop={restoreTop}
@@ -418,7 +432,7 @@ export default function App() {
 
       {catalog && win && view === 'profile' && selectedId && selected ? (
         <ResortProfile
-          pages={rowsAll.some(x => x.r.id === selectedId) ? rowsAll : [{ r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }, ...rowsAll]}
+          pages={visibleRows.some(x => x.r.id === selectedId) ? visibleRows : [{ r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }, ...visibleRows]}
           selectedId={selectedId}
           onSelect={selectProfile}
           onBack={backToBoard}
@@ -459,7 +473,7 @@ export default function App() {
         onClearScope={() => { setActiveIds(null); setStormsOn(false); setSearchOpen(false); }}
         regions={catalog?.regions || []}
         stormsOn={stormsOn}
-        setStormsOn={on => { setStormsOn(on); if (on) setSearchOpen(false); }}
+        setStormsOn={on => { setStormsOn(on); if (on) { setBoardMode('incoming'); setSearchOpen(false); } }}
         loading={loading}
         status={status}
       />
