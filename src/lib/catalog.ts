@@ -18,18 +18,22 @@ export function attachSnow(resorts: any[], snow: any) {
 }
 
 export async function loadCatalog() {
-  const [resorts, snow, gaz, typical, fire] = await Promise.all([
+  const [resorts, snow, gaz, typical, fire, history, social] = await Promise.all([
     fetch('/data/resorts-index.json').then(r => r.json()),
     fetch('/data/snow.json').then(r => r.json()),
     fetch('/data/gazetteer.json').then(r => r.ok ? r.json() : { regions: [] }),
     fetch('/data/typical.json').then(r => r.ok ? r.json() : { windows: {} }).catch(() => ({ windows: {} })),
     fetch('/data/cottonwood-fire.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/data/history.json').then(r => r.ok ? r.json() : { resorts: {} }).catch(() => ({ resorts: {} })),
+    fetch('/data/social.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
   ]);
   attachSnow(resorts, snow);
   return {
     resorts,
     snow,
     typical,
+    history,
+    social,
     regions: gaz.regions || [],
     fire,
     today: snow.dates[snow.today],

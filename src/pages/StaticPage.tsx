@@ -7,7 +7,8 @@ const COPY = {
     title: 'About',
     body: [
       'SkiScope is an iPhone-first board for Ikon and Epic snow. It ranks mountains by recent snow plus the next week of modeled forecast, then opens a resort page with storm status, a 7-day, radar, and a trip brief.',
-      'Snow is Open-Meteo (modeled, not resort-reported). Terrain is Mapterhorn. Imagery is Esri. Basemap is CARTO. Runs and lifts are OpenSkiMap / OpenStreetMap. Radar is RainViewer. US winter alerts are NWS. Flights and lodging are search links. We may earn a commission if an affiliate id is set — see the disclosure.',
+      'Snow is modeled Open-Meteo, not resort-reported. Terrain is Mapterhorn. The basemap is OpenFreeMap (OpenMapTiles + OpenStreetMap). Runs and lifts are our own OpenSkiMap / OpenStreetMap GeoJSON. Radar is RainViewer. US winter alerts are NWS. Flights and lodging are search links. We may earn a commission if an affiliate id is set — see the disclosure.',
+      'Data sources: OpenStreetMap contributors; OpenFreeMap / OpenMapTiles; Mapterhorn terrain; OpenSkiMap piste data; RainViewer radar (personal/educational API — licensing to-do before commercial radar); NWS; NIFC fire perimeters. Weather data by Open-Meteo.com (CC BY 4.0). Open-Meteo’s free tier is non-commercial — a paid plan is required before sponsors go live.',
       'Email alerts are paused until a sending domain exists. This page is product copy, not a legal filing.',
     ],
   },
@@ -16,8 +17,9 @@ const COPY = {
     draft: true,
     body: [
       'This is a draft for lawyer review. It describes how SkiScope intends to handle the email address you give us. It is not a finished privacy policy.',
-      'If you sign up, we use your email to send storm alerts and optional weekly recaps you asked for, and to send a sign-in link so you can manage those alerts. Recaps and alerts may include clearly labeled sponsored or partner content if you leave that preference on. You can turn sponsor content off on the manage page.',
-      'We store your email, the resorts and thresholds you pick, and your email preferences (storm alerts, recap, recap day, sponsor content) so we can send those messages and show them back to you. We keep a private subscriber record so you can unsubscribe or delete your data. Manage and unsubscribe links sit in every email.',
+      'There are no accounts or passwords. You enter an email, we email a confirmation link, and only after you click is the subscriber active. Later, Manage account emails a sign-in link. Every alert and recap also has a one-click unsubscribe link.',
+      'If you sign up, we use your email to send storm alerts and optional weekly recaps you asked for, and to send a sign-in link so you can manage those alerts. Recaps and alerts may include clearly labeled sponsored or partner content if you leave that preference on. You can turn sponsor content off on the manage page. Signup copy and this page share consent text version ss-consent-1: “By subscribing you agree to get storm alerts and recaps, which may include sponsored content. Unsubscribe anytime.”',
+      'We store your email, the resorts and thresholds you pick, your email preferences, and a consent record (timestamp, source page, consent-text version, hashed IP) so a future sponsor use of the list is backed by consent. We keep a private subscriber record so you can unsubscribe or delete your data. Manage and unsubscribe links sit in every email.',
       'Snow data on the board comes from Open-Meteo and other public map sources listed in About. That is weather data, not your personal data.',
       'The manage page is where you turn storm alerts, recaps, and sponsor content on or off, unsubscribe, or ask us to delete the record. Contact us if those controls are not enough.',
     ],
@@ -68,6 +70,11 @@ export function StaticPage({ kind }: { kind: keyof typeof COPY }) {
         <h1 className="font-display text-5xl tracking-wide">{page.title}</h1>
         <div className="mt-5 flex flex-col gap-4 text-base leading-relaxed text-muted-foreground">
           {page.body.map(p => <p key={p.slice(0, 24)}>{p}</p>)}
+          {kind === 'about' || kind === 'privacy' ? (
+            <p data-testid="open-meteo-credit">
+              Weather data by <a href="https://open-meteo.com/" className="underline-offset-4 hover:underline">Open-Meteo.com</a>
+            </p>
+          ) : null}
         </div>
       </main>
       <SiteFooter />

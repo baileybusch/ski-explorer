@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { BlockBoard } from '@/components/BlockBoard';
 import { SearchOverlay, type SearchFacets } from '@/components/SearchOverlay';
-import { TripSheet } from '@/components/TripSheet';
+import { TripOnboarding } from '@/components/TripOnboarding';
 import { SettingsSheet } from '@/components/SettingsSheet';
 import { PlanDialog } from '@/components/PlanDialog';
 import { MapLayers } from '@/components/MapLayers';
@@ -539,6 +539,8 @@ export default function App() {
           onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
           onAlert={r => { setEditRule(null); setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
           onEditTrip={() => setTripOpen(true)}
+          history={catalog.history}
+          social={catalog.social?.[selectedId] || null}
         />
       ) : null}
 
@@ -570,13 +572,15 @@ export default function App() {
         setPass={p => { setPass(p); setActiveIds(null); }}
       />
 
-      <TripSheet
+      <TripOnboarding
         open={tripOpen}
         onOpenChange={setTripOpen}
+        resort={selected}
+        win={win || { start: '', end: '' }}
         trip={trip}
         setTrip={setTrip}
-        win={win || { start: '', end: '' }}
         setCustomDates={setCustomDates}
+        onAskAi={r => { setTripOpen(false); writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
       />
 
       <SettingsSheet

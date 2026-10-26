@@ -4,17 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RadarPlayer } from '@/components/RadarPlayer';
+import { SnowHistory } from '@/components/SnowHistory';
+import { SeeYouOutThere } from '@/components/SeeYouOutThere';
 import { snowAmount, passLabel, tempLabel, windLabel, type SnowUnits, type TempUnits } from '@/lib/format';
-import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS, forecastDays } from '../../lib/snowWindow.js';
+import { weatherGlyph, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
-import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
-import { flightLinks, lodgingLinks, outboundRel, resortSite } from '../../lib/links.js';
+import { interestingBlurb, peopleLabel, tripDates } from '../../lib/trip.js';
+import { outboundRel, resortSite } from '../../lib/links.js';
 import { fmtFt, fmtIn, fmtShort, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
 
 export function ResortProfile({
-  row, onBack, onPlan, onScroll, snow, typical, units, tempUnits = 'F', trip, win, onShowMap, onAlert, onEditTrip,
+  row, onBack, onPlan, onScroll, snow, typical, units, tempUnits = 'F', trip, win, onShowMap, onAlert, onEditTrip, history, social,
 }: {
   row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
@@ -29,6 +31,8 @@ export function ResortProfile({
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
   onEditTrip?: () => void;
+  history?: any;
+  social?: { instagram?: string; featuredPosts?: string[] } | null;
 }) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -49,19 +53,11 @@ export function ResortProfile({
   const daily = snapDays.map(d => ({ ...d, ...(liveByDate[d.date] || {}) }));
   const maxSnow = Math.max(0.1, ...daily.map((d: any) => d.snowCm || 0));
   const { start: from, end: to } = tripDates(trip, win);
-  const { adults, kids } = partyOf(trip);
-  const fl = flightLinks({ home: trip.home, iata: resort.iata, start: from, end: to, adults, kids });
-  const ld = lodgingLinks({ name: resort.name, lat: resort.center[1], lon: resort.center[0], start: from, end: to, adults, kids });
   const site = resortSite(resort);
   const passName = passLabel(resort);
   const dump = dumpParts(resort, snow);
   const num = units === 'cm' ? Math.round(dump.dumpCm) : fmtIn(dump.dumpCm);
   const unit = units === 'cm' ? 'cm' : '″';
-  const windows = SNOW_PRESETS.map(p => ({
-    ...p,
-    cm: windowMetrics(resort, snow, presetWindow(snow, p.id), typical).windowCm,
-  }));
-  const maxWin = Math.max(0.1, ...windows.map(w => w.cm));
   const hi = daily[0]?.tmax ?? cur.tempC;
   const lo = daily[0]?.tmin ?? resort.tmin;
   const glyph = weatherGlyph({ ...row.m, wcode: cur.wcode ?? row.m?.wcode });
@@ -140,7 +136,7 @@ export function ResortProfile({
           </div>
         </section>
 
-        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4">
+        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
           <Card data-testid="tile-storm-status">
             <CardHeader>
               <CardTitle>Storm status</CardTitle>
@@ -148,6 +144,11 @@ export function ResortProfile({
             <CardContent>
               <p className="text-base leading-relaxed" data-testid="storm-status-text">{status.text}</p>
               <p className="mt-2 text-[11px] text-muted-foreground">Modeled forecast.</p>
+              {onAlert ? (
+                <Button type="button" className="mt-4 min-h-12 w-full text-base" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
+                  Alert me
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -174,6 +175,9 @@ export function ResortProfile({
                   </div>
                 ))}
               </div>
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Weather data by <a href="https://open-meteo.com/" className="underline-offset-4 hover:underline">Open-Meteo.com</a>
+              </p>
             </CardContent>
           </Card>
 
@@ -190,49 +194,24 @@ export function ResortProfile({
           <Card data-testid="tile-snow">
             <CardHeader>
               <CardTitle>Snow history</CardTitle>
-              <CardDescription>Observed windows and the next-7 forecast.</CardDescription>
+              <CardDescription>Current snowfall, this season, and the last five.</CardDescription>
             </CardHeader>
-            <CardContent className="flex h-24 items-end gap-2">
-              {windows.map(w => (
-                <div key={w.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                  <div className="flex h-16 w-full items-end rounded-md bg-muted">
-                    <div className="w-full rounded-md bg-accent" style={{ height: `${Math.max(8, Math.round((w.cm / maxWin) * 100))}%` }} />
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{w.label}</span>
-                  <span className="text-xs font-semibold">{snowAmount(w.cm, units)}</span>
-                </div>
-              ))}
+            <CardContent>
+              <SnowHistory resort={resort} snow={snow} history={history} units={units} />
             </CardContent>
           </Card>
 
           <Card data-testid="tile-trip">
             <CardHeader>
-              <CardTitle>Plan trip</CardTitle>
+              <CardTitle>Plan a trip</CardTitle>
               <CardDescription>
                 {fmtShort(from)}–{fmtShort(to)} · {peopleLabel(trip)}
                 {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              {onEditTrip ? (
-                <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="edit-trip" onClick={onEditTrip}>
-                  People, dates, airport
-                </Button>
-              ) : null}
-              {fl[0] ? (
-                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
-                  <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>Flights</a>
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">No nearby airport on file.</p>
-              )}
-              {ld[0] ? (
-                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
-                  <a href={ld[0].href} target="_blank" rel={outboundRel(ld[0].sponsored)}>Stays</a>
-                </Button>
-              ) : null}
-              <Button variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={() => onPlan(resort)}>
-                Plan with an AI agent
+            <CardContent>
+              <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={onEditTrip || (() => onPlan(resort))}>
+                Plan a trip
               </Button>
             </CardContent>
           </Card>
@@ -255,16 +234,10 @@ export function ResortProfile({
               ) : null}
             </CardContent>
           </Card>
+
+          <SeeYouOutThere resort={resort} social={social} />
         </div>
       </div>
-
-      {onAlert ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
-            Alert me
-          </Button>
-        </div>
-      ) : null}
     </div>
   );
 }

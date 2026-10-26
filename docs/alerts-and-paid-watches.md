@@ -10,8 +10,8 @@ Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates,
 | Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
 | `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
 | Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
-| Alert me UI | Multi-step onboarding. Home has a bottom email signup (the only filled primary on home) that opens the same flow. Resort page still has the full-width Alert me bar. |
-| Accounts | Passwordless `/manage`. Magic-link tokens in `lib/authToken.js`. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
+| Alert me UI | Multi-step onboarding. Home has a bottom email signup (the only filled primary on home) that opens the same flow. Resort page has a full-width filled Alert me button under storm status — not a floating bar. |
+| Accounts | No passwords. Email + signed link. Double opt-in, consent records, preference center. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
 | Sponsor slot | Optional, off by default. Labeled **Sponsored** in alert + recap templates. Preview renders “Example sponsor”. |
 | `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |
 | Cron | `vercel.json` → `/api/cron/alerts` daily `0 3 * * *` (Sunday evening PT ≈ recap window). Handler no-ops while the flag is false. Old `/api/cron/digest` still no-ops. |

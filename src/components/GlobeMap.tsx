@@ -1,8 +1,8 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, type Ref } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Map as MapLibreMap, AttributionControl } from 'maplibre-gl';
 import { windowMetrics } from '../../lib/snowWindow.js';
 import { snowAmount } from '@/lib/format';
-import { buildStyle } from '@/lib/mapStyle';
+import { fallbackStyle, loadStyle } from '@/lib/mapStyle';
 import { stormForResort } from '../../lib/storms.js';
 import { rainviewerMaps, radarTileUrl, satelliteTileUrl } from '@/lib/rainviewer';
 
@@ -40,18 +40,15 @@ function setInteractive(map: MapLibreMap, on: boolean) {
 }
 
 function setHeroBase(map: MapLibreMap, hero: boolean) {
-  try {
-    map.setLayoutProperty('sat', 'visibility', hero ? 'visible' : 'none');
-    map.setPaintProperty('sat', 'raster-saturation', hero ? -0.35 : -1);
-    map.setPaintProperty('sat', 'raster-brightness-max', hero ? 0.86 : 0.7);
-    map.setLayoutProperty('dark', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('resort-label', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('resort-dot', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('resort-hit', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('fire-fill', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('fire-line', 'visibility', hero ? 'none' : 'visible');
-    map.setLayoutProperty('snow', 'visibility', hero ? 'none' : 'visible');
-  } catch { /* style not ready */ }
+  const vis = (id: string, on: boolean) => {
+    try { map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); } catch { /* style not ready */ }
+  };
+  vis('resort-label', !hero);
+  vis('resort-dot', !hero);
+  vis('resort-hit', !hero);
+  vis('fire-fill', !hero);
+  vis('fire-line', !hero);
+  vis('snow', !hero);
 }
 
 export const GlobeMap = forwardRef(function GlobeMap(
@@ -83,10 +80,14 @@ export const GlobeMap = forwardRef(function GlobeMap(
   const terrainOn = useRef(false);
   const terrainOk = useRef(true);
   const ready = useRef(false);
+  const fellBack = useRef(false);
   const onSelectRef = useRef(onSelect);
   const layoutRef = useRef(layout);
+  const fireRef = useRef(fire);
+  const [mapEpoch, setMapEpoch] = useState(0);
   onSelectRef.current = onSelect;
   layoutRef.current = layout;
+  fireRef.current = fire;
 
   useImperativeHandle(ref, () => ({
     flyHome() {
@@ -126,66 +127,99 @@ export const GlobeMap = forwardRef(function GlobeMap(
 
   useEffect(() => {
     if (!el.current || mapRef.current) return;
-    const contourUrl: string | undefined = undefined;
-    const map = new MapLibreMap({
-      container: el.current,
-      hash: false,
-      attributionControl: false,
-      maxPitch: 80,
-      center: [-30, 28],
-      zoom: 1.55,
-      pitch: 0,
-      bearing: 0,
-      projection: { type: 'globe' },
-      style: buildStyle({ contourUrl, fire }) as any,
-      interactive: true,
-    });
-    map.addControl(new AttributionControl({ compact: true, customAttribution: 'Snow: <a href="https://open-meteo.com">Open-Meteo</a> · Terrain © <a href="https://mapterhorn.com">Mapterhorn</a>' }), 'bottom-left');
-    mapRef.current = map;
+    let cancelled = false;
+    let map: MapLibreMap | null = null;
 
-    map.on('load', () => {
-      ready.current = true;
-      try { map.resize(); } catch { /* */ }
+    function hideFailedBasemap(instance: MapLibreMap) {
       try {
-        import('maplibre-contour').then(mlcontour => {
-          const demSource = new mlcontour.default.DemSource({ url: DEM, encoding: 'terrarium', maxzoom: 12, worker: true });
-          demSource.setupMaplibre({ Map: MapLibreMap } as any);
-        }).catch(() => { /* contours stay off */ });
-      } catch { /* */ }
-    });
-    map.on('click', e => {
-      if (layoutRef.current !== 'full') return;
-      const P = 24, { x, y } = e.point;
-      const f = map.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-dot', 'resort-label'] });
-      if (!f.length) return;
-      f.sort((a, b) => {
-        const pa = map.project((a.geometry as any).coordinates);
-        const pb = map.project((b.geometry as any).coordinates);
-        return Math.hypot(pa.x - x, pa.y - y) - Math.hypot(pb.x - x, pb.y - y);
+        const style = instance.getStyle();
+        for (const layer of style?.layers || []) {
+          if (layer.source === 'openmaptiles' || layer.source === 'ne2_shaded') {
+            instance.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+        }
+        if (instance.getLayer('background')) {
+          instance.setPaintProperty('background', 'background-color', '#1c1d21');
+        }
+      } catch { /* keep last paint */ }
+    }
+
+    function bind(instance: MapLibreMap) {
+      instance.addControl(new AttributionControl({ compact: true }), 'bottom-left');
+      instance.on('load', () => {
+        ready.current = true;
+        setMapEpoch(n => n + 1);
+        try { instance.resize(); } catch { /* */ }
+        try {
+          import('maplibre-contour').then(mlcontour => {
+            const demSource = new mlcontour.default.DemSource({ url: DEM, encoding: 'terrarium', maxzoom: 12, worker: true });
+            demSource.setupMaplibre({ Map: MapLibreMap } as any);
+          }).catch(() => { /* contours stay off */ });
+        } catch { /* */ }
       });
-      onSelectRef.current(f[0].properties.id);
-    });
-    map.on('mousemove', e => {
-      if (layoutRef.current !== 'full') {
-        map.getCanvas().style.cursor = '';
-        return;
-      }
-      const P = 16, { x, y } = e.point;
-      map.getCanvas().style.cursor = map.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-label'] }).length ? 'pointer' : '';
-    });
-    map.on('zoomend', () => syncTerrain(map, terrainOn, terrainOk));
-    map.on('moveend', () => syncTerrain(map, terrainOn, terrainOk));
-    map.on('error', (err: any) => {
-      const src = err?.sourceId || err?.source?.id;
-      if (src === 'dem' || /mapterhorn|terrain|dem/i.test(String(err?.error?.message || err?.error || ''))) {
-        terrainOk.current = false;
-        try { map.setTerrain(null); } catch { /* */ }
-        terrainOn.current = false;
-      }
+      instance.on('click', e => {
+        if (layoutRef.current !== 'full') return;
+        const P = 24, { x, y } = e.point;
+        const f = instance.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-dot', 'resort-label'] });
+        if (!f.length) return;
+        f.sort((a, b) => {
+          const pa = instance.project((a.geometry as any).coordinates);
+          const pb = instance.project((b.geometry as any).coordinates);
+          return Math.hypot(pa.x - x, pa.y - y) - Math.hypot(pb.x - x, pb.y - y);
+        });
+        onSelectRef.current(f[0].properties.id);
+      });
+      instance.on('mousemove', e => {
+        if (layoutRef.current !== 'full') {
+          instance.getCanvas().style.cursor = '';
+          return;
+        }
+        const P = 16, { x, y } = e.point;
+        instance.getCanvas().style.cursor = instance.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-label'] }).length ? 'pointer' : '';
+      });
+      instance.on('zoomend', () => syncTerrain(instance, terrainOn, terrainOk));
+      instance.on('moveend', () => syncTerrain(instance, terrainOn, terrainOk));
+      instance.on('error', (err: any) => {
+        const src = err?.sourceId || err?.source?.id;
+        const msg = String(err?.error?.message || err?.error || '');
+        if (src === 'dem' || /mapterhorn|terrain|dem/i.test(msg)) {
+          terrainOk.current = false;
+          try { instance.setTerrain(null); } catch { /* */ }
+          terrainOn.current = false;
+        }
+        if (src === 'openmaptiles' || src === 'ne2_shaded' || /openfreemap|openmaptiles|failed to load/i.test(msg)) {
+          if (fellBack.current) {
+            hideFailedBasemap(instance);
+            return;
+          }
+          fellBack.current = true;
+          try { instance.setStyle(fallbackStyle({ fire: fireRef.current }) as any); } catch { hideFailedBasemap(instance); }
+        }
+      });
+    }
+
+    loadStyle({ fire }).then(style => {
+      if (cancelled || !el.current) return;
+      map = new MapLibreMap({
+        container: el.current,
+        hash: false,
+        attributionControl: false,
+        maxPitch: 80,
+        center: [-30, 28],
+        zoom: 1.55,
+        pitch: 0,
+        bearing: 0,
+        projection: { type: 'globe' },
+        style: style as any,
+        interactive: true,
+      });
+      mapRef.current = map;
+      bind(map);
     });
 
     return () => {
-      map.remove();
+      cancelled = true;
+      map?.remove();
       mapRef.current = null;
       ready.current = false;
     };
@@ -202,7 +236,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     };
     if (map.loaded()) apply();
     else map.once('load', apply);
-  }, [layout]);
+  }, [layout, mapEpoch]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -229,7 +263,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     };
     if (map.loaded()) paint();
     else map.once('load', paint);
-  }, [resorts, snow, typical, win, units]);
+  }, [resorts, snow, typical, win, units, mapEpoch]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -249,7 +283,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     };
     if (map.loaded()) apply();
     else map.once('load', apply);
-  }, [lodgingOn, selectedId, resorts]);
+  }, [lodgingOn, selectedId, resorts, mapEpoch]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -276,7 +310,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     };
     if (map.loaded()) apply();
     else map.once('load', apply);
-  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo]);
+  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, mapEpoch]);
 
   const hidden = layout === 'hidden';
   const hero = layout === 'hero';

@@ -9,8 +9,8 @@ Front end is **Vite + React + Tailwind + shadcn/ui** (`src/`, build → `dist/`)
 ## Data sources
 | Layer | Source |
 |---|---|
-| Terrain / hillshade / contours | [Mapterhorn](https://mapterhorn.com) terrarium WebP tiles (keyless, maxzoom 12). 3D terrain from that DEM. If the source errors, Esri imagery + hillshade without 3D. Contours optional via `maplibre-contour`. |
-| Imagery | Esri World Imagery (attribution in map); CARTO Dark as non-satellite fallback |
+| Terrain / hillshade / contours | [Mapterhorn](https://mapterhorn.com) terrarium WebP tiles (keyless, maxzoom 12). 3D terrain from that DEM. If the source errors, hillshade/3D turn off. Contours optional via `maplibre-contour`. |
+| Basemap | [OpenFreeMap](https://openfreemap.org) dark vector style (OpenMapTiles + OSM). Keyless, commercial-ok. Style/tile failure falls back to a plain dark background + overlays — the map is never blank. Esri imagery and CARTO were removed (commercial / key issues). |
 | Snowfall + snow depth | [Open-Meteo](https://open-meteo.com) forecast API (`past_days=30`, `forecast_days=7`, daily `snowfall_sum` / temps / weathercode, hourly `snow_depth` on the mid-mountain point only). **2×2 heatmap grid + one center** per resort so a full worldwide run stays under the free hourly weighted-call budget (the old 4×4 + hourly-everywhere path needed ~4360 weighted calls and stalled on a 4000/hour self-throttle). Snapshot committed to the repo (`scripts/fetch_snow.py`); daily refresh is still paused — `docs/github-action-snow.yml.example` is an example only. |
 | Runs, lifts, ski-area stats | [OpenSkiMap](https://openskimap.org) GeoJSON (© OpenStreetMap contributors, ODbL), clipped per resort by `scripts/process_osm.py` |
 | Cottonwood Fire perimeter | NIFC WFIGS Interagency Perimeters FeatureServer, IRWIN {B1B09572-CD77-4B0A-8E06-71284617A28F} |
@@ -26,6 +26,7 @@ python3 scripts/build_index.py           # merge international destinations + ai
 python3 scripts/fetch_snow.py            # full refresh (2×2 + center); add --missing for new ids only
 python3 scripts/typical.py               # day-of-year averages from stored seasons (typical, not forecast)
 python3 scripts/fetch_seasons.py         # NH Nov–Apr; HEMI=S for Chile/NZ/AU (Jun–Sep → *sh.json)
+python3 scripts/fetch_history.py         # top ~40 season-to-date + 5 past seasons (Open-Meteo archive)
 ```
 `scripts/resorts.json` rows are `[id, name, OSM name token, state, lat, lon, ikonAccess|null, epicAccess|null]`; a resort on both passes has both fields set and gets both tags. The index also carries `region`, `country`, `town`, `iata` (nearest commercial airport), `aliases`, `hemisphere`, plus OSM stats when matched. New worldwide destinations live in `scripts/destinations.json`.
 

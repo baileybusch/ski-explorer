@@ -7,6 +7,7 @@ import { THRESHOLDS, WINDOWS, type AlertsUiMode } from '@/lib/alertsUi';
 import {
   type LocalRule, accountEmail, addLocalRule, setAccountEmail, updateLocalRule,
 } from '@/lib/alertRules';
+import { CONSENT_TEXT } from '../../lib/consentText.js';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -129,7 +130,7 @@ export function AlertOnboarding({
       const r = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, source: ctx.source || 'signup' }),
       });
       const j = await r.json().catch(() => ({ error: 'Could not save' }));
       if (j.error) {
@@ -178,7 +179,7 @@ export function AlertOnboarding({
             {mode === 'preview'
               ? 'Preview only — saved on this device. Nothing is emailed.'
               : mode === 'live'
-                ? 'No password. One-click unsubscribe in every email.'
+                ? 'One-click unsubscribe in every email.'
                 : 'Alerts are paused. Rules stay on this device.'}
           </p>
           <h2 className="mt-2 font-display text-4xl tracking-wide">{question}</h2>
@@ -274,8 +275,8 @@ export function AlertOnboarding({
               <div className="rounded-2xl bg-card p-4 text-base leading-relaxed ring-1 ring-foreground/12" data-testid="alert-preview">
                 {preview}
               </div>
-              <p className="text-sm text-muted-foreground">
-                No password. We only use this address for snow alerts. Unsubscribe sits in every email.
+              <p className="text-sm text-muted-foreground" data-testid="alert-consent">
+                {CONSENT_TEXT}
               </p>
               {msg ? <p className="text-sm text-destructive" data-testid="alert-msg">{msg}</p> : null}
             </div>
@@ -287,7 +288,7 @@ export function AlertOnboarding({
                 You&apos;re set. We&apos;ll email you when {where} is about to get {snowBit}.
               </p>
               <p className="text-sm text-muted-foreground">
-                {mode === 'live' ? 'Watch the inbox when a storm lines up.' : 'Saved on this device. Nothing was emailed.'}
+                {mode === 'live' ? 'Check your email and tap the confirmation link. Alerts start only after you confirm.' : 'Saved on this device. Nothing was emailed.'}
               </p>
             </div>
           ) : null}

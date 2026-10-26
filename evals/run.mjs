@@ -11,6 +11,7 @@ import { runAlertEvals } from './alerts.mjs';
 import { runStormStatusEvals } from './stormStatus.mjs';
 import { runDumpScoreEvals } from './dumpScore.mjs';
 import { runAuthTokenEvals } from './authToken.mjs';
+import { runSnowHistoryEvals } from './snowHistory.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -90,4 +91,9 @@ console.log('\nauth token\n');
 for (const line of tokens.lines) console.log(line);
 console.log(`\n${tokens.total - tokens.fail}/${tokens.total} auth-token evals passed`);
 
-process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail ? 1 : 0);
+const hist = runSnowHistoryEvals();
+console.log('\nsnow history\n');
+for (const line of hist.lines) console.log(line);
+console.log(`\n${hist.total - hist.fail}/${hist.total} snow-history evals passed`);
+
+process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail ? 1 : 0);

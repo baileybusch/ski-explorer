@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CONSENT_TEXT } from '../../lib/consentText.js';
 
 export function HomeSignup({ onStart }: { onStart: (email: string) => void }) {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export function HomeSignup({ onStart }: { onStart: (email: string) => void }) {
     <section className="mx-auto mt-8 w-full max-w-xl px-3" data-testid="home-signup">
       <h2 className="font-display text-4xl tracking-wide">Know before it dumps</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Get a storm alert when a mountain you care about is about to get hit. No password.
+        Get a storm alert when a mountain you care about is about to get hit.
       </p>
       <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={submit}>
         <Input
@@ -39,6 +40,7 @@ export function HomeSignup({ onStart }: { onStart: (email: string) => void }) {
         </Button>
       </form>
       {msg ? <p className="mt-2 text-sm text-destructive">{msg}</p> : null}
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid="signup-consent">{CONSENT_TEXT}</p>
     </section>
   );
 }
