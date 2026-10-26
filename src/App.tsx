@@ -74,7 +74,7 @@ export default function App() {
   const [restoreTop, setRestoreTop] = useState(0);
   const [boardMode, setBoardMode] = useState<'recent' | 'incoming'>('recent');
   const [shown, setShown] = useState(BOARD_PAGE);
-  const alertsUi = alertsUiState();
+  const [alertsUi] = useState(() => alertsUiState());
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertCtx, setAlertCtx] = useState<AlertContext>({ source: 'incoming', pass });
 
@@ -149,10 +149,12 @@ export default function App() {
       resort: extra.resort ?? selectedId,
       from: start, to: end, adults, kids, home: trip.home,
       mode: extra.mode, pass, region: extra.region,
+      view: boardMode === 'incoming' ? 'incoming' : undefined,
+      alerts: alertsUi.mode === 'preview' ? '1' : undefined,
     }));
   }
 
-  useEffect(() => { if (win) writeURL(); }, [pass, win, trip, selectedId]);
+  useEffect(() => { if (win) writeURL(); }, [pass, win, trip, selectedId, boardMode]);
 
   function applyRegion(g: any, cat = catalog, p = pass) {
     if (!g || !cat) return;

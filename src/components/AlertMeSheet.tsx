@@ -108,7 +108,7 @@ export function AlertMeSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto" data-testid="alert-me-sheet">
+      <SheetContent side="bottom" className="mx-auto max-h-[92dvh] w-full max-w-xl overflow-y-auto" data-testid="alert-me-sheet">
         <SheetHeader>
           <SheetTitle>Alert me</SheetTitle>
           <SheetDescription>
