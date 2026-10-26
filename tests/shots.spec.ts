@@ -1,7 +1,19 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const DIR = '/opt/cursor/artifacts/screenshots';
+function shotDir() {
+  for (const dir of ['/opt/cursor/artifacts/screenshots', 'tmp/screenshots']) {
+    try {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '.writable'), '1');
+      return dir;
+    } catch { /* next */ }
+  }
+  return 'tmp/screenshots';
+}
+
+const DIR = shotDir();
 
 test.beforeAll(() => {
   mkdirSync(DIR, { recursive: true });
