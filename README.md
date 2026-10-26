@@ -105,7 +105,7 @@ A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is igno
 
 ## v9: block board is the product
 
-Home is a **gap-free block grid** that always fills the screen. Time windows + hamburger on the first row; featured agent bar under that; Trip pill under search. Tap a block for a full-screen **profile**: mountain-map hero (MapLibre + Mapterhorn 3D), then swipeable tiles (snow, weather, storm, trip, facts) and a persistent Plan trip. Swipe sideways to the next resort in board order; swipe down or back returns to the same board scroll. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
+Home is a **gap-free block grid** of the **top 11**, then Show more. Recent snow vs Incoming (modeled next-7 forecast). Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. Tap a block for a full-screen **profile**: mountain-map hero, forecast first, then radar, storm, snow history, a 3-button trip tile, facts, and a pinned Plan trip. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 
