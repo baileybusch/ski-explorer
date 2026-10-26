@@ -45,6 +45,12 @@ function setHeroBase(map: MapLibreMap, hero: boolean) {
     map.setPaintProperty('sat', 'raster-saturation', hero ? -0.35 : -1);
     map.setPaintProperty('sat', 'raster-brightness-max', hero ? 0.86 : 0.7);
     map.setLayoutProperty('dark', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('resort-label', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('resort-dot', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('resort-hit', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('fire-fill', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('fire-line', 'visibility', hero ? 'none' : 'visible');
+    map.setLayoutProperty('snow', 'visibility', hero ? 'none' : 'visible');
   } catch { /* style not ready */ }
 }
 
@@ -277,7 +283,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
 
   return (
     <div
-      className={hidden ? 'hidden' : hero ? 'absolute inset-x-0 top-0 z-0 h-[48dvh] overflow-hidden' : 'absolute inset-0 z-10'}
+      className={hidden ? 'hidden' : hero ? 'hero-map absolute inset-x-0 top-0 z-0 h-[48dvh] overflow-hidden' : 'absolute inset-0 z-10'}
       data-testid="globe"
       style={hero ? { transform: `translate3d(0, ${Math.round(parallax * 0.22)}px, 0)`, pointerEvents: 'none' } : undefined}
     >

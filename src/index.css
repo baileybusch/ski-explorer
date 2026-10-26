@@ -180,6 +180,15 @@ input::placeholder {
   background: linear-gradient(180deg, rgba(8, 9, 11, 0.28) 0%, rgba(8, 9, 11, 0.08) 42%, rgba(8, 9, 11, 0.55) 100%);
 }
 
+.hero-map .maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+[data-testid="resort-profile"] [data-slot="carousel"],
+[data-testid="resort-profile"] [data-slot="carousel-content"] {
+  height: 100%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

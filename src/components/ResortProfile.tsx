@@ -40,6 +40,7 @@ export function ResortProfile({
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const index = Math.max(0, pages.findIndex(x => x.r.id === selectedId));
+  const selected = pages[index];
 
   useEffect(() => {
     if (!api) return;
@@ -58,7 +59,7 @@ export function ResortProfile({
   }, [api, index]);
 
   return (
-    <div className="relative z-10 flex h-full min-h-dvh flex-col" data-testid="resort-profile">
+    <div className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden" data-testid="resort-profile">
       <Button
         type="button"
         variant="secondary"
@@ -71,37 +72,47 @@ export function ResortProfile({
       </Button>
       <Carousel className="min-h-0 flex-1 overflow-hidden" opts={{ align: 'start', containScroll: 'trimSnaps' }} setApi={setApi}>
         <CarouselContent className="-ml-0 h-full">
-          {pages.map(row => (
-            <CarouselItem key={row.r.id} className="pl-0 basis-full">
-              <ProfilePage
-                row={row}
-                rank={pages.findIndex(x => x.r.id === row.r.id) + 1}
-                active={row.r.id === selectedId}
-                snow={snow}
-                typical={typical}
-                units={units}
-                trip={trip}
-                win={win}
-                pass={pass}
-                lodgingOn={lodgingOn}
-                setLodgingOn={setLodgingOn}
-                onPlan={() => onPlan(row.r)}
-                onWatch={onWatch}
-                onShowMap={() => onShowMap(row.r)}
-                onBack={onBack}
-                onScroll={row.r.id === selectedId ? onScroll : undefined}
-              />
+          {pages.map((row, i) => (
+            <CarouselItem key={row.r.id} className="h-full pl-0 basis-full">
+              {Math.abs(i - index) <= 1 ? (
+                <ProfilePage
+                  row={row}
+                  rank={i + 1}
+                  active={row.r.id === selectedId}
+                  snow={snow}
+                  typical={typical}
+                  units={units}
+                  trip={trip}
+                  win={win}
+                  pass={pass}
+                  lodgingOn={lodgingOn}
+                  setLodgingOn={setLodgingOn}
+                  onWatch={onWatch}
+                  onShowMap={() => onShowMap(row.r)}
+                  onBack={onBack}
+                  onScroll={row.r.id === selectedId ? onScroll : undefined}
+                />
+              ) : (
+                <div className="h-full" />
+              )}
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
+      {selected ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="plan-trip" onClick={() => onPlan(selected.r)}>
+            Plan trip
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function ProfilePage({
   row, rank, active, snow, typical, units, trip, win, pass, lodgingOn, setLodgingOn,
-  onPlan, onWatch, onShowMap, onBack, onScroll,
+  onWatch, onShowMap, onBack, onScroll,
 }: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -355,12 +366,6 @@ function ProfilePage({
           onClick={() => { setWatched(toggleWatch(resort.id)); onWatch(); }}
         >
           {watched ? 'Watching' : 'Watch'}
-        </Button>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="plan-trip" onClick={onPlan}>
-          Plan trip
         </Button>
       </div>
     </div>
