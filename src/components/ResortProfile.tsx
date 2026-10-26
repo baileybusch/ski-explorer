@@ -7,11 +7,12 @@ import { RadarPlayer } from '@/components/RadarPlayer';
 import { SnowHistory } from '@/components/SnowHistory';
 import { SeeYouOutThere } from '@/components/SeeYouOutThere';
 import { snowAmount, passLabel, tempLabel, windLabel, type SnowUnits, type TempUnits } from '@/lib/format';
+import { dumpAria, SnowSplit } from '@/components/SnowSplit';
 import { weatherGlyph, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
 import { interestingBlurb, peopleLabel, tripDates } from '../../lib/trip.js';
 import { outboundRel, resortSite } from '../../lib/links.js';
-import { fmtFt, fmtIn, fmtShort, parseISO } from '../../lib/util.js';
+import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
 
@@ -56,8 +57,6 @@ export function ResortProfile({
   const site = resortSite(resort);
   const passName = passLabel(resort);
   const dump = dumpParts(resort, snow);
-  const num = units === 'cm' ? Math.round(dump.dumpCm) : fmtIn(dump.dumpCm);
-  const unit = units === 'cm' ? 'cm' : '″';
   const hi = daily[0]?.tmax ?? cur.tempC;
   const lo = daily[0]?.tmin ?? resort.tmin;
   const glyph = weatherGlyph({ ...row.m, wcode: cur.wcode ?? row.m?.wcode });
@@ -120,9 +119,9 @@ export function ResortProfile({
             <p className="mt-1 text-sm text-white/70">
               {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <div className="font-display leading-none" style={{ fontSize: 'clamp(4.6rem, 22vw, 7.2rem)' }}>
-                {num}<span className="text-[0.36em]">{unit}</span>
+            <div className="mt-2 flex min-w-0 items-end justify-between gap-3">
+              <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units)}>
+                <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" />
               </div>
               <div className="mb-2 text-right text-base text-white/80">
                 <div>{glyph} {tempLabel(cur.tempC, tempUnits)}</div>

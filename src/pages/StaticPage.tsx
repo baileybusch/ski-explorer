@@ -19,7 +19,7 @@ const COPY = {
       'This is a draft for lawyer review. It describes how SkiScope intends to handle the email address you give us. It is not a finished privacy policy.',
       'There are no accounts or passwords. You enter an email, we email a confirmation link, and only after you click is the subscriber active. Later, Manage account emails a sign-in link. Every alert and recap also has a one-click unsubscribe link.',
       'If you sign up, we use your email to send storm alerts and optional weekly recaps you asked for, and to send a sign-in link so you can manage those alerts. Recaps and alerts may include clearly labeled sponsored or partner content if you leave that preference on. You can turn sponsor content off on the manage page. Signup copy and this page share consent text version ss-consent-1: “By subscribing you agree to get storm alerts and recaps, which may include sponsored content. Unsubscribe anytime.”',
-      'We store your email, the resorts and thresholds you pick, your email preferences, and a consent record (timestamp, source page, consent-text version, hashed IP) so a future sponsor use of the list is backed by consent. We keep a private subscriber record so you can unsubscribe or delete your data. Manage and unsubscribe links sit in every email.',
+      'We store your email, the resorts you follow, your email preferences, and a consent record (timestamp, source page, consent-text version, hashed IP) so a future sponsor use of the list is backed by consent. We keep a private subscriber record so you can unsubscribe or delete your data. Manage and unsubscribe links sit in every email.',
       'Snow data on the board comes from Open-Meteo and other public map sources listed in About. That is weather data, not your personal data.',
       'The manage page is where you turn storm alerts, recaps, and sponsor content on or off, unsubscribe, or ask us to delete the record. Contact us if those controls are not enough.',
     ],
@@ -56,7 +56,7 @@ const COPY = {
 export function StaticPage({ kind }: { kind: keyof typeof COPY }) {
   const page = COPY[kind];
   return (
-    <div className="min-h-dvh bg-background text-foreground" data-testid={`page-${kind}`}>
+    <div className="min-h-dvh bg-background text-foreground" data-testid="static-page" data-page={kind}>
       <header className="mx-auto flex w-full max-w-xl items-center justify-between px-3 pt-[max(0.55rem,env(safe-area-inset-top))]">
         <a href={withAlerts('/')} className="flex min-h-11 items-center gap-2" data-testid="legal-home">
           <LogoMark className="size-7" />

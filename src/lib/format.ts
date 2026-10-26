@@ -8,6 +8,16 @@ export function snowAmount(cm: number, units: SnowUnits) {
   return units === 'cm' ? `${Math.round(cm)} cm` : `${fmtIn(cm)}″`;
 }
 
+/** Headline label for fallen snow. Never use dump score (past+next) here. */
+export function last72Label() {
+  return 'last 72h';
+}
+
+/** Accent chip for forecast snow. Always prefixed with + so it cannot read as fallen. */
+export function forecastComing(cm: number, units: SnowUnits) {
+  return `+${snowAmount(cm, units)} coming`;
+}
+
 export function tempLabel(c: number | null | undefined, temp: TempUnits = 'F') {
   if (c == null || !Number.isFinite(c)) return '—';
   return temp === 'C' ? `${Math.round(c)}°C` : `${Math.round(C2F(c))}°`;

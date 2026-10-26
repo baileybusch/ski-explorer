@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChoiceTile, FlowShell } from '@/components/FlowShell';
+import { ChoiceTile, FlowShell, useAutoAdvance } from '@/components/FlowShell';
 import { loadTrip, peopleLabel, saveTrip } from '../../lib/trip.js';
 import { flightLinks, lodgingLinks, outboundRel, partyOf, tripDates } from '../../lib/links.js';
 import { fmtShort } from '../../lib/util.js';
@@ -59,6 +59,7 @@ export function TripOnboarding({
   const [home, setHome] = useState('SAN');
   const [lodging, setLodging] = useState<(typeof LODGING)[number]['id']>('any');
   const [budget, setBudget] = useState<(typeof BUDGET)[number]['id']>('mid');
+  const advance = useAutoAdvance();
 
   useEffect(() => {
     if (!open) return;
@@ -143,9 +144,11 @@ export function TripOnboarding({
       total={4}
       footer={step !== 'results' ? (
         <>
-          <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="trip-next" onClick={next}>
-            Continue
-          </Button>
+          {step !== 'stay' ? (
+            <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="trip-next" onClick={next}>
+              Continue
+            </Button>
+          ) : null}
           <Button type="button" variant="ghost" className="min-h-11 w-full text-base" data-testid="trip-skip" onClick={next}>
             Skip
           </Button>
@@ -159,19 +162,30 @@ export function TripOnboarding({
       {step === 'dates' ? (
         <div className="mt-6 flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">Pick dates, or a flexible month.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm">
+          <div className="grid min-w-0 grid-cols-2 gap-3">
+            <label className="min-w-0 text-sm">
               From
-              <Input type="date" className="mt-1 min-h-12" value={start} onChange={e => { setStart(e.target.value); setFlex(null); }} data-testid="trip-start" />
+              <Input type="date" className="mt-1 min-h-12 w-full min-w-0" value={start} onChange={e => { setStart(e.target.value); setFlex(null); }} data-testid="trip-start" />
             </label>
-            <label className="text-sm">
+            <label className="min-w-0 text-sm">
               To
-              <Input type="date" className="mt-1 min-h-12" value={end} onChange={e => { setEnd(e.target.value); setFlex(null); }} data-testid="trip-end" />
+              <Input type="date" className="mt-1 min-h-12 w-full min-w-0" value={end} onChange={e => { setEnd(e.target.value); setFlex(null); }} data-testid="trip-end" />
             </label>
           </div>
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="mt-2 flex min-w-0 flex-col gap-2">
             {MONTHS.map(m => (
-              <ChoiceTile key={m.id} selected={flex === m.id} title={m.label} hint="Flexible week" testId={`trip-month-${m.id}`} onClick={() => setFlex(m.id)} />
+              <ChoiceTile
+                key={m.id}
+                selected={flex === m.id}
+                title={m.label}
+                hint="Flexible week"
+                testId={`trip-month-${m.id}`}
+                onClick={() => {
+                  setFlex(m.id);
+                  persist({ flexMonth: m.id, ...monthRange(m.id) });
+                  advance(() => setStep('who'));
+                }}
+              />
             ))}
           </div>
         </div>
@@ -212,17 +226,32 @@ export function TripOnboarding({
       {step === 'stay' ? (
         <div className="mt-6 flex flex-col gap-3">
           {LODGING.map(l => (
-            <ChoiceTile key={l.id} selected={lodging === l.id} title={l.label} hint={l.hint} testId={`trip-lodging-${l.id}`} onClick={() => setLodging(l.id)} />
+            <ChoiceTile
+              key={l.id}
+              selected={lodging === l.id}
+              title={l.label}
+              hint={l.hint}
+              testId={`trip-lodging-${l.id}`}
+              onClick={() => {
+                setLodging(l.id);
+                persist({ lodging: l.id });
+                advance(() => setStep('results'));
+              }}
+            />
           ))}
           <p className="mt-3 text-sm text-muted-foreground">Budget</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid min-w-0 grid-cols-3 gap-2">
             {BUDGET.map(b => (
               <button
                 key={b.id}
                 type="button"
                 data-testid={`trip-budget-${b.id}`}
-                onClick={() => setBudget(b.id)}
-                className={`min-h-12 rounded-2xl ring-1 ${budget === b.id ? 'bg-foreground text-background ring-foreground' : 'ring-foreground/12'}`}
+                onClick={() => {
+                  setBudget(b.id);
+                  persist({ budget: b.id });
+                  advance(() => setStep('results'));
+                }}
+                className={`min-h-12 min-w-0 rounded-2xl ring-1 ${budget === b.id ? 'bg-foreground text-background ring-foreground' : 'ring-foreground/12'}`}
               >
                 {b.label}
               </button>

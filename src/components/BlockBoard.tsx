@@ -2,13 +2,10 @@ import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } fr
 import { Button } from '@/components/ui/button';
 import { forecastDays } from '../../lib/snowWindow.js';
 import { dumpParts, cardTone, gridCols, packCells, rowHeight, targetRows } from '@/lib/board';
-import { fmtIn, parseISO } from '../../lib/util.js';
 import { snowAmount, tempLabel, type SnowUnits, type TempUnits } from '@/lib/format';
+import { parseISO } from '../../lib/util.js';
 import { RadarThumb } from '@/components/RadarThumb';
-
-function amt(cm: number, units: 'in' | 'cm') {
-  return units === 'cm' ? `${Math.round(cm)} cm` : `${fmtIn(cm)}″`;
-}
+import { dumpAria, SnowSplit } from '@/components/SnowSplit';
 
 export function BlockBoard({
   rows, units, tempUnits = 'F', snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, after, tight,
@@ -56,7 +53,7 @@ export function BlockBoard({
   return (
     <div
       ref={wrap}
-      className={`min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${tight ? 'pt-1' : 'pt-5'}`}
+      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${tight ? 'pt-1' : 'pt-5'}`}
       data-testid="board-b"
       data-mode="dump"
     >
@@ -66,8 +63,11 @@ export function BlockBoard({
         </div>
       ) : (
         <>
+          <p className="px-1 pb-2 text-[11px] text-muted-foreground" data-testid="board-rank-hint">
+            Ranked by last 72h + next 7 days
+          </p>
           <div
-            className="grid w-full"
+            className="grid w-full min-w-0"
             style={{
               gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
               gridAutoRows: `${rowPx}px`,
@@ -78,8 +78,6 @@ export function BlockBoard({
               const row = rows[cell.i];
               const dump = row.dump || dumpParts(row.r, snow);
               const tone = cardTone(cell.i + 1, dump.dumpCm, max);
-              const num = units === 'cm' ? Math.round(dump.dumpCm) : fmtIn(dump.dumpCm);
-              const unit = units === 'cm' ? 'cm' : '″';
               const fg = tone.ink ? '#08090b' : '#f2f3f5';
               const featured = cell.colSpan >= 2 && cell.rowSpan >= 2;
               const days = featured ? forecastDays(row.r, snow, { days: 5 }) : [];
@@ -89,7 +87,8 @@ export function BlockBoard({
                   type="button"
                   data-testid="block"
                   data-resort={row.r.id}
-                  className="flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] p-3 text-left"
+                  aria-label={dumpAria(row.r.name, dump.past72Cm, dump.next7Cm, units)}
+                  className="flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] p-3 text-left"
                   style={{
                     gridColumn: `${cell.col + 1} / span ${cell.colSpan}`,
                     gridRow: `${cell.row + 1} / span ${cell.rowSpan}`,
@@ -103,22 +102,8 @@ export function BlockBoard({
                       {row.r.name}
                     </div>
                   </div>
-                  <div className={`flex min-h-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
-                    <div className="min-w-0">
-                      <div className="font-display leading-none" style={{ fontSize: featured ? 'clamp(3rem, 11vw, 4.8rem)' : '1.75rem' }}>
-                        {num}<span className="text-[0.38em]">{unit}</span>
-                      </div>
-                      <div className={`mt-1.5 grid grid-cols-2 gap-x-2 ${featured ? 'min-w-[11rem]' : ''}`}>
-                        <div data-testid="past-72h">
-                          <div className="text-[10px] uppercase tracking-wide opacity-55">Past 72h</div>
-                          <div className={`font-semibold leading-none ${featured ? 'text-sm' : 'text-xs'}`}>{amt(dump.past72Cm, units)}</div>
-                        </div>
-                        <div data-testid="next-7d">
-                          <div className="text-[10px] uppercase tracking-wide opacity-55">Next 7d</div>
-                          <div className={`font-semibold leading-none ${featured ? 'text-sm' : 'text-xs'}`}>{amt(dump.next7Cm, units)}</div>
-                        </div>
-                      </div>
-                    </div>
+                  <div className={`flex min-h-0 min-w-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
+                    <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size={featured ? 'featured' : 'card'} />
                     {featured ? (
                       <RadarThumb
                         lon={row.r.center[0]}
@@ -150,7 +135,7 @@ export function BlockBoard({
 function ForecastStrip({ days, units, tempUnits }: { days: any[]; units: SnowUnits; tempUnits: TempUnits }) {
   if (!days.length) return null;
   return (
-    <div className="flex gap-1" data-testid="forecast-strip">
+    <div className="flex min-w-0 gap-1" data-testid="forecast-strip">
       {days.map(d => (
         <div key={d.date} className="min-w-0 flex-1 text-center">
           <div className="text-[10px] opacity-60">

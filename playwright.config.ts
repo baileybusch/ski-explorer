@@ -5,10 +5,10 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:5173',
     trace: 'off',
   },
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: 'npx vite --host 127.0.0.1 --port 5173 --strictPort',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: true,
@@ -22,6 +22,21 @@ export default defineConfig({
         browserName: 'chromium',
         isMobile: true,
         hasTouch: true,
+      },
+    },
+    {
+      name: 'iphone-se',
+      use: {
+        ...devices['iPhone SE'],
+        browserName: 'chromium',
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: 'desktop',
+      use: {
+        ...devices['Desktop Chrome'],
       },
     },
   ],

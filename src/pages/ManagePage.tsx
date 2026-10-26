@@ -10,9 +10,10 @@ import { Switch } from '@/components/ui/switch';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { alertsUiState, withAlerts } from '@/lib/alertsUi';
+import { ALERT_SENSITIVITY, sensitivityOf } from '../../lib/alertDefaults.js';
 import { loadCatalog } from '@/lib/catalog';
 import {
-  type LocalRule, accountEmail, deleteLocalRule, loadRules, setAccountEmail, signOutAccount,
+  type LocalRule, accountEmail, deleteLocalRule, loadRules, setAccountEmail, signOutAccount, updateLocalRule,
 } from '@/lib/alertRules';
 import { clearSession, loadPrefs, savePrefs, sessionEmail, setSession } from '@/lib/session';
 import { defaultPrefs, normalizePrefs, RECAP_DAYS } from '../../lib/accountPrefs.js';
@@ -111,6 +112,11 @@ export function ManagePage() {
     const merged = normalizePrefs({ ...prefs, ...next });
     setPrefs(merged);
     savePrefs(merged);
+    if (next.sensitivity && next.sensitivity !== prefs.sensitivity) {
+      const sense = sensitivityOf(merged.sensitivity);
+      loadRules().forEach(r => updateLocalRule(r.id, { minSnowIn: sense.minSnowIn, windowHours: sense.windowHours }));
+      setRules(loadRules());
+    }
   }
 
   async function saveNow() {
@@ -228,6 +234,17 @@ export function ManagePage() {
                 <span>Storm alerts</span>
                 <Switch checked={prefs.stormAlerts} onCheckedChange={v => patchPrefs({ stormAlerts: v })} data-testid="pref-storm" />
               </label>
+              <Field>
+                <FieldLabel>Alert sensitivity</FieldLabel>
+                <p className="mb-2 text-xs text-muted-foreground">Optional. Standard is 6″ in the next 72 hours. Signup never asks.</p>
+                <ToggleGroup type="single" value={prefs.sensitivity} onValueChange={v => v && patchPrefs({ sensitivity: v })} className="flex flex-wrap" data-testid="pref-sensitivity">
+                  {ALERT_SENSITIVITY.map(s => (
+                    <ToggleGroupItem key={s.id} value={s.id} className="min-h-11 px-3" data-testid={`pref-sensitivity-${s.id}`}>
+                      {s.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </Field>
               <div id="alerts">
                 <AlertsList
                   rules={rules}

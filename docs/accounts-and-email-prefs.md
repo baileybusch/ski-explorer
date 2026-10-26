@@ -42,6 +42,7 @@ Rate limits on request-link and signup: 5 / email / 15 min and 20 / IP / 15 min 
 
 - Email (address + status)
 - Storm alerts on/off + my alerts (edit / pause / delete through the alert flow)
+- Optional Alert sensitivity (Standard / Big storms only / Every storm). Default Standard = 6″ / 72h. Not required at signup.
 - Weekly recap on/off + day
 - Sponsored content on/off (default off)
 - Quiet hours

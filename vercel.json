@@ -15,10 +15,16 @@
   ],
   "rewrites": [
     { "source": "/manage", "destination": "/" },
+    { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },
+    { "source": "/about/", "destination": "/" },
     { "source": "/privacy", "destination": "/" },
+    { "source": "/privacy/", "destination": "/" },
     { "source": "/terms", "destination": "/" },
+    { "source": "/terms/", "destination": "/" },
     { "source": "/disclosure", "destination": "/" },
-    { "source": "/contact", "destination": "/" }
+    { "source": "/disclosure/", "destination": "/" },
+    { "source": "/contact", "destination": "/" },
+    { "source": "/contact/", "destination": "/" }
   ]
 }

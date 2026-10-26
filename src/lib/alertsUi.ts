@@ -13,12 +13,22 @@ export function alertsUiState(search = typeof location !== 'undefined' ? locatio
   return { show: true, mode: 'paused' };
 }
 
+export {
+  ALERT_SENSITIVITY,
+  DEFAULT_ALERT_MIN_SNOW_IN,
+  DEFAULT_ALERT_WINDOW_HOURS,
+  DEFAULT_ALERT_SENSITIVITY,
+  sensitivityOf,
+} from '../../lib/alertDefaults.js';
+
+/** @deprecated Signup no longer asks. Kept for older screenshots / evals. */
 export const THRESHOLDS = [
   { id: 6, label: '6″', hint: 'a solid day' },
   { id: 12, label: '12″', hint: 'a real storm' },
   { id: 18, label: '18″', hint: 'a dump' },
 ];
 
+/** @deprecated Signup no longer asks. Kept for the evaluator. */
 export const WINDOWS = [
   { id: 24, label: '24h' },
   { id: 48, label: '48h' },
