@@ -82,8 +82,9 @@ export function AlertOnboarding({
   function pickResort(id: string) {
     setSelected([id]);
     setMsg('');
+    const addr = (email || ctx.email || '').trim();
     advance(() => {
-      if (validEmail(email) && ctx.source === 'signup') submit([id]);
+      if (validEmail(addr) && ctx.source === 'signup') submit([id], addr);
       else setStep('confirm');
     });
   }
@@ -203,7 +204,7 @@ export function AlertOnboarding({
             onChange={e => setQuery(e.target.value)}
             placeholder="Search resorts"
             className="min-h-12 min-w-0"
-            data-testid="alert-resort-search"
+            data-testid="alert-search"
             autoComplete="off"
           />
           <div className="flex min-w-0 flex-col gap-2">

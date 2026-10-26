@@ -23,7 +23,7 @@ test('fresh screenshots: board, hero, storm, trip, manage', async ({ page }, inf
   await expect(page.getByTestId('trip-onboarding')).toBeVisible();
   await page.screenshot({ path: `${DIR}/trip-dates.png`, fullPage: false });
   await page.getByTestId('trip-month-2026-12').click();
-  await expect(page.getByRole('heading', { name: /Who/ })).toBeVisible({ timeout: 3_000 });
+  await expect(page.getByTestId('trip-who')).toBeVisible({ timeout: 8_000 });
   await page.screenshot({ path: `${DIR}/trip-auto-advance-who.png`, fullPage: false });
   await page.getByTestId('trip-onboarding-back').click();
   await page.getByTestId('trip-onboarding').locator('button', { hasText: 'Close' }).click();

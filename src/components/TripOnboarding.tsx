@@ -160,7 +160,7 @@ export function TripOnboarding({
       )}
     >
       {step === 'dates' ? (
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3" data-testid="trip-dates">
           <p className="text-sm text-muted-foreground">Pick dates, or a flexible month.</p>
           <div className="grid min-w-0 grid-cols-2 gap-3">
             <label className="min-w-0 text-sm">
@@ -192,7 +192,7 @@ export function TripOnboarding({
       ) : null}
 
       {step === 'who' ? (
-        <div className="mt-6 flex flex-col gap-4">
+        <div className="mt-6 flex flex-col gap-4" data-testid="trip-who">
           <div className="flex items-center justify-between rounded-2xl px-4 py-3 ring-1 ring-foreground/12">
             <span>Adults</span>
             <div className="flex items-center gap-3">
@@ -224,7 +224,7 @@ export function TripOnboarding({
       ) : null}
 
       {step === 'stay' ? (
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3" data-testid="trip-stay">
           {LODGING.map(l => (
             <ChoiceTile
               key={l.id}
