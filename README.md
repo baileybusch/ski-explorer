@@ -105,7 +105,7 @@ A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is igno
 
 ## v9: block board is the product
 
-Home is a **gap-free block grid** of the **top 11**, then Show more. Top row: **Recent** / **Incoming** + hamburger. Featured search under that. Compact **24h / 48h / 72h / 7d** under the search (past on Recent, forecast on Incoming). No calendar dates in the header. Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. **Alert me** is the only solid primary CTA (home bar, resort page, sheet submit). Menu is account + alerts. People / airport / dates live only in Plan trip on a resort. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
+Home is a **gap-free block grid** of the **top 11**, then Show more. Top row: **Recent** / **Incoming** + hamburger. Featured search under that. Compact **24h / 48h / 72h / 7d** under the search (past on Recent, forecast on Incoming). No calendar dates in the header. Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. Tap a block for a resort page: storm status (tweet-style, from snow.json), static 7-day, radar, snow history, Plan trip, facts (official site). Back + map in the hero corners. No Watch, no swipe between resorts. **Alert me** is the only solid primary CTA. Menu is account + alerts. People / airport / dates live only in Plan trip on a resort. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 

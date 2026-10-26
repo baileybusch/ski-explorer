@@ -1,147 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { ChevronLeftIcon, MapIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { RadarPlayer } from '@/components/RadarPlayer';
-import { snowAmount, passLabel, tempLabel, fzlLabel, stormBadge, windLabel } from '@/lib/format';
-import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS } from '../../lib/snowWindow.js';
+import { snowAmount, passLabel, tempLabel, windLabel } from '@/lib/format';
+import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
-import { stormForResort } from '../../lib/storms.js';
 import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
-import { flightLinks, lodgingLinks, outboundRel } from '../../lib/links.js';
+import { flightLinks, lodgingLinks, outboundRel, resortSite } from '../../lib/links.js';
 import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
-import { isWatched, toggleWatch } from '@/lib/watchlist';
+import { stormStatus } from '../../lib/stormStatus.js';
 import { snowScore } from '@/lib/board';
 
 export function ResortProfile({
-  pages, selectedId, onSelect, onBack, onPlan, onWatch, onScroll, snow, typical, units, trip, win, pass,
-  lodgingOn, setLodgingOn, onShowMap, onAlert, showAlert, onEditTrip,
+  row, onBack, onPlan, onScroll, snow, typical, units, trip, win, onShowMap, onAlert, onEditTrip,
 }: {
-  pages: { r: any; m: any; storm?: any; wx?: any }[];
-  selectedId: string;
-  onSelect: (id: string) => void;
+  row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
   onPlan: (r: any) => void;
-  onWatch: () => void;
   onScroll?: (y: number) => void;
   snow: any;
   typical: any;
   units: 'in' | 'cm';
   trip: any;
   win: any;
-  pass: string;
-  lodgingOn: boolean;
-  setLodgingOn: (v: boolean) => void;
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
-  showAlert?: boolean;
   onEditTrip?: () => void;
 }) {
-  const [api, setApi] = useState<CarouselApi>();
-  const index = Math.max(0, pages.findIndex(x => x.r.id === selectedId));
-  const selected = pages[index];
-
-  useEffect(() => {
-    if (!api) return;
-    const onSnap = () => {
-      const i = api.selectedScrollSnap();
-      const row = pages[i];
-      if (row && row.r.id !== selectedId) onSelect(row.r.id);
-    };
-    api.on('select', onSnap);
-    return () => { api.off('select', onSnap); };
-  }, [api, pages, selectedId, onSelect]);
-
-  useEffect(() => {
-    if (!api) return;
-    if (api.selectedScrollSnap() !== index) api.scrollTo(index, true);
-  }, [api, index]);
-
-  return (
-    <div className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden" data-testid="resort-profile">
-      <Button
-        type="button"
-        variant="ghost"
-        className="absolute top-[max(0.55rem,env(safe-area-inset-top))] left-3 z-30 min-h-11 min-w-11 rounded-full bg-background/70"
-        aria-label="Back to board"
-        data-testid="profile-back"
-        onClick={onBack}
-      >
-        <ChevronLeftIcon />
-      </Button>
-      <Carousel className="min-h-0 flex-1 overflow-hidden" opts={{ align: 'start', containScroll: 'trimSnaps', watchDrag: false }} setApi={setApi}>
-        <CarouselContent className="-ml-0 h-full">
-          {pages.map((row, i) => (
-            <CarouselItem key={row.r.id} className="h-full pl-0 basis-full">
-              {Math.abs(i - index) <= 1 ? (
-                <ProfilePage
-                  row={row}
-                  rank={i + 1}
-                  active={row.r.id === selectedId}
-                  snow={snow}
-                  typical={typical}
-                  units={units}
-                  trip={trip}
-                  win={win}
-                  pass={pass}
-                  onWatch={onWatch}
-                  onPlan={() => onPlan(row.r)}
-                  onShowMap={() => onShowMap(row.r)}
-                  onEditTrip={onEditTrip}
-                  onBack={onBack}
-                  onPrev={() => { const prev = pages[i - 1]; if (prev) onSelect(prev.r.id); }}
-                  onNext={() => { const next = pages[i + 1]; if (next) onSelect(next.r.id); }}
-                  canPrev={i > 0}
-                  canNext={i < pages.length - 1}
-                  onScroll={row.r.id === selectedId ? onScroll : undefined}
-                />
-              ) : (
-                <div className="h-full" />
-              )}
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
-      {selected && showAlert && onAlert ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="profile-alert-me" onClick={() => onAlert(selected.r)}>
-            Alert me
-          </Button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ProfilePage({
-  row, rank, active, snow, typical, units, trip, win, pass,
-  onWatch, onPlan, onShowMap, onEditTrip, onBack, onPrev, onNext, canPrev, canNext, onScroll,
-}: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
-  const [watched, setWatched] = useState(() => isWatched(resort.id));
   const scroller = useRef<HTMLDivElement>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
-  const storm = useMemo(() => row.storm || stormForResort(resort, snow), [row.storm, resort, snow]);
+  const status = useMemo(() => stormStatus(resort, snow, { units }), [resort, snow, units]);
 
   useEffect(() => {
-    if (!active) return;
     let live = true;
     setWx(row.wx || snapshotWeather(resort, snow));
     fetchResortWeather(resort).then(data => { if (live && data) setWx(data); }).catch(() => { /* snapshot */ });
     return () => { live = false; };
-  }, [active, resort, snow, row.wx]);
+  }, [resort, snow, row.wx]);
 
   const cur = wx?.current || {};
-  const daily = (wx?.daily || []).slice(0, 7);
-  const hourly = (wx?.hourly || []).filter((_: any, i: number) => i % 3 === 0);
+  const snapDays = forecastDays(resort, snow, { days: 7 });
+  const liveByDate = Object.fromEntries((wx?.daily || []).map((d: any) => [d.date, d]));
+  const daily = snapDays.map(d => ({ ...d, ...(liveByDate[d.date] || {}) }));
   const maxSnow = Math.max(0.1, ...daily.map((d: any) => d.snowCm || 0));
   const { start: from, end: to } = tripDates(trip, win);
   const { adults, kids } = partyOf(trip);
   const fl = flightLinks({ home: trip.home, iata: resort.iata, start: from, end: to, adults, kids });
   const ld = lodgingLinks({ name: resort.name, lat: resort.center[1], lon: resort.center[0], start: from, end: to, adults, kids });
+  const site = resortSite(resort);
   const passName = passLabel(resort);
   const score = snowScore(row);
   const num = units === 'cm' ? Math.round(score) : Math.round((score / 2.54) * 10) / 10;
@@ -164,214 +74,196 @@ function ProfilePage({
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) + 12) {
-      if (dx < 0) onNext?.();
-      else onPrev?.();
-      return;
-    }
     if (scroller.current && scroller.current.scrollTop > 8) return;
     if (dy > 72 && Math.abs(dx) < 56) onBack();
   }
 
   return (
-    <div
-      ref={scroller}
-      className="h-full overflow-y-auto overscroll-y-contain select-none"
-      data-testid="profile-page"
-      data-resort={resort.id}
-      onScroll={e => onScroll?.((e.target as HTMLDivElement).scrollTop)}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-    >
-      <section
-        className="relative flex h-[48dvh] flex-col justify-end px-4 pb-5 pt-[max(3.4rem,calc(env(safe-area-inset-top)+2.6rem))] text-white"
-        data-testid="profile-hero"
+    <div className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden" data-testid="resort-profile">
+      <Button
+        type="button"
+        variant="ghost"
+        className="absolute top-[max(0.55rem,env(safe-area-inset-top))] left-3 z-30 min-h-11 min-w-11 rounded-full bg-background/70"
+        aria-label="Back to board"
+        data-testid="profile-back"
+        onClick={onBack}
       >
-        <div className="hero-scrim pointer-events-none absolute inset-0" />
-        {canNext ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="absolute top-1/2 right-3 z-20 min-h-11 min-w-11 -translate-y-1/2 rounded-full bg-background/70"
-            aria-label="Next resort"
-            data-testid="profile-next"
-            onClick={onNext}
-          >
-            <ChevronRightIcon />
-          </Button>
-        ) : null}
-        <div className="relative z-10">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold opacity-80">#{rank}</span>
-            {passName ? <Badge variant="secondary">{passName}</Badge> : null}
-            {storm.tier ? <Badge variant="outline" className="border-white/50 text-white">Storm {stormBadge(storm.tier)}</Badge> : null}
-          </div>
-          <h1 className="mt-1 text-3xl font-semibold leading-none tracking-tight">{resort.name}</h1>
-          <p className="mt-1 text-sm text-white/70">
-            {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
-          </p>
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <div className="font-display leading-none" style={{ fontSize: 'clamp(4.6rem, 22vw, 7.2rem)' }}>
-              {num}<span className="text-[0.36em]">{unit}</span>
-            </div>
-            <div className="mb-2 text-right text-base text-white/80">
-              <div>{glyph} {tempLabel(cur.tempC, units)}</div>
-              <div className="text-sm text-white/65">
-                H {tempLabel(hi, units)} / L {tempLabel(lo, units)}
-                {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
-              </div>
-              {resort.base_depth ? <div className="text-sm text-white/65">Base {snowAmount(resort.base_depth, units)}</div> : null}
-            </div>
-          </div>
-        </div>
-      </section>
+        <ChevronLeftIcon />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="absolute top-[max(0.55rem,env(safe-area-inset-top))] right-3 z-30 min-h-11 min-w-11 rounded-full bg-background/70"
+        aria-label="Open map"
+        data-testid="profile-map"
+        onClick={() => onShowMap(resort)}
+      >
+        <MapIcon />
+      </Button>
 
-      <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[5.8rem] pt-4">
-        <Card data-testid="weather-panel">
-          <CardHeader>
-            <CardTitle>Forecast</CardTitle>
-            <CardDescription>{wx?.source === 'Open-Meteo forecast' ? 'Live Open-Meteo. Swipe hourly / 7-day.' : 'Snapshot until live weather loads.'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Carousel opts={{ align: 'start' }} onPointerDown={e => e.stopPropagation()}>
-              <CarouselContent>
-                <CarouselItem>
-                  <p className="mb-2 text-sm font-medium">Next 48 hours</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {hourly.length ? hourly.map((h: any) => (
-                      <div key={h.time} className="min-w-16 rounded-lg bg-secondary px-2 py-2 text-center">
-                        <div className="text-xs text-muted-foreground">{h.time.slice(11, 16)}</div>
-                        <div className="text-base">{weatherGlyph({ wcode: h.wcode, outlookCm: h.snowCm, tmax: h.tempC })}</div>
-                        <div className="text-sm font-semibold">{tempLabel(h.tempC, units)}</div>
-                        <div className="text-xs">{snowAmount(h.snowCm, units)}</div>
-                        <div className="text-xs text-muted-foreground">{fzlLabel(h.fzlM, units)}</div>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Hourly loads for the open resort only.</p>}
-                  </div>
-                </CarouselItem>
-                <CarouselItem>
-                  <p className="mb-2 text-sm font-medium">7-day forecast</p>
-                  <div className="flex flex-col gap-2">
-                    {daily.map((d: any) => (
-                      <div key={d.date} className="flex items-center gap-3">
-                        <div className="w-10 shrink-0 text-sm font-medium">
-                          {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                        </div>
-                        <div className="w-8 shrink-0 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
-                        <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, units)}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="h-2 rounded-full bg-muted">
-                            <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.round(((d.snowCm || 0) / maxSnow) * 100)}%` }} />
-                          </div>
-                        </div>
-                        <div className="w-12 shrink-0 text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CarouselItem>
-              </CarouselContent>
-            </Carousel>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-radar">
-          <CardHeader>
-            <CardTitle>Radar</CardTitle>
-            <CardDescription>RainViewer near the mountain. Play/pause the last frames.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RadarPlayer lon={resort.center[0]} lat={resort.center[1]} active={active} />
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-storm">
-          <CardHeader>
-            <CardTitle>Storm timeline</CardTitle>
-            <CardDescription>{storm.label}</CardDescription>
-          </CardHeader>
-          <CardContent className="text-base">
-            {storm.tier ? (
-              <>Starts {storm.start ? fmtShort(storm.start) : '—'} · Peak {storm.peak ? fmtShort(storm.peak) : '—'} ({snowAmount(storm.peakCm, units)}) · Next 7d {snowAmount(storm.totalCm, units)} · Best 72h {snowAmount(storm.max72Cm, units)}</>
-            ) : (
-              <span className="text-muted-foreground">No 6″ pulse in the next 72h.</span>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-snow">
-          <CardHeader>
-            <CardTitle>Snow history</CardTitle>
-            <CardDescription>Observed windows and the next-7 forecast.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex h-24 items-end gap-2">
-            {windows.map(w => (
-              <div key={w.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div className="flex h-16 w-full items-end rounded-md bg-muted">
-                  <div className="w-full rounded-md bg-accent" style={{ height: `${Math.max(8, Math.round((w.cm / maxWin) * 100))}%` }} />
-                </div>
-                <span className="text-[11px] text-muted-foreground">{w.label}</span>
-                <span className="text-xs font-semibold">{snowAmount(w.cm, units)}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-trip">
-          <CardHeader>
-            <CardTitle>Trip</CardTitle>
-            <CardDescription>
-              {fmtShort(from)}–{fmtShort(to)} · {peopleLabel(trip)}
-              {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {onEditTrip ? (
-              <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="edit-trip" onClick={onEditTrip}>
-                People, dates, airport
-              </Button>
-            ) : null}
-            {fl[0] ? (
-              <Button variant="outline" className="min-h-12 w-full text-base" asChild>
-                <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>Flights</a>
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">No nearby airport on file.</p>
-            )}
-            {ld[0] ? (
-              <Button variant="outline" className="min-h-12 w-full text-base" asChild>
-                <a href={ld[0].href} target="_blank" rel={outboundRel(ld[0].sponsored)}>Stays</a>
-              </Button>
-            ) : null}
-            <Button variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={onPlan}>
-              Plan with an AI agent
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tile-facts">
-          <CardHeader>
-            <CardTitle>Facts</CardTitle>
-            <CardDescription>OpenSkiMap stats. Open the globe for lodging pins.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-base">
-            <p>{interestingBlurb(resort) || 'OpenSkiMap facts when we have a match.'}</p>
-            {resort.id === 'eagle-point' ? <p className="text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
-            <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
-            {resort.web ? <a className="underline" href={resort.web} target="_blank" rel="noopener">Resort site</a> : null}
-            <Button type="button" variant="outline" className="min-h-11 w-full text-base" onClick={onShowMap}>
-              Open map
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Button
-          variant="ghost"
-          className="min-h-11 w-full text-base"
-          onClick={() => { setWatched(toggleWatch(resort.id)); onWatch(); }}
+      <div
+        ref={scroller}
+        className="h-full overflow-y-auto overscroll-y-contain"
+        data-testid="profile-page"
+        data-resort={resort.id}
+        onScroll={e => onScroll?.((e.target as HTMLDivElement).scrollTop)}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      >
+        <section
+          className="relative flex h-[48dvh] flex-col justify-end px-4 pb-5 pt-[max(3.4rem,calc(env(safe-area-inset-top)+2.6rem))] text-white"
+          data-testid="profile-hero"
         >
-          {watched ? 'Watching' : 'Watch'}
-        </Button>
+          <div className="hero-scrim pointer-events-none absolute inset-0" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2">
+              {passName ? <Badge variant="secondary">{passName}</Badge> : null}
+            </div>
+            <h1 className="mt-1 text-3xl font-semibold leading-none tracking-tight">{resort.name}</h1>
+            <p className="mt-1 text-sm text-white/70">
+              {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <div className="font-display leading-none" style={{ fontSize: 'clamp(4.6rem, 22vw, 7.2rem)' }}>
+                {num}<span className="text-[0.36em]">{unit}</span>
+              </div>
+              <div className="mb-2 text-right text-base text-white/80">
+                <div>{glyph} {tempLabel(cur.tempC, units)}</div>
+                <div className="text-sm text-white/65">
+                  H {tempLabel(hi, units)} / L {tempLabel(lo, units)}
+                  {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
+                </div>
+                {resort.base_depth ? <div className="text-sm text-white/65">Base {snowAmount(resort.base_depth, units)}</div> : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[5.8rem] pt-4">
+          <Card data-testid="tile-storm-status">
+            <CardHeader>
+              <CardTitle>Storm status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base leading-relaxed" data-testid="storm-status-text">{status.text}</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">Modeled forecast.</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="weather-panel">
+            <CardHeader>
+              <CardTitle>7-day forecast</CardTitle>
+              <CardDescription>{wx?.source === 'Open-Meteo forecast' ? 'Live Open-Meteo.' : 'Snapshot until live weather loads.'}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                {daily.map((d: any) => (
+                  <div key={d.date} className="flex items-center gap-3">
+                    <div className="w-10 shrink-0 text-sm font-medium">
+                      {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                    </div>
+                    <div className="w-8 shrink-0 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
+                    <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, units)}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="h-2 rounded-full bg-muted">
+                        <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.round(((d.snowCm || 0) / maxSnow) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="w-12 shrink-0 text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="tile-radar">
+            <CardHeader>
+              <CardTitle>Radar</CardTitle>
+              <CardDescription>RainViewer near the mountain. Play/pause the last frames.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RadarPlayer lon={resort.center[0]} lat={resort.center[1]} active />
+            </CardContent>
+          </Card>
+
+          <Card data-testid="tile-snow">
+            <CardHeader>
+              <CardTitle>Snow history</CardTitle>
+              <CardDescription>Observed windows and the next-7 forecast.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex h-24 items-end gap-2">
+              {windows.map(w => (
+                <div key={w.id} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                  <div className="flex h-16 w-full items-end rounded-md bg-muted">
+                    <div className="w-full rounded-md bg-accent" style={{ height: `${Math.max(8, Math.round((w.cm / maxWin) * 100))}%` }} />
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">{w.label}</span>
+                  <span className="text-xs font-semibold">{snowAmount(w.cm, units)}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="tile-trip">
+            <CardHeader>
+              <CardTitle>Plan trip</CardTitle>
+              <CardDescription>
+                {fmtShort(from)}–{fmtShort(to)} · {peopleLabel(trip)}
+                {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              {onEditTrip ? (
+                <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="edit-trip" onClick={onEditTrip}>
+                  People, dates, airport
+                </Button>
+              ) : null}
+              {fl[0] ? (
+                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
+                  <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>Flights</a>
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">No nearby airport on file.</p>
+              )}
+              {ld[0] ? (
+                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
+                  <a href={ld[0].href} target="_blank" rel={outboundRel(ld[0].sponsored)}>Stays</a>
+                </Button>
+              ) : null}
+              <Button variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={() => onPlan(resort)}>
+                Plan with an AI agent
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="tile-facts">
+            <CardHeader>
+              <CardTitle>Facts</CardTitle>
+              <CardDescription>OpenSkiMap stats.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 text-base">
+              <p>{interestingBlurb(resort) || 'OpenSkiMap facts when we have a match.'}</p>
+              {resort.id === 'eagle-point' ? <p className="text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
+              <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
+              {site ? (
+                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
+                  <a href={site.href} target="_blank" rel={outboundRel(site.sponsored)} data-testid="official-site">
+                    Official site
+                  </a>
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {onAlert ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
+            Alert me
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

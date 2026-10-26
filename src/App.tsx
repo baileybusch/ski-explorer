@@ -346,13 +346,6 @@ export default function App() {
   const zeroHint = boardMode === 'recent' && max === 0 && !String(preset).startsWith('fc');
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
 
-  function selectProfile(id: string) {
-    setSelectedId(id);
-    writeURL({ resort: id, mode: 'explore' });
-    const r = catalog?.resorts.find((x: any) => x.id === id);
-    if (r) globe.current?.flyResort(r);
-  }
-
   return (
     <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
       {catalog ? (
@@ -438,23 +431,16 @@ export default function App() {
 
       {catalog && win && view === 'profile' && selectedId && selected ? (
         <ResortProfile
-          pages={visibleRows.some(x => x.r.id === selectedId) ? visibleRows : [{ r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }, ...visibleRows]}
-          selectedId={selectedId}
-          onSelect={selectProfile}
+          row={visibleRows.find(x => x.r.id === selectedId) || { r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }}
           onBack={backToBoard}
           onPlan={r => { writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
-          onWatch={() => setWatchTick(n => n + 1)}
           onScroll={setHeroParallax}
           snow={catalog.snow}
           typical={catalog.typical}
           units={units}
           trip={trip}
           win={win}
-          pass={pass}
-          lodgingOn={lodgingOn}
-          setLodgingOn={setLodgingOn}
-          onShowMap={r => { setSelectedId(r.id); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
-          showAlert
+          onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
           onAlert={r => { setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
           onEditTrip={() => setTripOpen(true)}
         />

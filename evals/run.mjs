@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { parseTripSentence } from '../lib/agent/parseTrip.js';
 import { llmAvailable, runLlm } from '../lib/agent/runAgent.js';
 import { runAlertEvals } from './alerts.mjs';
+import { runStormStatusEvals } from './stormStatus.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -72,4 +73,9 @@ console.log('\nalert evaluator\n');
 for (const line of alerts.lines) console.log(line);
 console.log(`\n${alerts.total - alerts.fail}/${alerts.total} alert evals passed`);
 
-process.exit(fail || alerts.fail ? 1 : 0);
+const storms = runStormStatusEvals();
+console.log('\nstorm status\n');
+for (const line of storms.lines) console.log(line);
+console.log(`\n${storms.total - storms.fail}/${storms.total} storm-status evals passed`);
+
+process.exit(fail || alerts.fail || storms.fail ? 1 : 0);
