@@ -44,7 +44,7 @@ export function BlockBoard({
 
   const gap = 8;
   const cols = gridCols(box.w);
-  const minRow = box.w < 400 ? 90 : box.w < 720 ? 104 : 118;
+  const minRow = box.w < 400 ? 104 : box.w < 720 ? 112 : 124;
   const packed = packCells(rows.length, cols);
   const first = targetRows(box.h, gap, minRow);
   const fillRows = packed.rows > 0 && packed.rows <= first ? packed.rows : first;

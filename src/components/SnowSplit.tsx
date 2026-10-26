@@ -23,7 +23,7 @@ export function SnowSplit({
       : '1.75rem';
   return (
     <div className="min-w-0" data-testid="snow-split">
-      <div className={`flex min-w-0 ${size === 'card' ? 'flex-col items-stretch gap-1.5' : 'flex-wrap items-end gap-2'}`}>
+      <div className="flex min-w-0 flex-wrap items-end gap-1.5">
         <div className="min-w-0">
           <div className="font-display leading-none" style={{ fontSize: font }} data-testid="snow-actual">
             {num}<span className="text-[0.38em]">{unit}</span>
@@ -36,7 +36,7 @@ export function SnowSplit({
           </div>
         </div>
         <div
-          className="w-fit rounded-full bg-accent px-2 py-1 leading-none text-accent-foreground"
+          className="mb-0.5 w-fit shrink-0 rounded-full bg-accent px-2 py-1 leading-none text-accent-foreground"
           data-testid="snow-forecast"
         >
           <span className={`${size === 'hero' ? 'text-sm' : 'text-[11px]'} font-semibold`}>+{forecast} coming</span>
