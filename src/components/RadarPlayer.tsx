@@ -48,7 +48,7 @@ export function RadarPlayer({
         ))}
       </div>
       <div className="flex items-center justify-between gap-2">
-        <Button type="button" variant="secondary" className="min-h-11" onClick={() => setPlay(p => !p)} data-testid="radar-play">
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => setPlay(p => !p)} data-testid="radar-play">
           {play ? 'Pause' : 'Play'}
         </Button>
         <p className="text-xs text-muted-foreground">RainViewer · modeled radar, not a snow total.</p>

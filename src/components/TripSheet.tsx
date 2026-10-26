@@ -65,9 +65,9 @@ function Stepper({ label, value, onMinus, onPlus }: { label: string; value: numb
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <div className="flex items-center gap-2">
-        <Button type="button" variant="secondary" className="min-h-11 min-w-11" onClick={onMinus} aria-label={`Fewer ${label}`}>−</Button>
+        <Button type="button" variant="outline" className="min-h-11 min-w-11" onClick={onMinus} aria-label={`Fewer ${label}`}>−</Button>
         <div className="min-w-8 text-center text-lg font-semibold">{value}</div>
-        <Button type="button" variant="secondary" className="min-h-11 min-w-11" onClick={onPlus} aria-label={`More ${label}`}>+</Button>
+        <Button type="button" variant="outline" className="min-h-11 min-w-11" onClick={onPlus} aria-label={`More ${label}`}>+</Button>
       </div>
     </Field>
   );

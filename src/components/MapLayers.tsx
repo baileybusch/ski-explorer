@@ -22,7 +22,7 @@ export function MapLayers({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="secondary" className="min-h-11 min-w-11" aria-label="Layers" data-testid="layers-button">
+        <Button type="button" variant="outline" className="min-h-11 min-w-11" aria-label="Layers" data-testid="layers-button">
           <LayersIcon />
         </Button>
       </PopoverTrigger>

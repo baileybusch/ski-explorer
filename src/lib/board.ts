@@ -7,8 +7,8 @@ export function snowScore(row: { m: any }) {
   return row.m.windowCm || 0;
 }
 
-export function incomingScore(row: { storm?: any }) {
-  return row.storm?.totalCm || 0;
+export function incomingScore(row: { m?: any; storm?: any }) {
+  return row.m?.outlookCm || row.m?.windowCm || row.storm?.totalCm || 0;
 }
 
 export function cardTone(rank: number, score: number, max: number) {

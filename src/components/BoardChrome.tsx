@@ -2,33 +2,21 @@ import { useEffect, useState } from 'react';
 import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
-import { SNOW_PRESETS } from '../../lib/snowWindow.js';
-import { parseISO } from '../../lib/util.js';
-import { partyOf, tripDates } from '../../lib/trip.js';
+import { WINDOW_SLOTS } from '../../lib/snowWindow.js';
 import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
-  q, onOpenSearch, onMenu, loading, preset, setPreset, trip, win, onTrip, boardMode, setBoardMode,
-  showAlert, onAlert,
+  q, onOpenSearch, onMenu, loading, windowSlot, setWindowSlot, boardMode, setBoardMode,
 }: {
   q: string;
   onOpenSearch: () => void;
   onMenu: () => void;
   loading?: boolean;
-  preset: string;
-  setPreset: (p: string) => void;
-  trip: any;
-  win: any;
-  onTrip: () => void;
+  windowSlot: string;
+  setWindowSlot: (p: string) => void;
   boardMode: 'recent' | 'incoming';
   setBoardMode: (m: 'recent' | 'incoming') => void;
-  showAlert?: boolean;
-  onAlert?: () => void;
 }) {
-  const { adults, kids } = partyOf(trip);
-  const { start, end } = tripDates(trip, win || { start: '', end: '' });
-  const from = start ? parseISO(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'dates';
-  const to = end ? String(parseISO(end).getDate()) : '';
   const [ghost, setGhost] = useState(0);
   useEffect(() => {
     if (q) return;
@@ -43,12 +31,12 @@ export function BoardChrome({
     >
       <div className="flex items-center gap-2">
         <ToggleGroup type="single" value={boardMode} onValueChange={v => (v === 'recent' || v === 'incoming') && setBoardMode(v)} className="min-w-0 flex-1">
-          <ToggleGroupItem value="recent" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-recent">Recent snow</ToggleGroupItem>
+          <ToggleGroupItem value="recent" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-recent">Recent</ToggleGroupItem>
           <ToggleGroupItem value="incoming" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-incoming">Incoming</ToggleGroupItem>
         </ToggleGroup>
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           className="min-h-11 min-w-11 rounded-full"
           aria-label="Menu"
           data-testid="menu-button"
@@ -57,27 +45,6 @@ export function BoardChrome({
           <MenuIcon />
         </Button>
       </div>
-      {boardMode === 'recent' ? (
-        <ToggleGroup type="single" value={preset} onValueChange={v => v && setPreset(v)} className="w-full">
-          {SNOW_PRESETS.map(p => (
-            <ToggleGroupItem key={p.id} value={p.id} className="min-h-11 flex-1 px-1 text-sm" data-testid={`window-${p.id}`}>
-              {p.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      ) : (
-        <p className="px-1 text-xs text-muted-foreground" data-testid="incoming-caption">
-          Modeled next-7 forecast — not exact totals. Storm badge = 6″+ in any 72h.
-          {showAlert && onAlert ? (
-            <>
-              {' '}
-              <button type="button" className="underline underline-offset-2" data-testid="incoming-alert-cta" onClick={onAlert}>
-                Get a heads-up when a storm hits your resorts
-              </button>
-            </>
-          ) : null}
-        </p>
-      )}
       <button
         type="button"
         className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-sm ring-1 ring-foreground/12"
@@ -89,16 +56,19 @@ export function BoardChrome({
           {q || GHOSTS[ghost]}
         </span>
       </button>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-h-10 shrink-0 rounded-full px-3 text-sm font-medium"
-          onClick={onTrip}
-          data-testid="trip-pill"
-        >
-          {adults}+{kids}&nbsp;&nbsp;{from}–{to}
-        </Button>
+      <div>
+        <ToggleGroup type="single" variant="outline" value={windowSlot} onValueChange={v => v && setWindowSlot(v)} className="w-full" data-testid="window-slots">
+          {WINDOW_SLOTS.map(p => (
+            <ToggleGroupItem key={p.id} value={p.id} className="min-h-10 flex-1 px-1 text-sm" data-testid={`window-${p.id}`}>
+              {p.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <p className="px-1 pt-1 text-[11px] text-muted-foreground" data-testid="window-caption">
+          {boardMode === 'incoming'
+            ? `Forecast · next ${windowSlot} · modeled, not exact.`
+            : `Past · last ${windowSlot} · modeled, not resort-reported.`}
+        </p>
       </div>
     </header>
   );

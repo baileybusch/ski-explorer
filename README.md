@@ -105,7 +105,7 @@ A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is igno
 
 ## v9: block board is the product
 
-Home is a **gap-free block grid** of the **top 11**, then Show more. Recent snow vs Incoming (modeled next-7 forecast). Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. Tap a block for a full-screen **profile**: mountain-map hero, forecast first, then radar, storm, snow history, a 3-button trip tile, facts, and a pinned Plan trip. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
+Home is a **gap-free block grid** of the **top 11**, then Show more. Top row: **Recent** / **Incoming** + hamburger. Featured search under that. Compact **24h / 48h / 72h / 7d** under the search (past on Recent, forecast on Incoming). No calendar dates in the header. Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. **Alert me** is the only solid primary CTA (home bar, resort page, sheet submit). Menu is account + alerts. People / airport / dates live only in Plan trip on a resort. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 
@@ -124,7 +124,7 @@ Board is the front door. Dump alerts + weekly recaps are what people come back f
 - **Evaluator**: `evaluateAlerts(rules, snowJson, now)` in `lib/evaluateAlerts.js` — threshold, window, pass/region, dedupe `{rule}|{resort}|{pulse start}|{tier}`, quiet hours. `npm run eval` covers it.
 - **Templates**: storm alert + weekly / last-storm recap (HTML + text) in `lib/emails.js`. Slate, big numbers, block cards, manage + one-click unsubscribe. At most two outbound buttons via `lib/links.js`.
 - **Preview**: `npm run email:preview` writes `tmp/email-preview/` from committed `snow.json`. `/api/email/preview?type=alert|recap` is render-only. A real test send is **only** `node scripts/email-preview.mjs --send --to baileybusch@gmail.com` with `RESEND_API_KEY` set — no other address.
-- **Signup**: Alert me on Incoming and each resort page. Hidden unless `EMAIL_ALERTS_ENABLED` is true. On a **preview** host only, `?alerts=1` reveals the flow; submissions write nothing and send nothing.
+- **Signup**: Alert me is always on the home bar and each resort page (only solid primary CTA). Preview hosts and `?alerts=1` keep the sheet and My alerts on **local device state** — nothing is written to Blob or emailed. Production without the flag is paused (device-only, no send).
 - **Cron**: `vercel.json` has `/api/cron/alerts` daily (`0 3 * * *`). The handler no-ops while the flag is false. 6-hourly ticks need Vercel Pro.
 - **Still off**: `EMAIL_ALERTS_ENABLED = false`. `/api/subscribe` returns 503 in production. `/api/cron/digest` stays a no-op. Reuse the Blob `subs/` store — do not invent a second one.
 - Before real sends: buy/verify a sending domain on Resend, set `RESEND_FROM`, flip the flag, keep the cron. See [docs/alerts-and-paid-watches.md](docs/alerts-and-paid-watches.md). Paid watches are a `tier: free|paid` hook only — no payments.

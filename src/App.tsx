@@ -15,7 +15,7 @@ import { askAgent } from '@/lib/agentClient';
 import { watchlist } from '@/lib/watchlist';
 import { loadTrip, saveTrip, tripDates, partyOf, buildPlan, planHandoffLinks } from '../lib/trip.js';
 import { parseTripQuery, shareSearch } from '../lib/links.js';
-import { defaultWindow, forecastEnd, windowMetrics, presetWindow } from '../lib/snowWindow.js';
+import { defaultWindow, forecastEnd, windowMetrics, presetWindow, slotPreset } from '../lib/snowWindow.js';
 import { fmtShort } from '../lib/util.js';
 import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
@@ -27,7 +27,7 @@ import { alertsUiState } from '@/lib/alertsUi';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 type View = 'board' | 'profile' | 'map';
-type Preset = '24h' | '72h' | '7d' | 'fc7';
+type Slot = '24h' | '48h' | '72h' | '7d';
 
 function initialPass() {
   const qs = new URLSearchParams(location.search);
@@ -45,7 +45,7 @@ export default function App() {
   const [catalog, setCatalog] = useState<any>(null);
   const [view, setView] = useState<View>('board');
   const [pass, setPass] = useState(initialPass);
-  const [preset, setPreset] = useState<Preset>('fc7');
+  const [windowSlot, setWindowSlot] = useState<Slot>('7d');
   const [trip, setTrip] = useState(() => loadTrip());
   const [win, setWin] = useState<any>(null);
   const [units, setUnits] = useState<'in' | 'cm'>((localStorage.getItem('ss_units') as any) || 'in');
@@ -73,6 +73,7 @@ export default function App() {
   const [heroParallax, setHeroParallax] = useState(0);
   const [restoreTop, setRestoreTop] = useState(0);
   const [boardMode, setBoardMode] = useState<'recent' | 'incoming'>('recent');
+  const preset = slotPreset(boardMode, windowSlot);
   const [shown, setShown] = useState(BOARD_PAGE);
   const [alertsUi] = useState(() => alertsUiState());
   const [alertOpen, setAlertOpen] = useState(false);
@@ -81,7 +82,7 @@ export default function App() {
   useEffect(() => {
     loadCatalog().then(c => {
       setCatalog(c);
-      let nextWin = presetWindow(c.snow, 'fc7');
+      let nextWin = presetWindow(c.snow, slotPreset('recent', '7d'));
       let nextTrip = { ...trip };
       const deep = parseTripQuery(location.search);
       if (deep.from && deep.to) {
@@ -93,7 +94,6 @@ export default function App() {
         };
         nextTrip.start = deep.from;
         nextTrip.end = deep.to;
-        setPreset('fc7');
       }
       if (deep.home) nextTrip.home = deep.home;
       if (deep.adults != null) nextTrip.adults = deep.adults;
@@ -343,7 +343,7 @@ export default function App() {
   const visibleRows = rowsAll.slice(0, shown);
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
   const max = Math.max(0, ...rowsAll.map(boardMode === 'incoming' ? incomingScore : snowScore));
-  const zeroHint = boardMode === 'recent' && max === 0 && preset !== 'fc7';
+  const zeroHint = boardMode === 'recent' && max === 0 && !String(preset).startsWith('fc');
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
 
   function selectProfile(id: string) {
@@ -392,11 +392,11 @@ export default function App() {
           </div>
           <div className="pointer-events-auto absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="mx-auto flex max-w-xl items-center gap-2">
-              <Button type="button" className="min-h-12 flex-1 text-base" onClick={backToBoard} data-testid="list-button">
+              <Button type="button" variant="outline" className="min-h-12 flex-1 text-base" onClick={backToBoard} data-testid="list-button">
                 <ListIcon /> Cards
               </Button>
               {selected ? (
-                <Button type="button" variant="secondary" className="min-h-12 flex-1 truncate text-base" onClick={() => openResort(selected.id)}>
+                <Button type="button" variant="ghost" className="min-h-12 flex-1 truncate text-base" onClick={() => openResort(selected.id)}>
                   {selected.name}
                 </Button>
               ) : null}
@@ -412,19 +412,14 @@ export default function App() {
             onOpenSearch={() => setSearchOpen(true)}
             onMenu={() => setMenuOpen(true)}
             loading={loading}
-            preset={preset}
-            setPreset={p => setPreset(p as Preset)}
-            trip={trip}
-            win={win}
-            onTrip={() => setTripOpen(true)}
+            windowSlot={windowSlot}
+            setWindowSlot={p => setWindowSlot(p as Slot)}
             boardMode={boardMode}
             setBoardMode={m => { setBoardMode(m); setStormsOn(false); }}
-            showAlert={alertsUi.show}
-            onAlert={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet on this window. Try Next 7 or Incoming.
+              Quiet on this window. Try 7d or Incoming.
             </p>
           ) : null}
           <BlockBoard
@@ -459,16 +454,27 @@ export default function App() {
           lodgingOn={lodgingOn}
           setLodgingOn={setLodgingOn}
           onShowMap={r => { setSelectedId(r.id); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
-          showAlert={alertsUi.show}
+          showAlert
           onAlert={r => { setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
+          onEditTrip={() => setTripOpen(true)}
         />
       ) : null}
 
       {view === 'board' ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" className="pointer-events-auto min-h-12 min-w-12 rounded-full shadow-lg" aria-label="Map" data-testid="map-button" onClick={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}>
-            <MapIcon />
-          </Button>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-2">
+            <Button
+              type="button"
+              className="min-h-12 flex-1 text-base shadow-lg"
+              data-testid="home-alert-me"
+              onClick={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
+            >
+              Alert me
+            </Button>
+            <Button type="button" variant="outline" className="min-h-12 min-w-12 rounded-full" aria-label="Map" data-testid="map-button" onClick={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}>
+              <MapIcon />
+            </Button>
+          </div>
         </div>
       ) : null}
 
@@ -505,34 +511,14 @@ export default function App() {
         onOpenChange={setMenuOpen}
         units={units}
         setUnits={setUnits}
-        stormMin={stormMin}
-        setStormMin={setStormMin}
-        trip={trip}
-        setTrip={setTrip}
-        win={win || { start: '', end: '' }}
-        setCustomDates={setCustomDates}
         pass={pass}
         setPass={p => { setPass(p); setActiveIds(null); }}
-        regions={catalog?.regions || []}
-        onRegion={id => {
-          const g = catalog?.regions.find((x: any) => x.id === id);
-          if (g) applyRegion(g);
-        }}
-        onWorldwide={() => { setActiveIds(null); setStormsOn(false); setMenuOpen(false); setView('board'); }}
         onMyResorts={() => { setActiveIds(watchlist()); setStormsOn(false); setMenuOpen(false); setView('board'); }}
         watchCount={watchlist().length}
-        stormsOn={stormsOn}
-        setStormsOn={setStormsOn}
-        radarOn={radarOn}
-        setRadarOn={setRadarOn}
-        cloudsOn={cloudsOn}
-        setCloudsOn={setCloudsOn}
-        stormsLayerOn={stormsLayerOn}
-        setStormsLayerOn={setStormsLayerOn}
-        nwsOn={nwsOn}
-        setNwsOn={setNwsOn}
-        lodgingOn={lodgingOn}
-        setLodgingOn={setLodgingOn}
+        onAlert={() => { setMenuOpen(false); setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
+        mode={alertsUi.mode}
+        snowGenerated={catalog?.snow?.generated}
+        resorts={catalog?.resorts || []}
       />
 
       <AlertMeSheet

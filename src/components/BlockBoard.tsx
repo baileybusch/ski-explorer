@@ -52,7 +52,7 @@ export function BlockBoard({
   return (
     <div
       ref={wrap}
-      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(4.5rem,env(safe-area-inset-bottom))] pt-1"
+      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(6.2rem,env(safe-area-inset-bottom))] pt-1"
       data-testid="board-b"
       data-mode={mode}
     >
@@ -118,11 +118,8 @@ export function BlockBoard({
                     ) : null}
                   </div>
                   <ForecastStrip days={days} units={units} compact={!featured} />
-                  {featured && mode === 'incoming' && row.storm?.start ? (
-                    <div className="truncate text-[11px] opacity-60">
-                      From {parseISO(row.storm.start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      {row.storm.totalCm ? ` · ${snowAmount(row.storm.totalCm, units)} modeled` : ''}
-                    </div>
+                  {featured && mode === 'incoming' && row.storm?.tier ? (
+                    <div className="truncate text-[11px] opacity-60">Storm incoming · modeled</div>
                   ) : null}
                 </button>
               );
@@ -130,7 +127,7 @@ export function BlockBoard({
           </div>
           {hasMore ? (
             <div className="flex justify-center pt-3">
-              <Button type="button" variant="secondary" className="min-h-11 rounded-full px-5" data-testid="show-more" onClick={onMore}>
+              <Button type="button" variant="outline" className="min-h-11 rounded-full px-5" data-testid="show-more" onClick={onMore}>
                 Show more
               </Button>
             </div>

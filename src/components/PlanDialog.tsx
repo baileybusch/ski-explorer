@@ -15,7 +15,7 @@ export function PlanDialog({ open, onOpenChange, text, links }: { open: boolean;
           <Textarea readOnly value={text} className="min-h-32 text-base" />
         </div>
         <DrawerFooter>
-          <Button className="min-h-12" onClick={async () => { await navigator.clipboard.writeText(text); toast('Brief copied'); }}>Copy brief</Button>
+          <Button variant="outline" className="min-h-12" onClick={async () => { await navigator.clipboard.writeText(text); toast('Brief copied'); }}>Copy brief</Button>
           {links.chatgpt ? <Button variant="outline" className="min-h-12" asChild><a href={links.chatgpt} target="_blank" rel="noopener">Open in ChatGPT</a></Button> : null}
           {links.grok ? <Button variant="outline" className="min-h-12" asChild><a href={links.grok} target="_blank" rel="noopener">Open in Grok</a></Button> : null}
         </DrawerFooter>

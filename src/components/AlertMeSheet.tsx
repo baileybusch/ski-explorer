@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { REGION_CHIPS } from '@/lib/design';
 import { THRESHOLDS, WINDOWS, type AlertsUiMode } from '@/lib/alertsUi';
 import { watchlist } from '@/lib/watchlist';
+import { addLocalRule, setAccountEmail } from '@/lib/alertRules';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -16,13 +17,14 @@ export type AlertContext = {
 };
 
 export function AlertMeSheet({
-  open, onOpenChange, ctx, mode, regions = [],
+  open, onOpenChange, ctx, mode, regions = [], onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   ctx: AlertContext;
   mode: AlertsUiMode;
   regions?: { id: string; name: string }[];
+  onSaved?: () => void;
 }) {
   const saved = watchlist();
   const defaultWatch = ctx.resortId ? 'resort' : saved.length ? 'saved' : 'pass';
@@ -79,19 +81,13 @@ export function AlertMeSheet({
       freq: 'on-trigger',
     };
     try {
-      localStorage.setItem('ss_email', addr);
-      if (mode === 'preview') {
-        try {
-          const r = await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          const j = await r.json().catch(() => ({}));
-          setMsg(j.message || 'Preview only — nothing was saved or sent.');
-        } catch {
-          setMsg('Preview only — nothing was saved or sent.');
-        }
+      setAccountEmail(addr);
+      if (mode !== 'live') {
+        addLocalRule(payload);
+        onSaved?.();
+        setMsg(mode === 'preview'
+          ? 'Preview only — saved on this device, nothing was sent.'
+          : 'Alerts are paused — saved on this device only.');
         return;
       }
       const r = await fetch('/api/subscribe', {
@@ -113,8 +109,10 @@ export function AlertMeSheet({
           <SheetTitle>Alert me</SheetTitle>
           <SheetDescription>
             {mode === 'preview'
-              ? 'Preview only — submissions are not saved and nothing is emailed.'
-              : 'A dump alert when modeled forecast snow crosses your line. Not exact totals.'}
+              ? 'Preview only — saved on this device. Nothing is emailed.'
+              : mode === 'live'
+                ? 'A dump alert when modeled forecast snow crosses your line. Not exact totals.'
+                : 'Alerts are paused. Rules stay on this device. Nothing is emailed.'}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-5 px-4 pb-10">

@@ -57,14 +57,14 @@ export function SearchOverlay({
           </Button>
         </form>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" className="min-h-11 rounded-full px-3 text-sm" onClick={onClearScope}>
+          <Button type="button" variant="outline" className="min-h-11 rounded-full px-3 text-sm" onClick={onClearScope}>
             Worldwide
           </Button>
           {chips.map(g => (
             <Button
               key={g.id}
               type="button"
-              variant="secondary"
+              variant="outline"
               className="min-h-11 rounded-full px-3 text-sm"
               data-testid={`region-${g.id}`}
               onClick={() => onRegion(g.id)}
@@ -74,7 +74,7 @@ export function SearchOverlay({
           ))}
           <Button
             type="button"
-            variant={stormsOn ? 'default' : 'secondary'}
+            variant="outline"
             className="min-h-11 rounded-full px-3 text-sm"
             data-testid="storms-chip"
             aria-pressed={stormsOn}

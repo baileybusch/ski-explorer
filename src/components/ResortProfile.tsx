@@ -17,7 +17,7 @@ import { snowScore } from '@/lib/board';
 
 export function ResortProfile({
   pages, selectedId, onSelect, onBack, onPlan, onWatch, onScroll, snow, typical, units, trip, win, pass,
-  lodgingOn, setLodgingOn, onShowMap, onAlert, showAlert,
+  lodgingOn, setLodgingOn, onShowMap, onAlert, showAlert, onEditTrip,
 }: {
   pages: { r: any; m: any; storm?: any; wx?: any }[];
   selectedId: string;
@@ -37,6 +37,7 @@ export function ResortProfile({
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
   showAlert?: boolean;
+  onEditTrip?: () => void;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const index = Math.max(0, pages.findIndex(x => x.r.id === selectedId));
@@ -62,8 +63,8 @@ export function ResortProfile({
     <div className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden" data-testid="resort-profile">
       <Button
         type="button"
-        variant="secondary"
-        className="absolute top-[max(0.55rem,env(safe-area-inset-top))] left-3 z-30 min-h-11 min-w-11 rounded-full"
+        variant="ghost"
+        className="absolute top-[max(0.55rem,env(safe-area-inset-top))] left-3 z-30 min-h-11 min-w-11 rounded-full bg-background/70"
         aria-label="Back to board"
         data-testid="profile-back"
         onClick={onBack}
@@ -88,8 +89,7 @@ export function ResortProfile({
                   onWatch={onWatch}
                   onPlan={() => onPlan(row.r)}
                   onShowMap={() => onShowMap(row.r)}
-                  onAlert={onAlert}
-                  showAlert={showAlert}
+                  onEditTrip={onEditTrip}
                   onBack={onBack}
                   onPrev={() => { const prev = pages[i - 1]; if (prev) onSelect(prev.r.id); }}
                   onNext={() => { const next = pages[i + 1]; if (next) onSelect(next.r.id); }}
@@ -104,10 +104,10 @@ export function ResortProfile({
           ))}
         </CarouselContent>
       </Carousel>
-      {selected ? (
+      {selected && showAlert && onAlert ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="plan-trip" onClick={() => onPlan(selected.r)}>
-            Plan trip
+          <Button type="button" className="pointer-events-auto min-h-12 w-full text-base shadow-lg" data-testid="profile-alert-me" onClick={() => onAlert(selected.r)}>
+            Alert me
           </Button>
         </div>
       ) : null}
@@ -117,7 +117,7 @@ export function ResortProfile({
 
 function ProfilePage({
   row, rank, active, snow, typical, units, trip, win, pass,
-  onWatch, onPlan, onShowMap, onAlert, showAlert, onBack, onPrev, onNext, canPrev, canNext, onScroll,
+  onWatch, onPlan, onShowMap, onEditTrip, onBack, onPrev, onNext, canPrev, canNext, onScroll,
 }: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -191,8 +191,8 @@ function ProfilePage({
         {canNext ? (
           <Button
             type="button"
-            variant="secondary"
-            className="absolute top-1/2 right-3 z-20 min-h-11 min-w-11 -translate-y-1/2 rounded-full"
+            variant="ghost"
+            className="absolute top-1/2 right-3 z-20 min-h-11 min-w-11 -translate-y-1/2 rounded-full bg-background/70"
             aria-label="Next resort"
             data-testid="profile-next"
             onClick={onNext}
@@ -210,17 +210,6 @@ function ProfilePage({
           <p className="mt-1 text-sm text-white/70">
             {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
           </p>
-          {showAlert && onAlert ? (
-            <Button
-              type="button"
-              variant="secondary"
-              className="mt-3 min-h-11 rounded-full px-4 text-sm"
-              data-testid="profile-alert-me"
-              onClick={() => onAlert(resort)}
-            >
-              Alert me
-            </Button>
-          ) : null}
           <div className="mt-2 flex items-end justify-between gap-3">
             <div className="font-display leading-none" style={{ fontSize: 'clamp(4.6rem, 22vw, 7.2rem)' }}>
               {num}<span className="text-[0.36em]">{unit}</span>
@@ -336,8 +325,13 @@ function ProfilePage({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
+            {onEditTrip ? (
+              <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="edit-trip" onClick={onEditTrip}>
+                People, dates, airport
+              </Button>
+            ) : null}
             {fl[0] ? (
-              <Button className="min-h-12 w-full text-base" asChild>
+              <Button variant="outline" className="min-h-12 w-full text-base" asChild>
                 <a href={fl[0].href} target="_blank" rel={outboundRel(fl[0].sponsored)}>Flights</a>
               </Button>
             ) : (
@@ -348,7 +342,7 @@ function ProfilePage({
                 <a href={ld[0].href} target="_blank" rel={outboundRel(ld[0].sponsored)}>Stays</a>
               </Button>
             ) : null}
-            <Button variant="outline" className="min-h-12 w-full text-base" onClick={onPlan}>
+            <Button variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={onPlan}>
               Plan with an AI agent
             </Button>
           </CardContent>
@@ -364,14 +358,14 @@ function ProfilePage({
             {resort.id === 'eagle-point' ? <p className="text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
             <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
             {resort.web ? <a className="underline" href={resort.web} target="_blank" rel="noopener">Resort site</a> : null}
-            <Button type="button" variant="secondary" className="min-h-11 w-full text-base" onClick={onShowMap}>
+            <Button type="button" variant="outline" className="min-h-11 w-full text-base" onClick={onShowMap}>
               Open map
             </Button>
           </CardContent>
         </Card>
 
         <Button
-          variant={watched ? 'secondary' : 'ghost'}
+          variant="ghost"
           className="min-h-11 w-full text-base"
           onClick={() => { setWatched(toggleWatch(resort.id)); onWatch(); }}
         >
