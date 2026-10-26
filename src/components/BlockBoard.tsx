@@ -115,12 +115,10 @@ export function BlockBoard({
                         enabled
                         className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-black/15"
                       />
-                    ) : (
-                      <span className="text-[10px] uppercase tracking-wide opacity-50">Radar</span>
-                    )}
+                    ) : null}
                   </div>
                   <ForecastStrip days={days} units={units} compact={!featured} />
-                  {mode === 'incoming' && row.storm?.start ? (
+                  {featured && mode === 'incoming' && row.storm?.start ? (
                     <div className="truncate text-[11px] opacity-60">
                       From {parseISO(row.storm.start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       {row.storm.totalCm ? ` · ${snowAmount(row.storm.totalCm, units)} modeled` : ''}
