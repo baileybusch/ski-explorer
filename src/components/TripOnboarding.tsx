@@ -39,7 +39,7 @@ function monthRange(id: string) {
 }
 
 export function TripOnboarding({
-  open, onOpenChange, resort, win, trip, setTrip, setCustomDates, onAskAi,
+  open, onOpenChange, resort, win, trip, setTrip, setCustomDates, onAskAi, onAlert,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -49,6 +49,7 @@ export function TripOnboarding({
   setTrip: (t: any) => void;
   setCustomDates: (start: string, end: string) => void;
   onAskAi: (r: any) => void;
+  onAlert?: (draft: any) => void;
 }) {
   const [step, setStep] = useState<Step>('dates');
   const [flex, setFlex] = useState<string | null>(null);
@@ -154,9 +155,16 @@ export function TripOnboarding({
           </Button>
         </>
       ) : (
-        <Button type="button" variant="outline" className="min-h-12 w-full text-base" onClick={() => { persist(); onOpenChange(false); }}>
-          Done
-        </Button>
+        <>
+          {onAlert ? (
+            <Button type="button" className="min-h-12 w-full text-base" data-testid="trip-alert-me" onClick={() => { persist(); onAlert(live); }}>
+              Alert me as my trip gets closer
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" className="min-h-12 w-full text-base" onClick={() => { persist(); onOpenChange(false); }}>
+            Done
+          </Button>
+        </>
       )}
     >
       {step === 'dates' ? (

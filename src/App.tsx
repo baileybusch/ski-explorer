@@ -24,8 +24,10 @@ import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
 import { BOARD_MORE, BOARD_PAGE, compareDump, dumpParts } from '@/lib/board';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
 import { HomeSignup } from '@/components/HomeSignup';
+import { ContextCta } from '@/components/ContextCta';
 import { SiteFooter } from '@/components/SiteFooter';
-import { type LocalRule, setAccountEmail } from '@/lib/alertRules';
+import { intentChip, ctaKind } from '../lib/intent.js';
+import { type LocalRule } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 
@@ -81,6 +83,7 @@ export default function App() {
   const [alertCtx, setAlertCtx] = useState<AlertContext>({ source: 'menu', pass });
   const [editRule, setEditRule] = useState<LocalRule | null>(null);
   const [facets, setFacets] = useState<SearchFacets>({});
+  const [parsedIntent, setParsedIntent] = useState<any>(null);
 
   const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId || q);
 
@@ -231,6 +234,7 @@ export default function App() {
     setSearchOpen(false);
     setSelectedId(null);
     setFacets({});
+    setParsedIntent(null);
     setView('board');
     if (catalog) setWin(presetWindow(catalog.snow, 'fc7'));
     writeURL({ resort: null, region: null, ss: 'board' });
@@ -281,6 +285,7 @@ export default function App() {
     if (nextPass !== pass) setPass(nextPass);
     if (nextWin) setWin(nextWin);
     if (parsed) {
+      setParsedIntent(parsed);
       setFacets({
         regionId: parsed.region?.id || null,
         regionName: parsed.region?.name || null,
@@ -492,6 +497,7 @@ export default function App() {
             onClearScope={resetHome}
             scoped={scoped}
             loading={loading}
+            chip={parsedIntent ? intentChip(parsedIntent) : ''}
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
@@ -511,12 +517,35 @@ export default function App() {
             tight={scoped}
             after={(
               <>
-                <HomeSignup onStart={addr => {
-                  setAccountEmail(addr);
-                  setEditRule(null);
-                  setAlertCtx({ source: 'signup', email: addr, pass });
-                  setAlertOpen(true);
-                }} />
+                {scoped && parsedIntent ? (
+                  <ContextCta
+                    parsed={parsedIntent}
+                    onAlert={() => {
+                      const kind = ctaKind(parsedIntent);
+                      setEditRule(null);
+                      setAlertCtx({
+                        source: 'search',
+                        type: kind === 'home' ? 'resort' : kind,
+                        pass,
+                        region: parsedIntent.region?.id,
+                        regionName: parsedIntent.region?.name,
+                        resortId: parsedIntent.resort?.id,
+                        resortName: parsedIntent.resort?.name,
+                        from: parsedIntent.from,
+                        to: parsedIntent.to,
+                        adults: parsedIntent.adults,
+                        kids: parsedIntent.kids,
+                      });
+                      setAlertOpen(true);
+                    }}
+                  />
+                ) : (
+                  <HomeSignup onStart={() => {
+                    setEditRule(null);
+                    setAlertCtx({ source: 'home', type: 'resort', pass });
+                    setAlertOpen(true);
+                  }} />
+                )}
                 <SiteFooter />
               </>
             )}
@@ -581,6 +610,22 @@ export default function App() {
         setTrip={setTrip}
         setCustomDates={setCustomDates}
         onAskAi={r => { setTripOpen(false); writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
+        onAlert={draft => {
+          setTripOpen(false);
+          setEditRule(null);
+          setAlertCtx({
+            source: 'trip',
+            type: 'trip',
+            pass,
+            resortId: selected?.id,
+            resortName: selected?.name,
+            from: draft?.start,
+            to: draft?.end,
+            adults: draft?.adults,
+            kids: draft?.kids,
+          });
+          setAlertOpen(true);
+        }}
       />
 
       <SettingsSheet

@@ -25,6 +25,7 @@ test('trip month pick auto-advances and does not scroll sideways', async ({ page
   await page.getByTestId('trip-lodging-hotel').scrollIntoViewIfNeeded();
   await page.getByTestId('trip-lodging-hotel').click();
   await expect(page.getByTestId('trip-results')).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId('trip-alert-me')).toBeVisible();
   expect(await page.getByTestId('trip-onboarding').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy();
 });
 
@@ -32,12 +33,14 @@ test('alert flow is resort then email, no threshold step', async ({ page }) => {
   await page.goto('/?alerts=1');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('home-signup').scrollIntoViewIfNeeded();
-  await page.getByTestId('home-signup-email').fill('bailey@example.com');
   await page.getByTestId('home-signup-submit').click();
   await expect(page.getByTestId('alert-onboarding')).toBeVisible();
   await expect(page.getByTestId('alert-search')).toBeVisible();
   await expect(page.locator('[data-testid^="alert-inches-"]')).toHaveCount(0);
   await page.locator('[data-testid^="alert-resort-"]').first().click();
+  await expect(page.getByTestId('alert-email')).toBeVisible({ timeout: 8_000 });
+  await page.getByTestId('alert-email').fill('bailey@example.com');
+  await page.getByTestId('alert-submit').click();
   await expect(page.getByTestId('alert-success')).toBeVisible({ timeout: 8_000 });
   await expect(page.getByTestId('alert-check-email')).toBeVisible();
 });

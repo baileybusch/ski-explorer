@@ -5,7 +5,7 @@ import { LogoMark } from '@/components/LogoMark';
 import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
-  q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading,
+  q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading, chip,
 }: {
   q: string;
   onOpenSearch: () => void;
@@ -14,6 +14,7 @@ export function BoardChrome({
   onClearScope: () => void;
   scoped?: boolean;
   loading?: boolean;
+  chip?: string;
 }) {
   const [ghost, setGhost] = useState(0);
   useEffect(() => {
@@ -60,6 +61,14 @@ export function BoardChrome({
           {q || GHOSTS[ghost]}
         </span>
       </button>
+      {chip ? (
+        <div className="flex flex-wrap items-center gap-2" data-testid="intent-chip">
+          <span className="rounded-full bg-card px-3 py-1.5 text-sm ring-1 ring-foreground/12">{chip}</span>
+          <Button type="button" variant="ghost" className="min-h-11 px-2 text-sm" data-testid="intent-clear" onClick={onClearScope}>
+            Clear
+          </Button>
+        </div>
+      ) : null}
       {scoped ? (
         <Button
           type="button"

@@ -3,6 +3,7 @@ import { withAlerts } from '@/lib/alertsUi';
 import { affiliateConfigured } from '../../public/config.js';
 
 const LINKS = [
+  { href: '/about', label: 'About' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
   { href: '/contact', label: 'Contact' },
@@ -27,6 +28,11 @@ export function SiteFooter() {
           </a>
         ) : null}
       </nav>
+      <p className="mt-3 text-xs text-muted-foreground" data-testid="footer-mcp">
+        Agents: <a href="https://skiscope.vercel.app/api/mcp" className="underline-offset-4 hover:underline">MCP</a>
+        {' · '}
+        <a href={withAlerts('/about')} className="underline-offset-4 hover:underline">docs</a>
+      </p>
     </footer>
   );
 }

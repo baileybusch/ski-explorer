@@ -8,8 +8,10 @@ import { loadData, sendEmail, allActive, saveSub, emailConfigured } from '../_li
 
 const readJSON = rel => JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
 import { EMAIL_ALERTS_ENABLED } from '../../public/config.js';
-import { evaluateAlerts, shouldSendRecap, rankRecap } from '../../lib/evaluateAlerts.js';
-import { stormAlertEmail, recapEmail } from '../../lib/emails.js';
+import { evaluateAlerts, shouldSendRecap, rankRecap, consolidateAlerts } from '../../lib/evaluateAlerts.js';
+import { situationEmail, combinedEmail, recapEmail } from '../../lib/emails.js';
+import { writeReadout } from '../../lib/readout.js';
+import { loadCatalog } from '../../lib/skiscope-tools/index.js';
 
 export const config = { maxDuration: 300 };
 
@@ -52,26 +54,47 @@ export default async function handler(req, res) {
   }
 
   const { alerts, queued } = evaluateAlerts(rules, snow, now);
+  const catalog = loadCatalog();
+  const packs = consolidateAlerts(alerts);
   let sent = 0, failed = 0;
-  for (const alert of alerts) {
-    const sub = byRule.get(alert.ruleId);
+  for (const pack of packs) {
+    const first = pack.events[0];
+    const sub = byRule.get(first?.ruleId);
     if (sub?.prefs?.stormAlerts === false) continue;
-    const mail = stormAlertEmail({
-      alert, token: sub?.token, email: alert.email,
-      sponsor: { on: sub?.prefs?.sponsor === true },
-    });
-    const r = await sendEmail({ to: alert.email, ...mail });
+    const readouts = [];
+    for (const ev of pack.events) {
+      readouts.push(await writeReadout(ev, { catalog }));
+    }
+    const mail = pack.events.length === 1
+      ? situationEmail({
+        alert: pack.events[0], readout: readouts[0], token: sub?.token, email: pack.email,
+        sponsor: { on: sub?.prefs?.sponsor === true },
+      })
+      : combinedEmail({
+        pack, readouts, token: sub?.token, email: pack.email,
+        sponsor: { on: sub?.prefs?.sponsor === true },
+      });
+    const r = await sendEmail({ to: pack.email, ...mail });
     if (r.status && r.status < 300) {
       sent++;
-      if (sub) {
-        const rule = (sub.rules || []).find(x => (x.id || `rul_${sub.token.slice(0, 8)}`) === alert.ruleId);
-        if (rule) {
-          rule.lastFired = now.toISOString();
-          rule.lastKey = alert.key;
-          rule.lastKeys = [...new Set([...(rule.lastKeys || []), ...alert.keys])].slice(-40);
-          rule.pendingSend = null;
+      const seen = new Set();
+      for (const alert of pack.events) {
+        const owner = byRule.get(alert.ruleId);
+        if (!owner || seen.has(owner.token)) continue;
+        seen.add(owner.token);
+        for (const ev of pack.events.filter(e => byRule.get(e.ruleId) === owner)) {
+          const rule = (owner.rules || []).find(x => (x.id || `rul_${owner.token.slice(0, 8)}`) === ev.ruleId);
+          if (rule) {
+            rule.lastFired = now.toISOString();
+            rule.lastKey = ev.key;
+            rule.lastKeys = [...new Set([...(rule.lastKeys || []), ...(ev.keys || [])])].slice(-40);
+            if (ev.type === 'trip' && ev.stage != null) {
+              rule.tripStagesSent = [...new Set([...(rule.tripStagesSent || []), ev.stage])];
+            }
+            rule.pendingSend = null;
+          }
         }
-        await saveSub(sub);
+        await saveSub(owner);
       }
     } else {
       failed++;

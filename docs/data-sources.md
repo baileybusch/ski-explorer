@@ -20,6 +20,7 @@ Footer is wordmark + Privacy, Terms, Contact. Affiliate disclosure stays conditi
 | **Mapterhorn DEM / hillshade** (`tiles.mapterhorn.com` terrarium WebP) | No. | Check [mapterhorn.com](https://mapterhorn.com) before a paid launch; currently used keyless for terrain. | Terrain © Mapterhorn (map i). | Public tile CDN; treat as best-effort. | Terrain disable on error. Hillshade/3D off. Basemap + pins stay. |
 | **Our piste GeoJSON** (`/data/resorts/<id>.json` from OpenSkiMap / OSM, ODbL) | No. | Yes, with ODbL share-alike on the extracted data. | OpenSkiMap + OpenStreetMap contributors (map i). | Local static files. | Missing file → no runs/lifts for that resort. |
 | **Open-Meteo forecast** (`api.open-meteo.com`) | No on the free tier. | **Free tier is non-commercial** ([terms](https://open-meteo.com/en/terms)). Paid plan + `customer-api.open-meteo.com` before sponsors / ads / subscriptions go live. | CC BY 4.0 — credit adjacent to displayed weather. | Free: 10k calls/day, 5k/hour, 600/min, weighted by locations × `ceil(days/14)` × variables. | Live 7-day falls back to the committed `snow.json` snapshot. Board still ranks. |
+| **MET Norway Locationforecast 2.0** | No. Requires a contact `User-Agent`. | **Yes**, with attribution ([terms](https://api.met.no/doc/TermsOfService)). Commercial-safe $0 path. | Must credit MET Norway / CC BY 4.0. | Fair use; identify the app. | Flip `WEATHER_PROVIDER=metnorway`. Snow is **estimated** (precip × SLR), not a reported depth. |
 | **Open-Meteo archive / history** (`archive-api.open-meteo.com`, ERA5-class reanalysis) | Same as forecast. | Same non-commercial free tier. History precompute is from this source — note it in the tile (“modeled”). | Same CC BY 4.0. Credit already on the forecast tile + About. | Same weighted-call budget. `scripts/fetch_history.py` batches and throttles. | Resorts not in `history.json` show 24h/72h/storm + season-to-date from `snow.json` only. No past-season bars. |
 | **RainViewer radar + IR** | No. | **API is personal / educational only.** Leave radar working for now; **licensing to-do** before a commercial radar product or sponsor-funded app. | Radar © RainViewer (map i). | Public tilecache; no SLA. | Overlay stays hidden if tiles fail. |
 | **Geocoding** | We do **not** call a geocoder. Search is the local gazetteer + fuzzy resort names (`lib/agent/parseTrip.js`). | n/a | n/a | n/a | Search still works offline against committed JSON. |
@@ -32,6 +33,40 @@ Footer is wordmark + Privacy, Terms, Contact. Affiliate disclosure stays conditi
 ## Snow history caveat
 
 `public/data/history.json` is **coarse reanalysis** (Open-Meteo historical archive / ERA5-class), not resort-reported snow. Season start is Oct 1 (N) / Jul 1 (S). Same-date bars compare season-to-date totals through the same calendar date. Units follow the in/cm toggle. Label the tile “modeled”.
+
+## Weather providers ($0)
+
+`lib/weather/providers/*` + one-line flip:
+
+```
+WEATHER_PROVIDER=openmeteo   # default — keep while there is no revenue
+WEATHER_PROVIDER=metnorway   # commercial-ok; UA + attribution required
+```
+
+`python3 scripts/fetch_snow.py --provider openmeteo|metnorway` prints the choice. The Python snapshot job **stays on Open-Meteo** until we pay; MET Norway is wired in JS (`lib/weather`) for live / compare. Do **not** buy a weather plan.
+
+### MET Norway snow estimate
+
+Locationforecast has precipitation + temperature, not snowfall_sum. SLR:
+
+| Tmax | Treatment |
+|---|---|
+| ≤ 0°C | 10:1 (1 mm liquid ≈ 1 cm snow) |
+| 0–2°C | 8:1 |
+| > 2°C | rain (0 snow) |
+
+### Other sources researched (not wired, $0)
+
+| Source | Why not yet |
+|---|---|
+| **NWS / NOAA grid** | US only. Good for alerts (already a map layer). Not a worldwide snow depth. |
+| **NRCS SNOTEL** | Point stations, western US, excellent observed SWE. Sparse, not resort-aligned. |
+| **NOAA GFS / ICON** | Already inside Open-Meteo’s blend. Hitting them raw needs a stack we would pay to run. |
+| **ERA5-Land** | Best **history** migration off Open-Meteo archive. Same non-commercial issue on the free Open-Meteo path; Copernicus CDS is the commercial-ok archive. Next history rewrite should target CDS / ERA5-Land, not a paid Open-Meteo plan. |
+
+### MET vs Open-Meteo (method)
+
+Open-Meteo `snowfall_sum` is a model snowfall field. MET Norway snow here is precip × SLR. For the same mountain, MET will usually be **lower and later** in mixed storms (T>2°C → 0) and **similar** when it is cold. A live 8-resort check is `node scripts/compare_weather.mjs` (network; skipped in CI). Until revenue, keep the committed Open-Meteo snapshot.
 
 ## How to extend history
 

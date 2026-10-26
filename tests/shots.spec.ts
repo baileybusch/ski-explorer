@@ -28,6 +28,18 @@ test('fresh screenshots: board, hero, storm, trip, manage', async ({ page }, inf
   await page.getByTestId('trip-onboarding-back').click();
   await page.getByTestId('trip-onboarding').locator('button', { hasText: 'Close' }).click();
 
+  await page.goto('/?alerts=1');
+  await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('home-signup').scrollIntoViewIfNeeded();
+  await page.getByTestId('home-signup').screenshot({ path: `${DIR}/home-monitor-cta.png` });
+
+  await page.getByTestId('search-trigger').click();
+  await page.getByLabel('Ask SkiScope').fill('Japan');
+  await page.getByLabel('Ask SkiScope').press('Enter');
+  await expect(page.getByTestId('intent-chip')).toBeVisible({ timeout: 15_000 });
+  await page.screenshot({ path: `${DIR}/search-japan-chip.png`, fullPage: false });
+  await page.getByTestId('context-cta').screenshot({ path: `${DIR}/search-japan-cta.png` });
+
   await page.goto('/manage?alerts=1');
   await expect(page.getByTestId('manage-page')).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: `${DIR}/manage-direct-url.png`, fullPage: false });

@@ -85,7 +85,8 @@ Do not commit secrets. Public affiliate ids are fine. The commission line only a
 - **Clean home** (later replaced by the Weather-style list in the same PR): one chat/search bar, rotating ghosts, agent harness. See below.
 - **Rotating ghost text** on the bar (pauses on focus): Japan spring break, Ikon near Denver, Dolomites, Utah dumping, Mammoth family.
 - **Natural-language bar**: a sentence like `Japan trip for 5 spring break mar 7-14` is parsed into trip state, flies the globe, fills the list, and writes the menu values.
-- **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. See [docs/agent-harness.md](docs/agent-harness.md).
+- **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. Same snow tools as MCP and the alert writer. See [docs/agent-harness.md](docs/agent-harness.md).
+- **MCP**: `POST /api/mcp` Streamable HTTP. `claude mcp add --transport http skiscope https://skiscope.vercel.app/api/mcp`. [docs/mcp.md](docs/mcp.md).
 - **Evals**: `npm run eval` (15 sentences, pinned date). Optional `RUN_LLM=1`.
 
 ### Bailey setup for the LLM path

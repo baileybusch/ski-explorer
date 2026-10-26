@@ -10,9 +10,20 @@ and ~4360 weighted calls, which stalled on the old 4000/hour self-throttle.
 land around 2000 weighted calls — one hour, no stall.
 
 --missing: fetch only resorts absent from snow.json and merge (same date window).
+--provider openmeteo|metnorway: one-line flip (this script still fetches Open-Meteo;
+  MET Norway lives in lib/weather for live/compare until we have revenue).
 Does not schedule itself; leave GitHub Action / cron paused.
 """
 import json, urllib.request, urllib.parse, time, datetime, sys, os
+
+provider = os.environ.get('WEATHER_PROVIDER', 'openmeteo')
+if '--provider' in sys.argv:
+  i = sys.argv.index('--provider')
+  if i + 1 < len(sys.argv):
+    provider = sys.argv[i + 1]
+print('provider:', provider, flush=True)
+if provider == 'metnorway':
+  print('MET Norway is wired in lib/weather (JS). Snapshot job stays on Open-Meteo until there is revenue.', flush=True)
 
 idx = json.load(open('public/data/resorts-index.json'))
 prev = None

@@ -13,10 +13,16 @@ function parseRule(b, email) {
   const resorts = [...new Set((b.resorts || []).filter(r => typeof r === 'string' && /^[a-z0-9-]{2,40}$/.test(r)))].slice(0, 30);
   const saved = [...new Set((b.savedResorts || []).filter(r => typeof r === 'string' && /^[a-z0-9-]{2,40}$/.test(r)))].slice(0, 30);
   return normalizeRule({
+    type: b.type,
     watch: b.watch,
     resorts,
     savedResorts: saved,
     region: typeof b.region === 'string' && /^[a-z0-9-]{2,40}$/.test(b.region) ? b.region : null,
+    regionScope: b.regionScope,
+    tripStart: typeof b.tripStart === 'string' ? b.tripStart : null,
+    tripEnd: typeof b.tripEnd === 'string' ? b.tripEnd : null,
+    adults: b.adults,
+    kids: b.kids,
     pass: b.pass,
     minSnowIn: b.minSnowIn,
     windowHours: b.windowHours,

@@ -26,7 +26,9 @@ function catalog() {
   const gazetteer = load('gazetteer.json');
   let typical = { windows: {} };
   try { typical = load('typical.json'); } catch { /* optional */ }
-  cache = { resorts, snow, typical, regions: gazetteer.regions || [], today: snow.dates[snow.today] };
+  let history = { resorts: {} };
+  try { history = load('history.json'); } catch { /* optional */ }
+  cache = { resorts, snow, typical, history, regions: gazetteer.regions || [], today: snow.dates[snow.today] };
   return cache;
 }
 
