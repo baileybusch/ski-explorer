@@ -1,29 +1,30 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { forecastDays } from '../../lib/snowWindow.js';
-import { cardTone, gridCols, incomingScore, packCells, rowHeight, snowScore, targetRows } from '@/lib/board';
+import { dumpParts, cardTone, gridCols, packCells, rowHeight, targetRows } from '@/lib/board';
 import { fmtIn, parseISO } from '../../lib/util.js';
-import { snowAmount, stormBadge, tempLabel } from '@/lib/format';
+import { snowAmount, tempLabel } from '@/lib/format';
 import { RadarThumb } from '@/components/RadarThumb';
 
+function amt(cm: number, units: 'in' | 'cm') {
+  return units === 'cm' ? `${Math.round(cm)} cm` : `${fmtIn(cm)}″`;
+}
+
 export function BlockBoard({
-  rows, units, snow, onOpen, scrollerRef, restoreTop, mode, hasMore, onMore,
+  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore,
 }: {
-  rows: { r: any; m: any; storm?: any; wx?: any }[];
+  rows: { r: any; m: any; storm?: any; wx?: any; dump?: ReturnType<typeof dumpParts> }[];
   units: 'in' | 'cm';
   snow: any;
   onOpen: (id: string) => void;
   scrollerRef?: MutableRefObject<HTMLDivElement | null>;
   restoreTop?: number;
-  mode: 'recent' | 'incoming';
   hasMore?: boolean;
   onMore?: () => void;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 390, h: 560 });
-  const scoreOf = mode === 'incoming' ? incomingScore : snowScore;
-  const max = Math.max(0, ...rows.map(scoreOf));
+  const max = Math.max(0, ...rows.map(row => (row.dump || dumpParts(row.r, snow)).dumpCm));
 
   useEffect(() => {
     const el = wrap.current;
@@ -52,13 +53,13 @@ export function BlockBoard({
   return (
     <div
       ref={wrap}
-      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1"
+      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-1"
       data-testid="board-b"
-      data-mode={mode}
+      data-mode="dump"
     >
       {rows.length === 0 ? (
         <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
-          No resorts in this filter. Open the menu to reset scope.
+          No resorts in this filter. Back to all resorts or open the menu to reset.
         </div>
       ) : (
         <>
@@ -72,9 +73,9 @@ export function BlockBoard({
           >
             {packed.cells.map(cell => {
               const row = rows[cell.i];
-              const score = scoreOf(row);
-              const tone = cardTone(cell.i + 1, score, max);
-              const num = units === 'cm' ? Math.round(score) : fmtIn(score);
+              const dump = row.dump || dumpParts(row.r, snow);
+              const tone = cardTone(cell.i + 1, dump.dumpCm, max);
+              const num = units === 'cm' ? Math.round(dump.dumpCm) : fmtIn(dump.dumpCm);
               const unit = units === 'cm' ? 'cm' : '″';
               const fg = tone.ink ? '#08090b' : '#f2f3f5';
               const featured = cell.colSpan >= 2 && cell.rowSpan >= 2;
@@ -94,19 +95,20 @@ export function BlockBoard({
                   }}
                   onClick={() => onOpen(row.r.id)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className={`truncate font-semibold leading-tight ${featured ? 'text-2xl' : 'text-sm'}`}>
-                        {row.r.name}
-                      </div>
+                  <div className="min-w-0">
+                    <div className={`truncate font-semibold leading-tight ${featured ? 'text-2xl' : 'text-sm'}`}>
+                      {row.r.name}
                     </div>
-                    {mode === 'incoming' && row.storm?.tier ? (
-                      <Badge variant="secondary" className="shrink-0 text-[11px]">Storm {stormBadge(row.storm.tier)}</Badge>
-                    ) : null}
                   </div>
                   <div className={`flex min-h-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
-                    <div className="font-display leading-none" style={{ fontSize: featured ? 'clamp(3rem, 11vw, 4.8rem)' : '1.85rem' }}>
-                      {num}<span className="text-[0.38em]">{unit}</span>
+                    <div>
+                      <div className="font-display leading-none" style={{ fontSize: featured ? 'clamp(3rem, 11vw, 4.8rem)' : '1.85rem' }}>
+                        {num}<span className="text-[0.38em]">{unit}</span>
+                      </div>
+                      <div className={`mt-1 flex flex-wrap gap-x-3 opacity-80 ${featured ? 'text-xs' : 'text-[10px]'}`}>
+                        <span data-testid="past-72h">Past 72h {amt(dump.past72Cm, units)}</span>
+                        <span data-testid="next-7d">Next 7d {amt(dump.next7Cm, units)}</span>
+                      </div>
                     </div>
                     {featured ? (
                       <RadarThumb
@@ -118,9 +120,6 @@ export function BlockBoard({
                     ) : null}
                   </div>
                   <ForecastStrip days={days} units={units} compact={!featured} />
-                  {featured && mode === 'incoming' && row.storm?.tier ? (
-                    <div className="truncate text-[11px] opacity-60">Storm incoming · modeled</div>
-                  ) : null}
                 </button>
               );
             })}

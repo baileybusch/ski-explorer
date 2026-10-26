@@ -10,7 +10,7 @@ Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates,
 | Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
 | `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
 | Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
-| Alert me UI | Incoming quiet line + one button on the resort page. Defaults: 12″ / 72h / this resort or my pass. Two taps if email is remembered. |
+| Alert me UI | Multi-step onboarding (resort → inches → window → email types → confirm → success). Full-width Alert me only on the resort page. Home has no filled primary. My alerts empty state launches the same flow. Preview saves to `localStorage` only. |
 | `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |
 | Cron | `vercel.json` → `/api/cron/alerts` daily `0 3 * * *` (Sunday evening PT ≈ recap window). Handler no-ops while the flag is false. Old `/api/cron/digest` still no-ops. |
 | Subscribers | Same Blob `subs/<token>.json`. Rules hang on the existing document. |

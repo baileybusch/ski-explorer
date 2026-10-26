@@ -1,4 +1,5 @@
 /** Shared board ranking, tone, and gap-free pack layout. */
+export { compareDump, dumpParts, dumpScoreIn } from '../../lib/dumpScore.js';
 
 export const BOARD_PAGE = 11;
 export const BOARD_MORE = 10;

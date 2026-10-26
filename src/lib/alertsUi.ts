@@ -14,9 +14,9 @@ export function alertsUiState(search = typeof location !== 'undefined' ? locatio
 }
 
 export const THRESHOLDS = [
-  { id: 6, label: '6″' },
-  { id: 12, label: '12″' },
-  { id: 18, label: '18″' },
+  { id: 6, label: '6″', hint: 'a solid day' },
+  { id: 12, label: '12″', hint: 'a real storm' },
+  { id: 18, label: '18″', hint: 'a dump' },
 ];
 
 export const WINDOWS = [

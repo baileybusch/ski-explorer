@@ -3,7 +3,7 @@ import { ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { BlockBoard } from '@/components/BlockBoard';
-import { SearchOverlay } from '@/components/SearchOverlay';
+import { SearchOverlay, type SearchFacets } from '@/components/SearchOverlay';
 import { TripSheet } from '@/components/TripSheet';
 import { SettingsSheet } from '@/components/SettingsSheet';
 import { PlanDialog } from '@/components/PlanDialog';
@@ -15,19 +15,19 @@ import { askAgent } from '@/lib/agentClient';
 import { watchlist } from '@/lib/watchlist';
 import { loadTrip, saveTrip, tripDates, partyOf, buildPlan, planHandoffLinks } from '../lib/trip.js';
 import { parseTripQuery, shareSearch } from '../lib/links.js';
-import { defaultWindow, forecastEnd, windowMetrics, presetWindow, slotPreset } from '../lib/snowWindow.js';
+import { defaultWindow, forecastEnd, windowMetrics, presetWindow } from '../lib/snowWindow.js';
 import { fmtShort } from '../lib/util.js';
 import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { BOARD_MORE, BOARD_PAGE, incomingScore, snowScore } from '@/lib/board';
-import { AlertMeSheet, type AlertContext } from '@/components/AlertMeSheet';
+import { BOARD_MORE, BOARD_PAGE, compareDump, dumpParts } from '@/lib/board';
+import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
+import { type LocalRule } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 type View = 'board' | 'profile' | 'map';
-type Slot = '24h' | '48h' | '72h' | '7d';
 
 function initialPass() {
   const qs = new URLSearchParams(location.search);
@@ -45,7 +45,6 @@ export default function App() {
   const [catalog, setCatalog] = useState<any>(null);
   const [view, setView] = useState<View>('board');
   const [pass, setPass] = useState(initialPass);
-  const [windowSlot, setWindowSlot] = useState<Slot>('7d');
   const [trip, setTrip] = useState(() => loadTrip());
   const [win, setWin] = useState<any>(null);
   const [units, setUnits] = useState<'in' | 'cm'>((localStorage.getItem('ss_units') as any) || 'in');
@@ -72,17 +71,19 @@ export default function App() {
   const [watchTick, setWatchTick] = useState(0);
   const [heroParallax, setHeroParallax] = useState(0);
   const [restoreTop, setRestoreTop] = useState(0);
-  const [boardMode, setBoardMode] = useState<'recent' | 'incoming'>('recent');
-  const preset = slotPreset(boardMode, windowSlot);
   const [shown, setShown] = useState(BOARD_PAGE);
   const [alertsUi] = useState(() => alertsUiState());
   const [alertOpen, setAlertOpen] = useState(false);
-  const [alertCtx, setAlertCtx] = useState<AlertContext>({ source: 'incoming', pass });
+  const [alertCtx, setAlertCtx] = useState<AlertContext>({ source: 'menu', pass });
+  const [editRule, setEditRule] = useState<LocalRule | null>(null);
+  const [facets, setFacets] = useState<SearchFacets>({});
+
+  const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId || q);
 
   useEffect(() => {
     loadCatalog().then(c => {
       setCatalog(c);
-      let nextWin = presetWindow(c.snow, slotPreset('recent', '7d'));
+      let nextWin = defaultWindow(c.snow);
       let nextTrip = { ...trip };
       const deep = parseTripQuery(location.search);
       if (deep.from && deep.to) {
@@ -101,8 +102,6 @@ export default function App() {
       setTrip(nextTrip);
       saveTrip(nextTrip);
       setWin(nextWin);
-      const qs = new URLSearchParams(location.search);
-      if (qs.get('view') === 'incoming' || qs.get('mode') === 'incoming') setBoardMode('incoming');
       if (deep.resort) {
         setSelectedId(deep.resort);
         setView('profile');
@@ -113,7 +112,7 @@ export default function App() {
         }, 400);
       } else if (deep.q) {
         const g = c.regions.find((x: any) => x.id === deep.q || x.name.toLowerCase() === deep.q.toLowerCase());
-        if (g) applyRegion(g, c, pass);
+        if (g) applyRegion(g, c, pass, { push: false });
       }
     }).catch(err => toast(`Could not load resorts: ${err.message}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,9 +123,9 @@ export default function App() {
   useEffect(() => { localStorage.setItem('ss_units', units); }, [units]);
 
   useEffect(() => {
-    if (!catalog || win?.mode === 'custom') return;
-    setWin(presetWindow(catalog.snow, preset));
-  }, [catalog, preset]);
+    if (!catalog) return;
+    setWin(w => (w?.mode === 'custom' ? w : defaultWindow(catalog.snow)));
+  }, [catalog]);
 
   function setCustomDates(start: string, end: string) {
     if (!catalog || !start || !end) return;
@@ -139,25 +138,38 @@ export default function App() {
     };
     setWin(next);
     setTrip(t => ({ ...t, start, end }));
+    setFacets(f => ({ ...f, from: start, to: end }));
   }
 
   function writeURL(extra: any = {}) {
     if (!win) return;
     const { start, end } = tripDates(trip, win);
     const { adults, kids } = partyOf(trip);
-    history.replaceState(null, '', location.pathname + shareSearch({
+    const kind = extra.ss
+      || (extra.resort ?? selectedId ? 'profile' : (extra.region || activeIds ? 'filter' : 'board'));
+    history.replaceState({ ...(history.state || {}), ss: kind, top: savedBoardTop.current }, '', location.pathname + shareSearch({
       resort: extra.resort ?? selectedId,
       from: start, to: end, adults, kids, home: trip.home,
-      mode: extra.mode, pass, region: extra.region,
-      view: boardMode === 'incoming' ? 'incoming' : undefined,
+      mode: extra.mode, pass, region: extra.region ?? facets.regionId,
       alerts: alertsUi.mode === 'preview' ? '1' : undefined,
     }));
   }
 
-  useEffect(() => { if (win) writeURL(); }, [pass, win, trip, selectedId, boardMode]);
+  useEffect(() => { if (win) writeURL(); }, [pass, win, trip, selectedId, facets.regionId]);
 
-  function applyRegion(g: any, cat = catalog, p = pass) {
+  function rememberBoard() {
+    savedBoardTop.current = boardScroll.current?.scrollTop || 0;
+    setRestoreTop(savedBoardTop.current);
+  }
+
+  function pushScope(kind: 'filter' | 'profile' | 'board') {
+    rememberBoard();
+    history.pushState({ ss: kind, top: savedBoardTop.current }, '');
+  }
+
+  function applyRegion(g: any, cat = catalog, p = pass, opts: { push?: boolean } = {}) {
     if (!g || !cat) return;
+    if (opts.push !== false) pushScope('filter');
     const passOK = (r: any) => p === 'all' || (r.passes || []).includes(p);
     const ids = cat.resorts.filter((r: any) => passOK(r) && matchRegion(g, r)).map((r: any) => r.id);
     setActiveIds(ids);
@@ -165,8 +177,9 @@ export default function App() {
     setSearchOpen(false);
     setMenuOpen(false);
     setView('board');
+    setFacets(f => ({ ...f, regionId: g.id, regionName: g.name, resortId: null, resortName: null }));
     globe.current?.flyRegion(g);
-    writeURL({ resort: null, region: g.id });
+    writeURL({ resort: null, region: g.id, ss: 'filter' });
   }
 
   function openPlan(resorts: any[], w = win, t = trip, cat = catalog) {
@@ -184,30 +197,45 @@ export default function App() {
     setPlanOpen(true);
   }
 
-  function rememberBoard() {
-    savedBoardTop.current = boardScroll.current?.scrollTop || 0;
-    setRestoreTop(savedBoardTop.current);
-  }
-
   function openResort(id: string, mode: 'explore' | 'plan' = 'explore') {
-    rememberBoard();
+    pushScope('profile');
     setSelectedId(id);
     setHeroParallax(0);
     setView('profile');
+    setSearchOpen(false);
     const r = catalog?.resorts.find((x: any) => x.id === id);
     if (r) setTimeout(() => globe.current?.flyResort(r), 80);
-    writeURL({ resort: id, mode });
+    writeURL({ resort: id, mode, ss: 'profile' });
     if (mode === 'plan' && r) openPlan([r]);
   }
 
   function backToBoard() {
     setView('board');
     setHeroParallax(0);
-    writeURL({ resort: null });
+    setSelectedId(null);
+    writeURL({ resort: null, ss: activeIds ? 'filter' : 'board' });
     setRestoreTop(savedBoardTop.current);
   }
 
-  function applyActions(actions: any[], cat = catalog) {
+  function resetHome() {
+    rememberBoard();
+    setActiveIds(null);
+    setStormsOn(false);
+    setQ('');
+    setStatus('');
+    setSearchOpen(false);
+    setSelectedId(null);
+    setFacets({});
+    setView('board');
+    if (catalog) setWin(presetWindow(catalog.snow, 'fc7'));
+    writeURL({ resort: null, region: null, ss: 'board' });
+    setRestoreTop(0);
+    requestAnimationFrame(() => {
+      if (boardScroll.current) boardScroll.current.scrollTop = 0;
+    });
+  }
+
+  function applyActions(actions: any[], cat = catalog, parsed?: any) {
     if (!cat) return;
     let nextTrip = { ...trip };
     let nextPass = pass;
@@ -233,10 +261,7 @@ export default function App() {
       }
       if (a.type === 'setStorms') {
         setStormsOn(!!a.on);
-        if (a.on) {
-          setBoardMode('incoming');
-          setSearchOpen(false);
-        }
+        if (a.on) setSearchOpen(false);
       }
       if (a.type === 'setWatchlist') {
         const cur = new Set(watchlist());
@@ -250,9 +275,22 @@ export default function App() {
     saveTrip(nextTrip);
     if (nextPass !== pass) setPass(nextPass);
     if (nextWin) setWin(nextWin);
+    if (parsed) {
+      setFacets({
+        regionId: parsed.region?.id || null,
+        regionName: parsed.region?.name || null,
+        resortId: parsed.resort?.id || null,
+        resortName: parsed.resort?.name || null,
+        from: parsed.from || nextTrip.start || null,
+        to: parsed.to || nextTrip.end || null,
+        people: parsed.people || ((nextTrip.adults || 0) + (nextTrip.kids || 0)) || null,
+        storms: !!parsed.storms,
+      });
+    }
 
     for (const a of actions) {
       if (a.type === 'showResorts') {
+        pushScope('filter');
         setActiveIds(a.ids || []);
         setSearchOpen(false);
         setView('board');
@@ -269,6 +307,7 @@ export default function App() {
       }
       if (a.type === 'openResort') {
         rememberBoard();
+        history.pushState({ ss: 'profile', top: savedBoardTop.current }, '');
         setSelectedId(a.id);
         setSearchOpen(false);
         setView('profile');
@@ -290,7 +329,7 @@ export default function App() {
       const out = await askAgent(text, {
         pass, regions: catalog.regions, resorts: catalog.resorts, today: catalog.today,
       }, setStatus);
-      applyActions(out.actions || [], catalog);
+      applyActions(out.actions || [], catalog, out.parsed);
       setStatus(out.llm ? 'Agent updated the trip.' : out.mode === 'deterministic' ? 'Parsed locally.' : '');
       if (!out.actions?.length) toast('Could not place that trip — try a region or resort name.');
     } catch (err: any) {
@@ -300,6 +339,49 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  function clearFacet(key: keyof SearchFacets) {
+    if (key === 'regionId' || key === 'regionName') {
+      setFacets(f => ({ ...f, regionId: null, regionName: null }));
+      setActiveIds(null);
+    } else if (key === 'resortId' || key === 'resortName') {
+      setFacets(f => ({ ...f, resortId: null, resortName: null }));
+      setActiveIds(null);
+    } else if (key === 'from' || key === 'to') {
+      setFacets(f => ({ ...f, from: null, to: null }));
+      if (catalog) setWin(defaultWindow(catalog.snow));
+    } else if (key === 'people') {
+      setFacets(f => ({ ...f, people: null }));
+    } else if (key === 'storms') {
+      setFacets(f => ({ ...f, storms: false }));
+      setStormsOn(false);
+    }
+  }
+
+  useEffect(() => {
+    function onPop(e: PopStateEvent) {
+      const kind = e.state?.ss;
+      setSearchOpen(false);
+      if (kind === 'profile') return;
+      if (view === 'profile' || kind === 'filter') {
+        setView('board');
+        setSelectedId(null);
+        setHeroParallax(0);
+        if (kind !== 'filter') {
+          setActiveIds(null);
+          setStormsOn(false);
+          setFacets({});
+          setQ('');
+        }
+        setRestoreTop(e.state?.top ?? savedBoardTop.current);
+        return;
+      }
+      resetHome();
+      if (e.state?.top != null) setRestoreTop(e.state.top);
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [view, catalog]);
 
   const rowsAll = useMemo(() => {
     if (!catalog) return [];
@@ -313,20 +395,17 @@ export default function App() {
       m: windowMetrics(r, catalog.snow, w, catalog.typical),
       storm: stormForResort(r, catalog.snow),
       wx: wxById[r.id],
+      dump: dumpParts(r, catalog.snow),
     }));
     let out = rows;
-    if (boardMode === 'incoming' || stormsOn) {
-      if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
-      out.sort((a, b) => incomingScore(b) - incomingScore(a) || b.storm.max72Cm - a.storm.max72Cm || a.r.name.localeCompare(b.r.name));
-    } else {
-      out.sort((a, b) => snowScore(b) - snowScore(a) || a.r.name.localeCompare(b.r.name));
-    }
+    if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
+    out.sort((a, b) => compareDump(a, b, catalog.snow));
     return out;
-  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardMode]);
+  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById]);
 
   useEffect(() => {
     setShown(BOARD_PAGE);
-  }, [pass, activeIds, stormsOn, boardMode, preset]);
+  }, [pass, activeIds, stormsOn]);
 
   useEffect(() => {
     if (!nwsOn) return;
@@ -338,12 +417,12 @@ export default function App() {
     const ids = rowsAll.slice(0, 16).map(x => x.r);
     fetchListWeather(ids, { limit: 16, batch: 8 }).then(setWxById).catch(() => { /* snapshot */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, pass, activeIds, stormsOn, preset]);
+  }, [catalog, pass, activeIds, stormsOn]);
 
   const visibleRows = rowsAll.slice(0, shown);
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
-  const max = Math.max(0, ...rowsAll.map(boardMode === 'incoming' ? incomingScore : snowScore));
-  const zeroHint = boardMode === 'recent' && max === 0 && !String(preset).startsWith('fc');
+  const maxDump = Math.max(0, ...rowsAll.map(x => x.dump.dumpCm));
+  const zeroHint = maxDump === 0;
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
 
   return (
@@ -404,22 +483,20 @@ export default function App() {
             q={q}
             onOpenSearch={() => setSearchOpen(true)}
             onMenu={() => setMenuOpen(true)}
+            onHome={resetHome}
+            onClearScope={resetHome}
+            scoped={scoped}
             loading={loading}
-            windowSlot={windowSlot}
-            setWindowSlot={p => setWindowSlot(p as Slot)}
-            boardMode={boardMode}
-            setBoardMode={m => { setBoardMode(m); setStormsOn(false); }}
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet on this window. Try 7d or Incoming.
+              Quiet across the board. Modeled, not resort-reported.
             </p>
           ) : null}
           <BlockBoard
             rows={visibleRows}
             units={units}
             snow={catalog.snow}
-            mode={boardMode}
             hasMore={shown < rowsAll.length}
             onMore={() => setShown(n => Math.min(rowsAll.length, n === BOARD_PAGE ? BOARD_PAGE + BOARD_MORE : rowsAll.length))}
             onOpen={id => openResort(id)}
@@ -441,22 +518,9 @@ export default function App() {
           trip={trip}
           win={win}
           onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
-          onAlert={r => { setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
+          onAlert={r => { setEditRule(null); setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
           onEditTrip={() => setTripOpen(true)}
         />
-      ) : null}
-
-      {view === 'board' ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button
-            type="button"
-            className="pointer-events-auto min-h-12 w-full text-base shadow-lg"
-            data-testid="home-alert-me"
-            onClick={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
-          >
-            Alert me
-          </Button>
-        </div>
       ) : null}
 
       <SearchOverlay
@@ -464,18 +528,25 @@ export default function App() {
         q={q}
         setQ={setQ}
         onSubmit={() => submit()}
-        onClose={() => { setSearchOpen(false); setQ(''); setStatus(''); }}
+        onClose={() => { setSearchOpen(false); setStatus(''); }}
+        onHome={resetHome}
         onGhost={text => submit(text)}
         onRegion={id => {
           const g = catalog?.regions.find((x: any) => x.id === id);
           if (g) applyRegion(g);
         }}
-        onClearScope={() => { setActiveIds(null); setStormsOn(false); setSearchOpen(false); }}
+        onResort={id => openResort(id)}
+        onClearScope={resetHome}
+        onClearFacet={clearFacet}
+        onEditTrip={() => { setSearchOpen(false); setTripOpen(true); }}
+        facets={facets}
         regions={catalog?.regions || []}
+        resorts={catalog?.resorts || []}
         stormsOn={stormsOn}
-        setStormsOn={on => { setStormsOn(on); if (on) { setBoardMode('incoming'); setSearchOpen(false); } }}
+        setStormsOn={on => { setStormsOn(on); setFacets(f => ({ ...f, storms: on })); if (on) setSearchOpen(false); }}
         loading={loading}
         status={status}
+        scoped={scoped}
       />
 
       <TripSheet
@@ -496,18 +567,20 @@ export default function App() {
         setPass={p => { setPass(p); setActiveIds(null); }}
         onMyResorts={() => { setActiveIds(watchlist()); setStormsOn(false); setMenuOpen(false); setView('board'); }}
         watchCount={watchlist().length}
-        onAlert={() => { setMenuOpen(false); setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
+        onAlert={() => { setMenuOpen(false); setEditRule(null); setAlertCtx({ source: 'menu', pass }); setAlertOpen(true); }}
+        onEditAlert={rule => { setMenuOpen(false); setEditRule(rule); setAlertCtx({ source: 'edit', pass, resortId: rule.resorts?.[0], resortName: null }); setAlertOpen(true); }}
         mode={alertsUi.mode}
         snowGenerated={catalog?.snow?.generated}
         resorts={catalog?.resorts || []}
       />
 
-      <AlertMeSheet
+      <AlertOnboarding
         open={alertOpen}
-        onOpenChange={setAlertOpen}
+        onOpenChange={v => { setAlertOpen(v); if (!v) setEditRule(null); }}
         ctx={alertCtx}
         mode={alertsUi.mode}
-        regions={catalog?.regions || []}
+        resorts={catalog?.resorts || []}
+        editRule={editRule}
       />
 
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} text={planText} links={planLinks} />

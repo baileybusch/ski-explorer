@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react';
 import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
-import { WINDOW_SLOTS } from '../../lib/snowWindow.js';
+import { LogoMark } from '@/components/LogoMark';
 import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
-  q, onOpenSearch, onMenu, loading, windowSlot, setWindowSlot, boardMode, setBoardMode,
+  q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading,
 }: {
   q: string;
   onOpenSearch: () => void;
   onMenu: () => void;
+  onHome: () => void;
+  onClearScope: () => void;
+  scoped?: boolean;
   loading?: boolean;
-  windowSlot: string;
-  setWindowSlot: (p: string) => void;
-  boardMode: 'recent' | 'incoming';
-  setBoardMode: (m: 'recent' | 'incoming') => void;
 }) {
   const [ghost, setGhost] = useState(0);
   useEffect(() => {
@@ -29,11 +27,17 @@ export function BoardChrome({
       className="mx-auto flex w-full max-w-xl flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
       data-testid="board-chrome"
     >
-      <div className="flex items-center gap-2">
-        <ToggleGroup type="single" value={boardMode} onValueChange={v => (v === 'recent' || v === 'incoming') && setBoardMode(v)} className="min-w-0 flex-1">
-          <ToggleGroupItem value="recent" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-recent">Recent</ToggleGroupItem>
-          <ToggleGroupItem value="incoming" className="min-h-11 flex-1 px-2 text-sm" data-testid="mode-incoming">Incoming</ToggleGroupItem>
-        </ToggleGroup>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-full px-1 text-left"
+          aria-label="SkiScope home"
+          data-testid="logo-home"
+          onClick={onHome}
+        >
+          <LogoMark className="size-8 shrink-0" />
+          <span className="truncate font-display text-xl tracking-wide">SKISCOPE</span>
+        </button>
         <Button
           type="button"
           variant="ghost"
@@ -56,20 +60,17 @@ export function BoardChrome({
           {q || GHOSTS[ghost]}
         </span>
       </button>
-      <div>
-        <ToggleGroup type="single" variant="outline" value={windowSlot} onValueChange={v => v && setWindowSlot(v)} className="w-full" data-testid="window-slots">
-          {WINDOW_SLOTS.map(p => (
-            <ToggleGroupItem key={p.id} value={p.id} className="min-h-10 flex-1 px-1 text-sm" data-testid={`window-${p.id}`}>
-              {p.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        <p className="px-1 pt-1 text-[11px] text-muted-foreground" data-testid="window-caption">
-          {boardMode === 'incoming'
-            ? `Forecast · next ${windowSlot} · modeled, not exact.`
-            : `Past · last ${windowSlot} · modeled, not resort-reported.`}
-        </p>
-      </div>
+      {scoped ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 justify-start px-1 text-base"
+          data-testid="back-to-all"
+          onClick={onClearScope}
+        >
+          Back to all resorts
+        </Button>
+      ) : null}
     </header>
   );
 }

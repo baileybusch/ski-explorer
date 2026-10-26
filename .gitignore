@@ -5,3 +5,6 @@ dist/
 .env
 .env.local
 tmp/
+test-results/
+playwright-report/
+blob-report/

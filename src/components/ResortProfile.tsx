@@ -11,7 +11,7 @@ import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/tri
 import { flightLinks, lodgingLinks, outboundRel, resortSite } from '../../lib/links.js';
 import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
-import { snowScore } from '@/lib/board';
+import { dumpParts } from '@/lib/board';
 
 export function ResortProfile({
   row, onBack, onPlan, onScroll, snow, typical, units, trip, win, onShowMap, onAlert, onEditTrip,
@@ -53,8 +53,8 @@ export function ResortProfile({
   const ld = lodgingLinks({ name: resort.name, lat: resort.center[1], lon: resort.center[0], start: from, end: to, adults, kids });
   const site = resortSite(resort);
   const passName = passLabel(resort);
-  const score = snowScore(row);
-  const num = units === 'cm' ? Math.round(score) : Math.round((score / 2.54) * 10) / 10;
+  const dump = dumpParts(resort, snow);
+  const num = units === 'cm' ? Math.round(dump.dumpCm) : Math.round((dump.dumpCm / 2.54) * 10) / 10;
   const unit = units === 'cm' ? 'cm' : '″';
   const windows = SNOW_PRESETS.map(p => ({
     ...p,
