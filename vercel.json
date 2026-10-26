@@ -14,6 +14,12 @@
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ],
   "rewrites": [
+    { "source": "/api/mcp", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/mcp/", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/search", "destination": "/api/headless?surface=search" },
+    { "source": "/api/search/", "destination": "/api/headless?surface=search" },
+    { "source": "/api/data", "destination": "/api/headless?surface=data" },
+    { "source": "/api/data/", "destination": "/api/headless?surface=data" },
     { "source": "/manage", "destination": "/" },
     { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },
