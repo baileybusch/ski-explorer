@@ -1,7 +1,10 @@
 import { put, get, del, list } from '@vercel/blob';
 import crypto from 'node:crypto';
+import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
+import { normalizeRule } from '../lib/evaluateAlerts.js';
+import { SITE as DEFAULT_SITE } from '../lib/site.js';
 
-export const SITE = process.env.SITE_URL || 'https://skiscope.vercel.app';
+export const SITE = process.env.SITE_URL || DEFAULT_SITE;
 const A = { access: 'private' };
 
 // ---------- storage (Vercel Blob, private store) ----------
@@ -17,8 +20,20 @@ const writeJSON = (path, obj) => put(path, JSON.stringify(obj), { ...A, addRando
 export const getSub = token => /^[a-f0-9]{32}$/.test(token || '') ? readJSON(`subs/${token}.json`) : null;
 export const saveSub = sub => writeJSON(`subs/${sub.token}.json`, sub);
 export async function findByEmail(email) { const i = await readJSON(`emails/${ehash(email)}.json`); return i ? getSub(i.token) : null; }
-export async function createSub(email, resorts, freq = 'weekly') {
-  const sub = { token: crypto.randomBytes(16).toString('hex'), email: email.toLowerCase().trim(), resorts, freq: freq === 'daily' ? 'daily' : 'weekly', status: 'pending', created: new Date().toISOString() };
+export async function createSub(email, resorts, freqOrOpts = 'weekly') {
+  const opts = typeof freqOrOpts === 'string' ? { freq: freqOrOpts } : (freqOrOpts || {});
+  const freq = opts.freq === 'daily' ? 'daily' : opts.freq === 'on-trigger' ? 'on-trigger' : 'weekly';
+  const rule = opts.rule ? normalizeRule({ ...opts.rule, email, tier: 'free' }, email) : null;
+  if (rule && !rule.id) rule.id = `rul_${crypto.randomBytes(6).toString('hex')}`;
+  const sub = {
+    token: crypto.randomBytes(16).toString('hex'),
+    email: email.toLowerCase().trim(),
+    resorts,
+    freq,
+    status: 'pending',
+    created: new Date().toISOString(),
+    rules: rule ? [rule] : [],
+  };
   await saveSub(sub); await writeJSON(`emails/${ehash(email)}.json`, { token: sub.token });
   return sub;
 }
@@ -49,12 +64,27 @@ export const isEmail = e => typeof e === 'string' && e.length < 200 && /^[^\s@]+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const inch = cm => { const v = cm / 2.54; return (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + '″'; };
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
-export async function sendEmail({ to, subject, html, unsubscribeUrl }) {
+export const TEST_SEND_ALLOWLIST = ['baileybusch@gmail.com'];
+
+export function canSendEmail(to, { forceTest = false } = {}) {
+  const addr = String(to || '').toLowerCase().trim();
+  if (!addr) return false;
+  if (EMAIL_ALERTS_ENABLED) return true;
+  return !!(forceTest && TEST_SEND_ALLOWLIST.includes(addr));
+}
+
+export async function sendEmail({ to, subject, html, text, unsubscribeUrl, forceTest = false }) {
+  const addr = String(to || '').toLowerCase().trim();
+  if (!canSendEmail(addr, { forceTest })) {
+    return { skipped: EMAIL_ALERTS_ENABLED ? 'invalid recipient' : 'email paused or address not allowlisted' };
+  }
   if (!process.env.RESEND_API_KEY) return { skipped: 'RESEND_API_KEY not set' };
   const headers = unsubscribeUrl ? { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+  const payload = { from: process.env.RESEND_FROM || 'SkiScope <onboarding@resend.dev>', to: [addr], subject, html, headers };
+  if (text) payload.text = text;
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: process.env.RESEND_FROM || 'SkiScope <onboarding@resend.dev>', to: [to], subject, html, headers }),
+    body: JSON.stringify(payload),
   });
   return { status: r.status, body: await r.json().catch(() => null) };
 }
@@ -72,7 +102,7 @@ export function confirmEmail(sub) {
   return shell('Confirm your SkiScope alerts', `<div class="big" style="font-size:26px;font-weight:800;margin-bottom:8px">Confirm your snow alerts</div>
   <p style="color:#c3c9d6;font-size:15px;line-height:1.6">Tap below to start a daily digest of fresh snow at the resorts you follow. If you didn't ask for this, just ignore this email.</p>
   <a href="${url}" style="display:inline-block;margin-top:10px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Confirm subscription</a>`,
-  `You'll get nothing else unless you confirm.`);
+  `You'll get nothing else unless you confirm. <a href="${SITE}/manage" style="color:#c3c9d6">Manage preferences</a> · <a href="${SITE}/api/unsubscribe?token=${sub.token}" style="color:#c3c9d6">Unsubscribe</a>`);
 }
 function resortCard(r, rank, weekly) {
   const fc = r.fcDays.slice(0, 7).map(([d, v]) => `<td align="center" style="padding:4px 2px;font-size:11px;color:#8b93a7">${new Date(d + 'T12:00').toLocaleDateString('en-US', { weekday: 'narrow' })}<br><b style="color:${v > 0.5 ? '#d5b3ff' : '#c3c9d6'};font-size:12px">${inch(v)}</b></td>`).join('');

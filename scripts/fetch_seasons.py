@@ -9,6 +9,8 @@ idx=json.load(open('public/data/resorts-index.json'))
 OUT='public/data/seasons'; os.makedirs(OUT,exist_ok=True)
 first=int(os.environ.get('FIRST',2015)); last=int(os.environ.get('LAST',2025))
 force='--force' in sys.argv
+hemi=os.environ.get('HEMI','N')  # N: Nov 1–Apr 30; S: Jun 1–Sep 30 (Chile/NZ/AU)
+idx=[r for r in idx if (r.get('hemisphere') or 'N') == hemi]
 UA={'User-Agent':'ski-explorer (github.com/baileybusch/ski-explorer)'}
 B=10  # locations per request -> weight ~ 10*181/14 = ~130
 PER_MIN=int(os.environ.get('PER_MIN',400)); PER_HOUR=int(os.environ.get('PER_HOUR',4500)); used=[]  # (ts, weight)
@@ -20,12 +22,16 @@ def throttle(w):
     time.sleep(5)
 def elev(r): return round(r['base']+0.6*(r['summit']-r['base'])) if r['summit'] and r['base'] else 'nan'
 for y in range(last,first-1,-1):
-  fn=f'{OUT}/{y}.json'
+  if hemi=='S':
+    s,e=f'{y}-06-01',f'{y}-09-30'
+    fn=f'{OUT}/{y}sh.json'
+  else:
+    s,e=f'{y}-11-01',f'{y+1}-04-30'
+    fn=f'{OUT}/{y}.json'
   old=json.load(open(fn)) if os.path.exists(fn) and not force else None
   todo=[r for r in idx if not old or r['id'] not in old['resorts']]
   if not todo: continue
-  s,e=f'{y}-11-01',f'{y+1}-04-30'
-  days=(datetime.date(y+1,4,30)-datetime.date(y,11,1)).days+1
+  days=(datetime.date.fromisoformat(e)-datetime.date.fromisoformat(s)).days+1
   res=dict(old['resorts']) if old else {}
   for k in range(0,len(todo),B):
     ch=todo[k:k+B]

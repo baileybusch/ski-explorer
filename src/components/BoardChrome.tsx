@@ -1,0 +1,76 @@
+import { useEffect, useState } from 'react';
+import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { LogoMark } from '@/components/LogoMark';
+import { GHOSTS } from '@/lib/ghosts';
+
+export function BoardChrome({
+  q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading,
+}: {
+  q: string;
+  onOpenSearch: () => void;
+  onMenu: () => void;
+  onHome: () => void;
+  onClearScope: () => void;
+  scoped?: boolean;
+  loading?: boolean;
+}) {
+  const [ghost, setGhost] = useState(0);
+  useEffect(() => {
+    if (q) return;
+    const t = setInterval(() => setGhost(n => (n + 1) % GHOSTS.length), 3200);
+    return () => clearInterval(t);
+  }, [q]);
+
+  return (
+    <header
+      className="mx-auto flex w-full max-w-xl flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+      data-testid="board-chrome"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-full px-1 text-left"
+          aria-label="SkiScope home"
+          data-testid="logo-home"
+          onClick={onHome}
+        >
+          <LogoMark className="size-8 shrink-0" />
+          <span className="truncate font-display text-xl tracking-wide">SKISCOPE</span>
+        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 min-w-11 rounded-full"
+          aria-label="Menu"
+          data-testid="menu-button"
+          onClick={onMenu}
+        >
+          <MenuIcon />
+        </Button>
+      </div>
+      <button
+        type="button"
+        className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-sm ring-1 ring-foreground/12"
+        onClick={onOpenSearch}
+        data-testid="search-trigger"
+      >
+        {loading ? <SparklesIcon className="size-5 shrink-0 animate-pulse" /> : <SearchIcon className="size-5 shrink-0 opacity-70" />}
+        <span className="min-w-0 flex-1 truncate text-base text-muted-foreground">
+          {q || GHOSTS[ghost]}
+        </span>
+      </button>
+      {scoped ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 justify-start px-1 text-base"
+          data-testid="back-to-all"
+          onClick={onClearScope}
+        >
+          Back to all resorts
+        </Button>
+      ) : null}
+    </header>
+  );
+}
