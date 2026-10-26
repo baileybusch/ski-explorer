@@ -14,11 +14,11 @@
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ],
   "rewrites": [
-    { "source": "/manage", "destination": "/index.html" },
-    { "source": "/about", "destination": "/index.html" },
-    { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" },
-    { "source": "/disclosure", "destination": "/index.html" },
-    { "source": "/contact", "destination": "/index.html" }
+    { "source": "/manage", "destination": "/" },
+    { "source": "/about", "destination": "/" },
+    { "source": "/privacy", "destination": "/" },
+    { "source": "/terms", "destination": "/" },
+    { "source": "/disclosure", "destination": "/" },
+    { "source": "/contact", "destination": "/" }
   ]
 }
