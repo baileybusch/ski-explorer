@@ -1,13 +1,16 @@
 import { fmtIn, C2F, FT } from '../../lib/util.js';
 
-export function snowAmount(cm: number, units: 'in' | 'cm') {
+export type SnowUnits = 'in' | 'cm';
+export type TempUnits = 'F' | 'C';
+
+export function snowAmount(cm: number, units: SnowUnits) {
   if (cm == null || !Number.isFinite(cm)) return '—';
   return units === 'cm' ? `${Math.round(cm)} cm` : `${fmtIn(cm)}″`;
 }
 
-export function tempLabel(c: number | null | undefined, units: 'in' | 'cm') {
+export function tempLabel(c: number | null | undefined, temp: TempUnits = 'F') {
   if (c == null || !Number.isFinite(c)) return '—';
-  return units === 'cm' ? `${Math.round(c)}°C` : `${Math.round(C2F(c))}°`;
+  return temp === 'C' ? `${Math.round(c)}°C` : `${Math.round(C2F(c))}°`;
 }
 
 export function windLabel(kmh: number | null | undefined, units: 'in' | 'cm') {

@@ -35,6 +35,7 @@ function tapSafe(fn: () => void) {
 export function SearchOverlay({
   open, q, setQ, onSubmit, onClose, onHome, onGhost, onRegion, onResort, onClearScope,
   onClearFacet, onEditTrip, facets, regions, resorts = [], stormsOn, setStormsOn, loading, status, scoped,
+  pass, setPass,
 }: {
   open: boolean;
   q: string;
@@ -56,6 +57,8 @@ export function SearchOverlay({
   loading?: boolean;
   status?: string;
   scoped?: boolean;
+  pass?: string;
+  setPass?: (p: string) => void;
 }) {
   const [i, setI] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,6 +141,13 @@ export function SearchOverlay({
           </Button>
         ) : null}
         <div className="relative z-20 flex flex-wrap gap-2" data-testid="search-chips">
+          {setPass ? (
+            <>
+              <Button type="button" variant={pass === 'ikon' ? 'default' : 'outline'} className="min-h-11 rounded-full px-3 text-sm" data-testid="pass-ikon" {...tapSafe(() => setPass('ikon'))}>Ikon</Button>
+              <Button type="button" variant={pass === 'epic' ? 'default' : 'outline'} className="min-h-11 rounded-full px-3 text-sm" data-testid="pass-epic" {...tapSafe(() => setPass('epic'))}>Epic</Button>
+              <Button type="button" variant={pass === 'all' ? 'default' : 'outline'} className="min-h-11 rounded-full px-3 text-sm" data-testid="pass-all" {...tapSafe(() => setPass('all'))}>All</Button>
+            </>
+          ) : null}
           <Button type="button" variant="outline" className="min-h-11 rounded-full px-3 text-sm" data-testid="chip-worldwide" {...tapSafe(onClearScope)}>
             Worldwide
           </Button>

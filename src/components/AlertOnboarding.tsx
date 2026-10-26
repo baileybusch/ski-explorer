@@ -12,7 +12,8 @@ export type AlertContext = {
   resortId?: string | null;
   resortName?: string | null;
   pass?: string;
-  source?: 'incoming' | 'resort' | 'menu' | 'edit';
+  email?: string | null;
+  source?: 'incoming' | 'resort' | 'menu' | 'edit' | 'signup';
 };
 
 const STEPS = ['resorts', 'inches', 'window', 'emails', 'confirm', 'success'] as const;
@@ -54,11 +55,11 @@ export function AlertOnboarding({
     setWindowHours(editRule?.windowHours || 72);
     setStormOn(editRule ? editRule.freq !== 'weekly' : true);
     setRecapOn(editRule ? editRule.recap !== false : true);
-    setEmail(editRule?.email || accountEmail() || '');
+    setEmail(editRule?.email || ctx.email || accountEmail() || '');
     setQuery('');
     setMsg('');
     setStep('resorts');
-  }, [open, ctx.resortId, editRule]);
+  }, [open, ctx.resortId, ctx.email, editRule]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

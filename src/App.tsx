@@ -23,8 +23,11 @@ import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
 import { BOARD_MORE, BOARD_PAGE, compareDump, dumpParts } from '@/lib/board';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
-import { type LocalRule } from '@/lib/alertRules';
+import { HomeSignup } from '@/components/HomeSignup';
+import { SiteFooter } from '@/components/SiteFooter';
+import { type LocalRule, setAccountEmail } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
+import type { SnowUnits, TempUnits } from '@/lib/format';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 type View = 'board' | 'profile' | 'map';
@@ -47,7 +50,8 @@ export default function App() {
   const [pass, setPass] = useState(initialPass);
   const [trip, setTrip] = useState(() => loadTrip());
   const [win, setWin] = useState<any>(null);
-  const [units, setUnits] = useState<'in' | 'cm'>((localStorage.getItem('ss_units') as any) || 'in');
+  const [units, setUnits] = useState<SnowUnits>((localStorage.getItem('ss_units') as SnowUnits) || 'in');
+  const [tempUnits, setTempUnits] = useState<TempUnits>((localStorage.getItem('ss_temp') as TempUnits) || 'F');
   const [lodgingOn, setLodgingOn] = useState(false);
   const [radarOn, setRadarOn] = useState(false);
   const [cloudsOn, setCloudsOn] = useState(false);
@@ -121,6 +125,7 @@ export default function App() {
   useEffect(() => { saveTrip(trip); }, [trip]);
   useEffect(() => { localStorage.setItem('ss_pass', pass); }, [pass]);
   useEffect(() => { localStorage.setItem('ss_units', units); }, [units]);
+  useEffect(() => { localStorage.setItem('ss_temp', tempUnits); }, [tempUnits]);
 
   useEffect(() => {
     if (!catalog) return;
@@ -496,12 +501,25 @@ export default function App() {
           <BlockBoard
             rows={visibleRows}
             units={units}
+            tempUnits={tempUnits}
             snow={catalog.snow}
             hasMore={shown < rowsAll.length}
             onMore={() => setShown(n => Math.min(rowsAll.length, n === BOARD_PAGE ? BOARD_PAGE + BOARD_MORE : rowsAll.length))}
             onOpen={id => openResort(id)}
             scrollerRef={boardScroll}
             restoreTop={restoreTop}
+            tight={scoped}
+            after={(
+              <>
+                <HomeSignup onStart={addr => {
+                  setAccountEmail(addr);
+                  setEditRule(null);
+                  setAlertCtx({ source: 'signup', email: addr, pass });
+                  setAlertOpen(true);
+                }} />
+                <SiteFooter />
+              </>
+            )}
           />
         </div>
       ) : null}
@@ -515,6 +533,7 @@ export default function App() {
           snow={catalog.snow}
           typical={catalog.typical}
           units={units}
+          tempUnits={tempUnits}
           trip={trip}
           win={win}
           onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
@@ -547,6 +566,8 @@ export default function App() {
         loading={loading}
         status={status}
         scoped={scoped}
+        pass={pass}
+        setPass={p => { setPass(p); setActiveIds(null); }}
       />
 
       <TripSheet
@@ -563,15 +584,9 @@ export default function App() {
         onOpenChange={setMenuOpen}
         units={units}
         setUnits={setUnits}
-        pass={pass}
-        setPass={p => { setPass(p); setActiveIds(null); }}
-        onMyResorts={() => { setActiveIds(watchlist()); setStormsOn(false); setMenuOpen(false); setView('board'); }}
-        watchCount={watchlist().length}
-        onAlert={() => { setMenuOpen(false); setEditRule(null); setAlertCtx({ source: 'menu', pass }); setAlertOpen(true); }}
-        onEditAlert={rule => { setMenuOpen(false); setEditRule(rule); setAlertCtx({ source: 'edit', pass, resortId: rule.resorts?.[0], resortName: null }); setAlertOpen(true); }}
+        tempUnits={tempUnits}
+        setTempUnits={setTempUnits}
         mode={alertsUi.mode}
-        snowGenerated={catalog?.snow?.generated}
-        resorts={catalog?.resorts || []}
       />
 
       <AlertOnboarding

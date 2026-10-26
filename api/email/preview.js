@@ -57,9 +57,10 @@ export default async function handler(req, res) {
   const catalog = { ...snow, index };
   const ranked = rankRecap(catalog, { limit: 5 });
 
+  const sponsor = { on: true, example: true };
   const payload = type === 'recap' || type === 'last-storm'
-    ? recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: null, kind: type === 'last-storm' ? 'last-storm' : 'weekly' })
-    : stormAlertEmail({ alert: demoAlert(snow, index), token: null });
+    ? recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: null, kind: type === 'last-storm' ? 'last-storm' : 'weekly', sponsor })
+    : stormAlertEmail({ alert: demoAlert(snow, index), token: null, sponsor });
 
   if (req.query.format === 'json') {
     return res.json({ subject: payload.subject, text: payload.text, htmlBytes: payload.html.length, sent: false });

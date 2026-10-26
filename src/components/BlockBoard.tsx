@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { forecastDays } from '../../lib/snowWindow.js';
 import { dumpParts, cardTone, gridCols, packCells, rowHeight, targetRows } from '@/lib/board';
 import { fmtIn, parseISO } from '../../lib/util.js';
-import { snowAmount, tempLabel } from '@/lib/format';
+import { snowAmount, tempLabel, type SnowUnits, type TempUnits } from '@/lib/format';
 import { RadarThumb } from '@/components/RadarThumb';
 
 function amt(cm: number, units: 'in' | 'cm') {
@@ -11,16 +11,19 @@ function amt(cm: number, units: 'in' | 'cm') {
 }
 
 export function BlockBoard({
-  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore,
+  rows, units, tempUnits = 'F', snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, after, tight,
 }: {
   rows: { r: any; m: any; storm?: any; wx?: any; dump?: ReturnType<typeof dumpParts> }[];
-  units: 'in' | 'cm';
+  units: SnowUnits;
+  tempUnits?: TempUnits;
   snow: any;
   onOpen: (id: string) => void;
   scrollerRef?: MutableRefObject<HTMLDivElement | null>;
   restoreTop?: number;
   hasMore?: boolean;
   onMore?: () => void;
+  after?: ReactNode;
+  tight?: boolean;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 390, h: 560 });
@@ -53,7 +56,7 @@ export function BlockBoard({
   return (
     <div
       ref={wrap}
-      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-1"
+      className={`min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${tight ? 'pt-1' : 'pt-5'}`}
       data-testid="board-b"
       data-mode="dump"
     >
@@ -125,7 +128,7 @@ export function BlockBoard({
                       />
                     ) : null}
                   </div>
-                  {featured ? <ForecastStrip days={days} units={units} /> : null}
+                  {featured ? <ForecastStrip days={days} units={units} tempUnits={tempUnits} /> : null}
                 </button>
               );
             })}
@@ -139,11 +142,12 @@ export function BlockBoard({
           ) : null}
         </>
       )}
+      {after}
     </div>
   );
 }
 
-function ForecastStrip({ days, units }: { days: any[]; units: 'in' | 'cm' }) {
+function ForecastStrip({ days, units, tempUnits }: { days: any[]; units: SnowUnits; tempUnits: TempUnits }) {
   if (!days.length) return null;
   return (
     <div className="flex gap-1" data-testid="forecast-strip">
@@ -156,7 +160,7 @@ function ForecastStrip({ days, units }: { days: any[]; units: 'in' | 'cm' }) {
             {snowAmount(d.snowCm, units)}
           </div>
           {d.tmax != null ? (
-            <div className="text-[10px] opacity-55">{tempLabel(d.tmax, units)}</div>
+            <div className="text-[10px] opacity-55">{tempLabel(d.tmax, tempUnits)}</div>
           ) : null}
         </div>
       ))}

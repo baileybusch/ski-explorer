@@ -10,10 +10,12 @@ Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates,
 | Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
 | `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
 | Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
-| Alert me UI | Multi-step onboarding (resort → inches → window → email types → confirm → success). Full-width Alert me only on the resort page. Home has no filled primary. My alerts empty state launches the same flow. Preview saves to `localStorage` only. |
+| Alert me UI | Multi-step onboarding. Home has a bottom email signup (the only filled primary on home) that opens the same flow. Resort page still has the full-width Alert me bar. |
+| Accounts | Passwordless `/manage`. Magic-link tokens in `lib/authToken.js`. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
+| Sponsor slot | Optional, off by default. Labeled **Sponsored** in alert + recap templates. Preview renders “Example sponsor”. |
 | `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |
 | Cron | `vercel.json` → `/api/cron/alerts` daily `0 3 * * *` (Sunday evening PT ≈ recap window). Handler no-ops while the flag is false. Old `/api/cron/digest` still no-ops. |
-| Subscribers | Same Blob `subs/<token>.json`. Rules hang on the existing document. |
+| Subscribers | Blob `subs/<32-hex>.json` plus `prefs`. Magic-link tokens are signed and short-lived; they are not stored. |
 | Payments | **Not built.** `tier` is a field. |
 
 ### Before real sends can turn on
@@ -248,6 +250,20 @@ Email stays paused until phase 0 is done and someone flips the flag on purpose.
 | **5. Agent as the product** | “Keep looking and tell me when to go.” Workflow loop, `/api/agent` tools already include `get_weather` and `find_storms`. Rate-limit and a spend cap per watch. | Medium on top of 3; Large if it also prices. | Phase 3. Skip 4 if the deep link is enough. |
 
 Phase 2 is the Mammoth-style product. Phase 3 is the Campnab-style product without lying about flights. Phase 4 is where most travel startups stall; do not promise it on the marketing page.
+
+---
+
+## Monetization (design only — no ad network)
+
+Plan, not a live program:
+
+1. **Free alerts** — grow the list. The product is the dump email.
+2. **Sponsor slots in alerts and recaps** — one slot, labeled **Sponsored** (CAN-SPAM). Off unless the subscriber leaves “sponsor / partner content” on. Frequency cap: at most one sponsor per email, and not every send if the list is small. Preview renders `Example sponsor`.
+3. **Do not sell raw email addresses.** Selling or renting the list creates CCPA/GDPR exposure. Prefer placing a labeled sponsor in the email we already send. Share **aggregated** stats with a partner (open rate, list size band) if anything.
+
+TODO (doc only, not on the Privacy page): how/whether any subscriber data is shared with partners is **to be decided before launch**, after legal review. Do not claim data is sold. Do not claim data is never sold until Bailey decides.
+
+Affiliate flight/lodging links stay separate (`lib/links.js`, disclosure page).
 
 ---
 

@@ -26,6 +26,15 @@ export const WINDOWS = [
   { id: 168, label: '7d' },
 ];
 
+export function withAlerts(path: string) {
+  if (typeof location === 'undefined') return path;
+  const flagged = new URLSearchParams(location.search).get('alerts') === '1';
+  if (!flagged) return path;
+  const [p, hash] = path.split('#');
+  const joiner = p.includes('?') ? '&' : '?';
+  return `${p}${joiner}alerts=1${hash ? `#${hash}` : ''}`;
+}
+
 export const FREQS = [
   { id: 'on-trigger', label: 'On trigger' },
   { id: 'weekly', label: 'Weekly' },

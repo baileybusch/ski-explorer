@@ -76,9 +76,10 @@ const snow = load('public/data/snow.json');
 const index = load('public/data/resorts-index.json');
 const catalog = { ...snow, index };
 const ranked = rankRecap(catalog, { limit: 5 });
-const alert = stormAlertEmail({ alert: demoAlert(snow, index), token: 'previewtoken00000000000000000000' });
-const recap = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'weekly' });
-const last = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'last-storm' });
+const sponsor = { on: true, example: true };
+const alert = stormAlertEmail({ alert: demoAlert(snow, index), token: 'previewtoken00000000000000000000', email: TEST_ONLY, sponsor });
+const recap = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'weekly', email: TEST_ONLY, sponsor });
+const last = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'last-storm', email: TEST_ONLY, sponsor });
 
 mkdirSync(outDir, { recursive: true });
 const files = {

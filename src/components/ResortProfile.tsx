@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RadarPlayer } from '@/components/RadarPlayer';
-import { snowAmount, passLabel, tempLabel, windLabel } from '@/lib/format';
+import { snowAmount, passLabel, tempLabel, windLabel, type SnowUnits, type TempUnits } from '@/lib/format';
 import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
 import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
@@ -14,7 +14,7 @@ import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
 
 export function ResortProfile({
-  row, onBack, onPlan, onScroll, snow, typical, units, trip, win, onShowMap, onAlert, onEditTrip,
+  row, onBack, onPlan, onScroll, snow, typical, units, tempUnits = 'F', trip, win, onShowMap, onAlert, onEditTrip,
 }: {
   row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
@@ -22,7 +22,8 @@ export function ResortProfile({
   onScroll?: (y: number) => void;
   snow: any;
   typical: any;
-  units: 'in' | 'cm';
+  units: SnowUnits;
+  tempUnits?: TempUnits;
   trip: any;
   win: any;
   onShowMap: (r: any) => void;
@@ -128,9 +129,9 @@ export function ResortProfile({
                 {num}<span className="text-[0.36em]">{unit}</span>
               </div>
               <div className="mb-2 text-right text-base text-white/80">
-                <div>{glyph} {tempLabel(cur.tempC, units)}</div>
+                <div>{glyph} {tempLabel(cur.tempC, tempUnits)}</div>
                 <div className="text-sm text-white/65">
-                  H {tempLabel(hi, units)} / L {tempLabel(lo, units)}
+                  H {tempLabel(hi, tempUnits)} / L {tempLabel(lo, tempUnits)}
                   {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
                 </div>
                 {resort.base_depth ? <div className="text-sm text-white/65">Base {snowAmount(resort.base_depth, units)}</div> : null}
@@ -163,7 +164,7 @@ export function ResortProfile({
                       {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
                     </div>
                     <div className="w-8 shrink-0 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
-                    <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, units)}</div>
+                    <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, tempUnits)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="h-2 rounded-full bg-muted">
                         <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.round(((d.snowCm || 0) / maxSnow) * 100)}%` }} />

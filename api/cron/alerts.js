@@ -55,7 +55,11 @@ export default async function handler(req, res) {
   let sent = 0, failed = 0;
   for (const alert of alerts) {
     const sub = byRule.get(alert.ruleId);
-    const mail = stormAlertEmail({ alert, token: sub?.token });
+    if (sub?.prefs?.stormAlerts === false) continue;
+    const mail = stormAlertEmail({
+      alert, token: sub?.token, email: alert.email,
+      sponsor: { on: sub?.prefs?.sponsor === true },
+    });
     const r = await sendEmail({ to: alert.email, ...mail });
     if (r.status && r.status < 300) {
       sent++;
@@ -80,7 +84,11 @@ export default async function handler(req, res) {
     const ranked = rankRecap(snow, { limit: 5 });
     for (const s of subs) {
       if (allow.length && !allow.includes(s.email)) continue;
-      const mail = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: s.token, kind: 'weekly' });
+      if (s.prefs?.recap === false) continue;
+      const mail = recapEmail({
+        recent: ranked.recent, incoming: ranked.incoming, token: s.token, kind: 'weekly', email: s.email,
+        sponsor: { on: s.prefs?.sponsor === true },
+      });
       const r = await sendEmail({ to: s.email, ...mail });
       if (r.status && r.status < 300) recapSent++;
       else failed++;

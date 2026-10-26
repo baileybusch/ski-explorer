@@ -102,7 +102,7 @@ export function confirmEmail(sub) {
   return shell('Confirm your SkiScope alerts', `<div class="big" style="font-size:26px;font-weight:800;margin-bottom:8px">Confirm your snow alerts</div>
   <p style="color:#c3c9d6;font-size:15px;line-height:1.6">Tap below to start a daily digest of fresh snow at the resorts you follow. If you didn't ask for this, just ignore this email.</p>
   <a href="${url}" style="display:inline-block;margin-top:10px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Confirm subscription</a>`,
-  `You'll get nothing else unless you confirm. <a href="${SITE}/alerts?token=${sub.token}" style="color:#c3c9d6">Manage preferences</a> · <a href="${SITE}/api/unsubscribe?token=${sub.token}" style="color:#c3c9d6">Unsubscribe</a>`);
+  `You'll get nothing else unless you confirm. <a href="${SITE}/manage" style="color:#c3c9d6">Manage preferences</a> · <a href="${SITE}/api/unsubscribe?token=${sub.token}" style="color:#c3c9d6">Unsubscribe</a>`);
 }
 function resortCard(r, rank, weekly) {
   const fc = r.fcDays.slice(0, 7).map(([d, v]) => `<td align="center" style="padding:4px 2px;font-size:11px;color:#8b93a7">${new Date(d + 'T12:00').toLocaleDateString('en-US', { weekday: 'narrow' })}<br><b style="color:${v > 0.5 ? '#d5b3ff' : '#c3c9d6'};font-size:12px">${inch(v)}</b></td>`).join('');

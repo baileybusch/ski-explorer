@@ -10,6 +10,7 @@ import { llmAvailable, runLlm } from '../lib/agent/runAgent.js';
 import { runAlertEvals } from './alerts.mjs';
 import { runStormStatusEvals } from './stormStatus.mjs';
 import { runDumpScoreEvals } from './dumpScore.mjs';
+import { runAuthTokenEvals } from './authToken.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -84,4 +85,9 @@ console.log('\ndump score\n');
 for (const line of dumps.lines) console.log(line);
 console.log(`\n${dumps.total - dumps.fail}/${dumps.total} dump-score evals passed`);
 
-process.exit(fail || alerts.fail || storms.fail || dumps.fail ? 1 : 0);
+const tokens = runAuthTokenEvals();
+console.log('\nauth token\n');
+for (const line of tokens.lines) console.log(line);
+console.log(`\n${tokens.total - tokens.fail}/${tokens.total} auth-token evals passed`);
+
+process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail ? 1 : 0);
