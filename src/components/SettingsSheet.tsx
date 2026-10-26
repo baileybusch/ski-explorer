@@ -105,6 +105,14 @@ export function SettingsSheet({
                 <FieldDescription>Filters the board. Alert watches have their own pass setting.</FieldDescription>
               </Field>
 
+              <Field>
+                <FieldLabel>Units</FieldLabel>
+                <ToggleGroup type="single" value={units} onValueChange={v => v && setUnits(v as 'in' | 'cm')} className="w-full">
+                  <ToggleGroupItem value="in" className="min-h-11 flex-1">Inches</ToggleGroupItem>
+                  <ToggleGroupItem value="cm" className="min-h-11 flex-1">cm</ToggleGroupItem>
+                </ToggleGroup>
+              </Field>
+
               <Separator />
 
               <div data-testid="about-credits">
@@ -119,13 +127,6 @@ export function SettingsSheet({
                     Snow snapshot {snowGenerated.slice(0, 10)}
                   </p>
                 ) : null}
-                <div className="mt-3">
-                  <FieldLabel>Units</FieldLabel>
-                  <ToggleGroup type="single" value={units} onValueChange={v => v && setUnits(v as 'in' | 'cm')} className="mt-1 w-full">
-                    <ToggleGroupItem value="in" className="min-h-11 flex-1">Inches</ToggleGroupItem>
-                    <ToggleGroupItem value="cm" className="min-h-11 flex-1">cm</ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
               </div>
             </>
           ) : null}
@@ -168,7 +169,7 @@ export function SettingsSheet({
                     {rule.paused ? 'Paused' : 'On'} · quiet {rule.quietStart}–{rule.quietEnd} · {rule.recap ? 'recap on' : 'recap off'}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" className="min-h-11 px-3 text-sm" onClick={() => { updateLocalRule(rule.id, { paused: !rule.paused }); refresh(); }}>
+                    <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm" onClick={() => { updateLocalRule(rule.id, { paused: !rule.paused }); refresh(); }}>
                       {rule.paused ? 'Resume' : 'Pause'}
                     </Button>
                     <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm" onClick={() => { setEdit(rule); setPanel('edit'); }}>
