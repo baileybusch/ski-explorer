@@ -12,6 +12,8 @@ Cursor / other clients: transport `http`, URL `https://skiscope.vercel.app/api/m
 
 `GET /api/mcp` returns server info + the tool list (for humans and install checks).
 
+Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, and `/api/data` rewrite to one function (`api/headless.js`). The public URLs stay the same.
+
 ## Tools
 
 | Tool | Args | Notes |
