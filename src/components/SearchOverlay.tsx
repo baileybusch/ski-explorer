@@ -83,7 +83,7 @@ export function SearchOverlay({
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-background" data-testid="search">
-      <div className="relative z-20 mx-auto flex w-full max-w-xl flex-col gap-3 px-3 pt-[max(0.55rem,env(safe-area-inset-top))]">
+      <div className="relative z-20 mx-auto flex w-full max-w-xl flex-col gap-5 px-3 pt-[max(0.55rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"

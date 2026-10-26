@@ -74,7 +74,9 @@ export function AlertOnboarding({
   const labels = namesOf(selected, resorts);
   const where = labels.length ? labels.join(', ') : 'your resorts';
   const win = WINDOWS.find(w => w.id === windowHours)?.label || '72h';
-  const preview = `We'll email you when ${where} is about to get ${minSnowIn}″ in ${win}.`;
+  const snowUnits = typeof localStorage !== 'undefined' && localStorage.getItem('ss_units') === 'cm' ? 'cm' : 'in';
+  const snowBit = snowUnits === 'cm' ? `${Math.round(minSnowIn * 2.54)} cm` : `${minSnowIn}″`;
+  const preview = `We'll email you when ${where} is about to get ${snowBit} in ${win}.`;
 
   function toggle(id: string) {
     setSelected(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]));
@@ -282,7 +284,7 @@ export function AlertOnboarding({
           {step === 'success' ? (
             <div className="mt-6 flex flex-col gap-4" data-testid="alert-success">
               <p className="text-lg leading-relaxed">
-                You&apos;re set. We&apos;ll email you when {where} is about to get {minSnowIn}″.
+                You&apos;re set. We&apos;ll email you when {where} is about to get {snowBit}.
               </p>
               <p className="text-sm text-muted-foreground">
                 {mode === 'live' ? 'Watch the inbox when a storm lines up.' : 'Saved on this device. Nothing was emailed.'}
