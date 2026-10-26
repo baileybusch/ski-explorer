@@ -3,6 +3,9 @@ import crypto from 'node:crypto';
 import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 import { normalizeRule } from '../lib/evaluateAlerts.js';
 import { SITE as DEFAULT_SITE } from '../lib/site.js';
+import { defaultPrefs } from '../lib/accountPrefs.js';
+import { canReceiveEmail } from '../lib/consent.js';
+import { CONFIRM_TTL_SEC, signAuthToken } from '../lib/authToken.js';
 
 export const SITE = process.env.SITE_URL || DEFAULT_SITE;
 const A = { access: 'private' };
@@ -33,6 +36,8 @@ export async function createSub(email, resorts, freqOrOpts = 'weekly') {
     status: 'pending',
     created: new Date().toISOString(),
     rules: rule ? [rule] : [],
+    prefs: defaultPrefs(),
+    consent: opts.consent || null,
   };
   await saveSub(sub); await writeJSON(`emails/${ehash(email)}.json`, { token: sub.token });
   return sub;
@@ -42,7 +47,7 @@ export async function allActive() {
   const out = []; let cursor;
   do {
     const r = await list({ prefix: 'subs/', cursor, limit: 1000 }); cursor = r.cursor;
-    for (const b of r.blobs) { const s = await readJSON(b.pathname); if (s?.status === 'active') out.push(s); }
+    for (const b of r.blobs) { const s = await readJSON(b.pathname); if (canReceiveEmail(s)) out.push(s); }
   } while (cursor);
   return out;
 }
@@ -97,10 +102,19 @@ const shell = (title, inner, footer) => `<!doctype html><html><head><meta charse
 ${inner}
 <div style="margin-top:28px;padding-top:16px;border-top:1px solid #1f2633;font-size:12px;line-height:1.6;color:#8b93a7">${footer}</div>
 </div></td></tr></table></body></html>`;
+export function confirmLink(sub) {
+  try {
+    const signed = signAuthToken({ email: sub.email, purpose: 'confirm', ttlSec: CONFIRM_TTL_SEC });
+    return `${SITE}/api/confirm?token=${encodeURIComponent(signed)}`;
+  } catch {
+    return `${SITE}/api/confirm?token=${sub.token}`;
+  }
+}
+
 export function confirmEmail(sub) {
-  const url = `${SITE}/api/confirm?token=${sub.token}`;
+  const url = confirmLink(sub);
   return shell('Confirm your SkiScope alerts', `<div class="big" style="font-size:26px;font-weight:800;margin-bottom:8px">Confirm your snow alerts</div>
-  <p style="color:#c3c9d6;font-size:15px;line-height:1.6">Tap below to start a daily digest of fresh snow at the resorts you follow. If you didn't ask for this, just ignore this email.</p>
+  <p style="color:#c3c9d6;font-size:15px;line-height:1.6">Tap below to start storm alerts and recaps. Unconfirmed signups receive nothing and expire after 7 days. If you didn't ask for this, ignore this email.</p>
   <a href="${url}" style="display:inline-block;margin-top:10px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Confirm subscription</a>`,
   `You'll get nothing else unless you confirm. <a href="${SITE}/manage" style="color:#c3c9d6">Manage preferences</a> · <a href="${SITE}/api/unsubscribe?token=${sub.token}" style="color:#c3c9d6">Unsubscribe</a>`);
 }

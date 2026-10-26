@@ -1,4 +1,5 @@
 /** Local preview rules. Nothing here is emailed or written to Blob. */
+import { DEFAULT_ALERT_MIN_SNOW_IN, DEFAULT_ALERT_WINDOW_HOURS } from '../../lib/alertDefaults.js';
 
 export type LocalRule = {
   id: string;
@@ -54,8 +55,8 @@ export function addLocalRule(partial: Partial<LocalRule>): LocalRule {
     region: partial.region || null,
     resorts: partial.resorts || [],
     savedResorts: partial.savedResorts || [],
-    minSnowIn: partial.minSnowIn || 12,
-    windowHours: partial.windowHours || 72,
+    minSnowIn: partial.minSnowIn || DEFAULT_ALERT_MIN_SNOW_IN,
+    windowHours: partial.windowHours || DEFAULT_ALERT_WINDOW_HOURS,
     quietStart: partial.quietStart || '21:00',
     quietEnd: partial.quietEnd || '07:00',
     freq: partial.freq === 'weekly' ? 'weekly' : 'on-trigger',
@@ -82,6 +83,5 @@ export function ruleSummary(rule: LocalRule, names: { id: string; name: string }
       : rule.watch === 'region'
         ? (rule.region || 'a region')
         : rule.pass === 'ikon' ? 'Ikon' : rule.pass === 'epic' ? 'Epic' : 'Ikon + Epic';
-  const win = rule.windowHours === 168 ? '7d' : `${rule.windowHours}h`;
-  return `${rule.minSnowIn}″ / ${win} · ${where}`;
+  return where;
 }

@@ -1,11 +1,10 @@
 import { LogoMark } from '@/components/LogoMark';
 import { withAlerts } from '@/lib/alertsUi';
+import { affiliateConfigured } from '../../public/config.js';
 
 const LINKS = [
-  { href: '/about', label: 'About' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
-  { href: '/disclosure', label: 'Affiliate disclosure' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -22,10 +21,12 @@ export function SiteFooter() {
             {l.label}
           </a>
         ))}
+        {affiliateConfigured() ? (
+          <a href={withAlerts('/disclosure')} className="text-muted-foreground underline-offset-4 hover:underline" data-testid="footer-disclosure">
+            Affiliate disclosure
+          </a>
+        ) : null}
       </nav>
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Snow: Open-Meteo (modeled). Runs and lifts: OpenSkiMap contributors. Radar: RainViewer.
-      </p>
     </footer>
   );
 }

@@ -2,7 +2,8 @@
  * evaluateAlerts cases: threshold, window, dedupe, quiet hours, pass filter.
  * Run via npm run eval.
  */
-import { evaluateAlerts, shouldSendRecap, inQuietHours, dedupeKey, rankRecap } from '../lib/evaluateAlerts.js';
+import { evaluateAlerts, shouldSendRecap, inQuietHours, dedupeKey, rankRecap, normalizeRule } from '../lib/evaluateAlerts.js';
+import { DEFAULT_ALERT_MIN_SNOW_IN, DEFAULT_ALERT_WINDOW_HOURS } from '../lib/alertDefaults.js';
 
 const snow = {
   today: 2,
@@ -167,7 +168,13 @@ export function runAlertEvals() {
   if (ranked.incoming[0]?.id !== 'vail') { fail++; lines.push(`FAIL  rank-incoming  ${ranked.incoming[0]?.id}`); }
   else lines.push('ok    rank-incoming');
 
-  return { fail, total: cases.length + 3, lines };
+  const d = normalizeRule({});
+  if (d.minSnowIn !== DEFAULT_ALERT_MIN_SNOW_IN || d.windowHours !== DEFAULT_ALERT_WINDOW_HOURS) {
+    fail++;
+    lines.push(`FAIL  default-rule  ${d.minSnowIn}/${d.windowHours}`);
+  } else lines.push('ok    default-rule');
+
+  return { fail, total: cases.length + 4, lines };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

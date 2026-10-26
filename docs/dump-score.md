@@ -13,7 +13,9 @@ scoreIn = past72hIn + next7dIn
 | `past72h` | Today and the two previous snapshot days (inclusive 3 days) | Open-Meteo `snowfall_sum` already observed in `snow.json` |
 | `next7d` | The next forecast days after today, up to 7 | Same snapshot, days after `snow.today` |
 
-Inches = centimeters / 2.54. The hero number on each card is the combined total. The two legs stay visible as **Past 72h** and **Next 7d**.
+Inches = centimeters / 2.54. **Ranking uses the combined score.** The hero number on each card is **fallen snow only** (past 72h), labeled `8″ last 72h`. Forecast is a separate accent chip (`+3″ coming`). Never show the sum as if it had already fallen.
+
+A quiet line above the board reads **Ranked by last 72h + next 7 days**.
 
 ## Tie-breaks (deterministic)
 

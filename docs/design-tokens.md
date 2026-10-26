@@ -32,7 +32,7 @@ Scale is weight-first: one display size (clamp 5.4–8.2rem), ~1.6–2.1rem name
 
 - Snow amount = card lightness + the display number
 - Storm = weight on the same hue (badge), not a second color
-- Map: CARTO dark, desaturated. Pins and rings stay gray
+- Map: OpenFreeMap dark vector, desaturated. Pins and rings stay gray
 - No multi-color gradients on the chrome
 
 Tokens live in `src/index.css`. Concepts: [design-concepts.md](design-concepts.md).

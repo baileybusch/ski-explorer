@@ -46,10 +46,10 @@ function demoAlert(snow, index) {
   }
   const lead = incoming[0] || { id: 'alta', name: 'Alta', incomingIn: 8, strip: [] };
   return {
-    subject: `Storm incoming: ${lead.name} ${Math.round(lead.incomingIn || 8)}"`,
-    lead: { resortId: lead.id, resortName: lead.name, snowIn: lead.incomingIn || 8, startDay: snow.dates[(snow.today || 0) + 1], strip: lead.strip, iata: index.find(r => r.id === lead.id)?.iata, center: index.find(r => r.id === lead.id)?.center },
+    subject: `Storm incoming: ${lead.name} +${Math.round(lead.incomingIn || 8)}" forecast`,
+    lead: { resortId: lead.id, resortName: lead.name, snowIn: lead.incomingIn || 8, past72In: lead.past72In || 0, startDay: snow.dates[(snow.today || 0) + 1], strip: lead.strip, iata: index.find(r => r.id === lead.id)?.iata, center: index.find(r => r.id === lead.id)?.center },
     affected: incoming.slice(0, 5).map(r => ({
-      resortId: r.id, resortName: r.name, snowIn: r.incomingIn, startDay: r.strip?.[0]?.date, strip: r.strip, region: r.region,
+      resortId: r.id, resortName: r.name, snowIn: r.incomingIn, past72In: r.past72In || 0, startDay: r.strip?.[0]?.date, strip: r.strip, region: r.region,
     })),
   };
 }

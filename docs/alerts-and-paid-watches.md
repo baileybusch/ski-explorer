@@ -10,8 +10,8 @@ Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates,
 | Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
 | `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
 | Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
-| Alert me UI | Multi-step onboarding. Home has a bottom email signup (the only filled primary on home) that opens the same flow. Resort page still has the full-width Alert me bar. |
-| Accounts | Passwordless `/manage`. Magic-link tokens in `lib/authToken.js`. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
+| Alert me UI | Short flow: pick a resort (pre-selected from a resort page) → email → check-your-email. Home signup already has the email, so it goes resort → done. No threshold or warning-window step. Internal default is **6″ / 72h** (`lib/alertDefaults.js`). Optional **Alert sensitivity** in the preference center (Standard / Big storms only / Every storm). Storm + recap stay on by default with a small toggle on the email screen. |
+| Accounts | No passwords. Email + signed link. Double opt-in, consent records, preference center. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
 | Sponsor slot | Optional, off by default. Labeled **Sponsored** in alert + recap templates. Preview renders “Example sponsor”. |
 | `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |
 | Cron | `vercel.json` → `/api/cron/alerts` daily `0 3 * * *` (Sunday evening PT ≈ recap window). Handler no-ops while the flag is false. Old `/api/cron/digest` still no-ops. |
@@ -71,8 +71,8 @@ One document per subscriber (or per rule if they follow several mountains). Fits
 | Field | Meaning |
 |---|---|
 | `resorts` / `region` / `pass` | Where. Region expands to the gazetteer list at check time. Cap ~30 ids, same as today’s subscribe. |
-| `minSnowIn` | Threshold. Same 6 / 12 / 18 tiers the Storms chip already uses, plus a custom number. |
-| `windowHours` | 24 / 48 / 72. Rolling sum of `snowfall_sum` in the Open-Meteo snapshot. |
+| `minSnowIn` | Internal threshold. Signup does not ask. Default **6** (`DEFAULT_ALERT_MIN_SNOW_IN`). Preference-center sensitivity can raise it to 12. Same 6 / 12 / 18 tiers the evaluator already uses. |
+| `windowHours` | Internal warning window. Default **72**. Sensitivity “Every storm” uses 168. 24 / 48 / 72 / 168 rolling sum of `snowfall_sum`. |
 | `side` | `forecast` (next N hours), `observed` (past N hours), or `either`. Observed is still **modeled** Open-Meteo, not a resort report — say so in the email. |
 | `freq` | `on-trigger` (dump alert) vs the existing `daily` / `weekly` digest. |
 | `quiet` | Do not send in this local window; queue until it opens. |

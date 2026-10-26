@@ -26,7 +26,7 @@ export function SettingsSheet({
             {mode === 'preview'
               ? 'Preview — alerts on this device only. Nothing is emailed.'
               : mode === 'live'
-                ? 'Email-based account. No password.'
+                ? 'Enter your email and we’ll send a sign-in link.'
                 : 'Alerts are paused. Sign-in is email only.'}
           </SheetDescription>
         </SheetHeader>

@@ -48,7 +48,7 @@ const cases = [
       includes: [
         'Storm status: Building.',
         '9″ in the last 72h',
-        'another 14″',
+        '+14″ forecast next 7 days',
         'peaking Sun',
         'Cold temps = light, dry powder.',
       ],

@@ -1,6 +1,9 @@
 import { findByEmail, createSub, saveSub, sendEmail, confirmEmail, emailConfigured, isEmail, body } from './_lib.js';
 import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 import { normalizeRule } from '../lib/evaluateAlerts.js';
+import { authRateLimit, clientIp } from '../lib/authLimit.js';
+import { consentRecord, NEUTRAL_SIGNUP } from '../lib/consent.js';
+import { csrfOk } from '../lib/authToken.js';
 
 function previewEnv() {
   return process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'development';
@@ -22,31 +25,34 @@ function parseRule(b, email) {
   }, email);
 }
 
+function json(res, code, payload) {
+  res.setHeader('cache-control', 'no-store');
+  res.status(code).json(payload);
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+  if (!csrfOk(req)) return json(res, 403, { error: 'Bad origin' });
   const b = await body(req);
   const email = String(b.email || '').toLowerCase().trim();
-  if (!isEmail(email)) return res.status(400).json({ error: 'Enter a valid email' });
+  if (!isEmail(email)) return json(res, 400, { error: 'Enter a valid email' });
+  const limited = authRateLimit({ email, ip: clientIp(req) });
+  if (!limited.ok) return json(res, 429, { error: 'Try again later', retryAfter: limited.retryAfter });
   const rule = parseRule(b, email);
   const ids = rule.resorts;
+  const consent = consentRecord({ source: b.source || 'signup', ip: clientIp(req) });
 
   if (!EMAIL_ALERTS_ENABLED) {
     if (previewEnv()) {
-      return res.json({
-        status: 'preview',
-        preview: true,
-        sent: false,
-        wrote: false,
-        rule: { watch: rule.watch, minSnowIn: rule.minSnowIn, windowHours: rule.windowHours, pass: rule.pass, region: rule.region, resorts: ids },
-        message: 'Preview only — nothing was saved or sent.',
-      });
+      return json(res, 200, { ...NEUTRAL_SIGNUP, preview: true, sent: false, wrote: false });
     }
-    return res.status(503).json({ error: 'Email alerts are paused' });
+    return json(res, 503, { error: 'Email alerts are paused' });
   }
 
   let sub = await findByEmail(email);
-  if (!sub) sub = await createSub(email, ids, { freq: 'on-trigger', rule });
-  else {
+  if (!sub) {
+    sub = await createSub(email, ids, { freq: 'on-trigger', rule, consent });
+  } else {
     sub.resorts = [...new Set([...(sub.resorts || []), ...ids])];
     if (!Array.isArray(sub.rules)) sub.rules = [];
     const existing = sub.rules.find(r => r.watch === rule.watch && r.region === rule.region && String(r.pass) === String(rule.pass));
@@ -59,13 +65,15 @@ export default async function handler(req, res) {
       if (!rule.id) rule.id = `rul_${sub.token.slice(0, 8)}`;
       sub.rules.push(rule);
     }
-    if (sub.status !== 'active' && (b.freq === 'daily' || b.freq === 'weekly' || b.freq === 'on-trigger')) sub.freq = b.freq;
+    if (!sub.consent) sub.consent = consent;
+    if (sub.status !== 'active') sub.status = 'pending';
     await saveSub(sub);
   }
-  if (sub.status === 'active') return res.json({ status: 'active', message: `Added. You're already subscribed — <a href="/alerts">manage alerts</a> from the link in any email.` });
-  const sent = await sendEmail({ to: sub.email, subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(sub) });
-  if (!emailConfigured()) return res.json({ status: 'pending', emailConfigured: false, message: 'Saved. Email delivery is not switched on yet, so the confirmation email could not be sent. You will be able to confirm once it is live.' });
-  if (sent.skipped) return res.json({ status: 'pending', message: 'Saved. Sending is still locked — confirmation will go out when alerts are enabled.' });
-  if (sent.status >= 300) return res.status(502).json({ error: 'Could not send confirmation email' });
-  res.json({ status: 'pending', message: `Check ${sub.email} and tap the confirmation link to start alerts.` });
+
+  if (sub.status !== 'active') {
+    await sendEmail({ to: sub.email, subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(sub) });
+  }
+
+  void emailConfigured;
+  return json(res, 200, { ...NEUTRAL_SIGNUP, sent: true });
 }
