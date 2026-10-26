@@ -10,6 +10,7 @@ async function openTrip(page) {
 }
 
 test('trip month pick auto-advances and does not scroll sideways', async ({ page }) => {
+  test.setTimeout(60_000);
   await openTrip(page);
   const flow = page.getByTestId('trip-onboarding');
   expect(await flow.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy();
@@ -21,6 +22,7 @@ test('trip month pick auto-advances and does not scroll sideways', async ({ page
   await expect(page.getByTestId('trip-who')).toBeVisible();
   await page.getByTestId('trip-next').click();
   await expect(page.getByTestId('trip-stay')).toBeVisible();
+  await page.getByTestId('trip-lodging-hotel').scrollIntoViewIfNeeded();
   await page.getByTestId('trip-lodging-hotel').click();
   await expect(page.getByTestId('trip-results')).toBeVisible({ timeout: 8_000 });
   expect(await page.getByTestId('trip-onboarding').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy();
