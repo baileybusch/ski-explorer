@@ -139,7 +139,7 @@ export function ResortProfile({
           </div>
         </section>
 
-        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[5.8rem] pt-4">
+        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4">
           <Card data-testid="tile-storm-status">
             <CardHeader>
               <CardTitle>Storm status</CardTitle>

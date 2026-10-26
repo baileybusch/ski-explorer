@@ -52,7 +52,7 @@ export function BlockBoard({
   return (
     <div
       ref={wrap}
-      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(7.2rem,env(safe-area-inset-bottom))] pt-1"
+      className="min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1"
       data-testid="board-b"
       data-mode={mode}
     >

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapIcon, ListIcon } from 'lucide-react';
+import { ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { BlockBoard } from '@/components/BlockBoard';
@@ -448,19 +448,14 @@ export default function App() {
 
       {view === 'board' ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-2">
-            <Button
-              type="button"
-              className="min-h-12 flex-1 text-base shadow-lg"
-              data-testid="home-alert-me"
-              onClick={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
-            >
-              Alert me
-            </Button>
-            <Button type="button" variant="outline" className="min-h-12 min-w-12 rounded-full" aria-label="Map" data-testid="map-button" onClick={() => { setView('map'); if (selected) globe.current?.flyResort(selected); }}>
-              <MapIcon />
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="pointer-events-auto min-h-12 w-full text-base shadow-lg"
+            data-testid="home-alert-me"
+            onClick={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
+          >
+            Alert me
+          </Button>
         </div>
       ) : null}
 
