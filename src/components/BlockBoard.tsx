@@ -79,7 +79,7 @@ export function BlockBoard({
               const unit = units === 'cm' ? 'cm' : '″';
               const fg = tone.ink ? '#08090b' : '#f2f3f5';
               const featured = cell.colSpan >= 2 && cell.rowSpan >= 2;
-              const days = forecastDays(row.r, snow, { days: featured ? 5 : 4 });
+              const days = featured ? forecastDays(row.r, snow, { days: 5 }) : [];
               return (
                 <button
                   key={row.r.id}
@@ -101,13 +101,19 @@ export function BlockBoard({
                     </div>
                   </div>
                   <div className={`flex min-h-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
-                    <div>
-                      <div className="font-display leading-none" style={{ fontSize: featured ? 'clamp(3rem, 11vw, 4.8rem)' : '1.85rem' }}>
+                    <div className="min-w-0">
+                      <div className="font-display leading-none" style={{ fontSize: featured ? 'clamp(3rem, 11vw, 4.8rem)' : '1.75rem' }}>
                         {num}<span className="text-[0.38em]">{unit}</span>
                       </div>
-                      <div className={`mt-1 flex flex-wrap gap-x-3 opacity-80 ${featured ? 'text-xs' : 'text-[10px]'}`}>
-                        <span data-testid="past-72h">Past 72h {amt(dump.past72Cm, units)}</span>
-                        <span data-testid="next-7d">Next 7d {amt(dump.next7Cm, units)}</span>
+                      <div className={`mt-1.5 grid grid-cols-2 gap-x-2 ${featured ? 'min-w-[11rem]' : ''}`}>
+                        <div data-testid="past-72h">
+                          <div className="text-[10px] uppercase tracking-wide opacity-55">Past 72h</div>
+                          <div className={`font-semibold leading-none ${featured ? 'text-sm' : 'text-xs'}`}>{amt(dump.past72Cm, units)}</div>
+                        </div>
+                        <div data-testid="next-7d">
+                          <div className="text-[10px] uppercase tracking-wide opacity-55">Next 7d</div>
+                          <div className={`font-semibold leading-none ${featured ? 'text-sm' : 'text-xs'}`}>{amt(dump.next7Cm, units)}</div>
+                        </div>
                       </div>
                     </div>
                     {featured ? (
@@ -119,7 +125,7 @@ export function BlockBoard({
                       />
                     ) : null}
                   </div>
-                  <ForecastStrip days={days} units={units} compact={!featured} />
+                  {featured ? <ForecastStrip days={days} units={units} /> : null}
                 </button>
               );
             })}
@@ -137,7 +143,7 @@ export function BlockBoard({
   );
 }
 
-function ForecastStrip({ days, units, compact }: { days: any[]; units: 'in' | 'cm'; compact?: boolean }) {
+function ForecastStrip({ days, units }: { days: any[]; units: 'in' | 'cm' }) {
   if (!days.length) return null;
   return (
     <div className="flex gap-1" data-testid="forecast-strip">
@@ -146,10 +152,10 @@ function ForecastStrip({ days, units, compact }: { days: any[]; units: 'in' | 'c
           <div className="text-[10px] opacity-60">
             {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'narrow' })}
           </div>
-          <div className={`font-semibold leading-none ${compact ? 'text-[11px]' : 'text-xs'}`}>
+          <div className="text-xs font-semibold leading-none">
             {snowAmount(d.snowCm, units)}
           </div>
-          {!compact && d.tmax != null ? (
+          {d.tmax != null ? (
             <div className="text-[10px] opacity-55">{tempLabel(d.tmax, units)}</div>
           ) : null}
         </div>

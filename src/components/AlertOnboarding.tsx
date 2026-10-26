@@ -236,7 +236,8 @@ export function AlertOnboarding({
                   className={`min-h-20 rounded-2xl px-4 text-center ring-1 ${windowHours === w.id ? 'bg-foreground text-background ring-foreground' : 'ring-foreground/12'}`}
                   onClick={() => setWindowHours(w.id)}
                 >
-                  <div className="font-display text-3xl">{w.label === '7d' ? 'Next 7 days' : w.label}</div>
+                  <div className="font-display text-3xl">{w.id === 168 ? '7d' : w.label}</div>
+                  {w.id === 168 ? <div className="mt-1 text-xs opacity-70">next 7 days</div> : null}
                 </button>
               ))}
             </div>

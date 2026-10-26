@@ -9,7 +9,7 @@ import { weatherGlyph, presetWindow, windowMetrics, SNOW_PRESETS, forecastDays }
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
 import { interestingBlurb, peopleLabel, partyOf, tripDates } from '../../lib/trip.js';
 import { flightLinks, lodgingLinks, outboundRel, resortSite } from '../../lib/links.js';
-import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
+import { fmtFt, fmtIn, fmtShort, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
 
@@ -54,7 +54,7 @@ export function ResortProfile({
   const site = resortSite(resort);
   const passName = passLabel(resort);
   const dump = dumpParts(resort, snow);
-  const num = units === 'cm' ? Math.round(dump.dumpCm) : Math.round((dump.dumpCm / 2.54) * 10) / 10;
+  const num = units === 'cm' ? Math.round(dump.dumpCm) : fmtIn(dump.dumpCm);
   const unit = units === 'cm' ? 'cm' : '″';
   const windows = SNOW_PRESETS.map(p => ({
     ...p,
