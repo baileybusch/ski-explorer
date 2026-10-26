@@ -34,7 +34,7 @@ export function BoardChrome({
 
   return (
     <header
-      className="flex w-full flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+      className="mx-auto flex w-full max-w-xl flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
       data-testid="board-chrome"
     >
       <div className="flex items-center gap-2">

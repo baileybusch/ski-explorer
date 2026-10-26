@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeftIcon } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,7 +70,7 @@ export function ResortProfile({
       >
         <ChevronLeftIcon />
       </Button>
-      <Carousel className="min-h-0 flex-1 overflow-hidden" opts={{ align: 'start', containScroll: 'trimSnaps' }} setApi={setApi}>
+      <Carousel className="min-h-0 flex-1 overflow-hidden" opts={{ align: 'start', containScroll: 'trimSnaps', watchDrag: false }} setApi={setApi}>
         <CarouselContent className="-ml-0 h-full">
           {pages.map((row, i) => (
             <CarouselItem key={row.r.id} className="h-full pl-0 basis-full">
@@ -90,6 +90,10 @@ export function ResortProfile({
                   onWatch={onWatch}
                   onShowMap={() => onShowMap(row.r)}
                   onBack={onBack}
+                  onPrev={() => { const prev = pages[i - 1]; if (prev) onSelect(prev.r.id); }}
+                  onNext={() => { const next = pages[i + 1]; if (next) onSelect(next.r.id); }}
+                  canPrev={i > 0}
+                  canNext={i < pages.length - 1}
                   onScroll={row.r.id === selectedId ? onScroll : undefined}
                 />
               ) : (
@@ -112,7 +116,7 @@ export function ResortProfile({
 
 function ProfilePage({
   row, rank, active, snow, typical, units, trip, win, pass, lodgingOn, setLodgingOn,
-  onWatch, onShowMap, onBack, onScroll,
+  onWatch, onShowMap, onBack, onPrev, onNext, canPrev, canNext, onScroll,
 }: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -159,6 +163,11 @@ function ProfilePage({
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
+    if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) + 12) {
+      if (dx < 0) onNext?.();
+      else onPrev?.();
+      return;
+    }
     if (scroller.current && scroller.current.scrollTop > 8) return;
     if (dy > 72 && Math.abs(dx) < 56) onBack();
   }
@@ -166,7 +175,7 @@ function ProfilePage({
   return (
     <div
       ref={scroller}
-      className="h-full overflow-y-auto overscroll-y-contain"
+      className="h-full overflow-y-auto overscroll-y-contain select-none"
       data-testid="profile-page"
       data-resort={resort.id}
       onScroll={e => onScroll?.((e.target as HTMLDivElement).scrollTop)}
@@ -178,6 +187,18 @@ function ProfilePage({
         data-testid="profile-hero"
       >
         <div className="hero-scrim pointer-events-none absolute inset-0" />
+        {canNext ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="absolute top-1/2 right-3 z-20 min-h-11 min-w-11 -translate-y-1/2 rounded-full"
+            aria-label="Next resort"
+            data-testid="profile-next"
+            onClick={onNext}
+          >
+            <ChevronRightIcon />
+          </Button>
+        ) : null}
         <div className="relative z-10">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold opacity-80">#{rank}</span>
