@@ -9,7 +9,7 @@ Front end is **Vite + React + Tailwind + shadcn/ui** (`src/`, build → `dist/`)
 ## Data sources
 | Layer | Source |
 |---|---|
-| Terrain / hillshade / contours | AWS Open Data Terrarium DEM tiles (Mapzen), contours generated client-side with `maplibre-contour` |
+| Terrain / hillshade / contours | [Mapterhorn](https://mapterhorn.com) terrarium WebP tiles (keyless, maxzoom 12). 3D terrain from that DEM. If the source errors, Esri imagery + hillshade without 3D. Contours optional via `maplibre-contour`. |
 | Imagery | Esri World Imagery (attribution in map); CARTO Dark as non-satellite fallback |
 | Snowfall + snow depth | [Open-Meteo](https://open-meteo.com) forecast API (`past_days=30`, `forecast_days=7`, daily `snowfall_sum` / temps / weathercode, hourly `snow_depth` on the mid-mountain point only). **2×2 heatmap grid + one center** per resort so a full worldwide run stays under the free hourly weighted-call budget (the old 4×4 + hourly-everywhere path needed ~4360 weighted calls and stalled on a 4000/hour self-throttle). Snapshot committed to the repo (`scripts/fetch_snow.py`); daily refresh is still paused — `docs/github-action-snow.yml.example` is an example only. |
 | Runs, lifts, ski-area stats | [OpenSkiMap](https://openskimap.org) GeoJSON (© OpenStreetMap contributors, ODbL), clipped per resort by `scripts/process_osm.py` |
@@ -97,22 +97,21 @@ Without either, the bar still works in **deterministic-only** mode (regex + gaze
 
 ## v7: Weather-style list → detail → map
 
-Replaced in this PR by the scoreboard concepts below. The Weather chrome was too busy for a glance-at-the-snow monitor.
+Replaced by the scoreboard. The Weather chrome was too busy for a glance-at-the-snow monitor.
 
-## v8: two scoreboard concepts
+## v8: two scoreboard concepts (retired)
 
-Home is a **snowfall leaderboard**, not a weather-app list and not the globe.
+A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is ignored.
 
-- **A** (`?design=a`, default): full-screen snap cards, one resort, huge snow number, tap to flip.
-- **B** (`?design=b`): 2-column blocks, top card double-width, tap expands into the A card.
+## v9: block board is the product
 
-Time window (24h / 72h / 7d / Next 7), pass, and the agent bar sit at the top. People and dates are a Trip pill. Map is one floating button. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
+Home is a **gap-free block grid** that always fills the screen. Time windows + hamburger on the first row; featured agent bar under that; Trip pill under search. Tap a block for a full-screen **profile**: mountain-map hero (MapLibre + Mapterhorn 3D), then swipeable tiles (snow, weather, storm, trip, facts) and a persistent Plan trip. Swipe sideways to the next resort in board order; swipe down or back returns to the same board scroll. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
 
 ## Weather and storms
 
 Snow is still the center. Storms is a list/search filter (still `data-testid="storms-chip"`), plus a tile on the resort card when a pulse is on.
 
-- **List / resort detail**: glyph + temp from the snow snapshot (no extra call). Opening a resort fetches live Open-Meteo current + 7-day + 48h hourly (wind, freezing level), cached 40 minutes. Visible list rows batch current+daily in groups of 8, never a catalog firehose.
+- **Board / profile**: glyph + temp from the snow snapshot (no extra call). Opening a profile fetches live Open-Meteo current + 7-day + 48h hourly (wind, freezing level), cached 40 minutes. Visible board rows batch current+daily in groups of 8, never a catalog firehose.
 - **Map layers** (popover in map mode): RainViewer radar and IR satellite (free, no key, attribution on the map). Storm rings from the forecast snapshot. NWS winter watches/warnings (**US only**, public domain). No free no-key global **wind tiles**; no named tropical tracks (NHC is seasonal/basin-specific — skipped).
 - **Storm badges**: 72h forecast snowfall ≥ 6 / 12 / 18 inches (configurable). International = forecast badges only. Labeled as Open-Meteo forecast, not typical, not observed.
 

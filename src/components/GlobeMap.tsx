@@ -6,10 +6,12 @@ import { buildStyle } from '@/lib/mapStyle';
 import { stormForResort } from '../../lib/storms.js';
 import { rainviewerMaps, radarTileUrl, satelliteTileUrl } from '@/lib/rainviewer';
 
-const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const EXAG = 1.35;
+const DEM = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
+const EXAG = 1.25;
 const lodgingCache: Record<string, any> = {};
 const osmCache: Record<string, Promise<any>> = {};
+
+export type MapLayout = 'hidden' | 'hero' | 'full';
 
 export type GlobeHandle = {
   flyHome: () => void;
@@ -17,17 +19,39 @@ export type GlobeHandle = {
   flyResort: (r: any) => void;
 };
 
-function padForSheet() {
+function padFor(layout: MapLayout) {
+  if (layout === 'hero') return { top: 56, bottom: 28, left: 12, right: 12 };
   const mobile = typeof window !== 'undefined' && window.innerWidth < 900;
   return mobile
     ? { top: 90, bottom: Math.round(window.innerHeight * 0.42), left: 16, right: 16 }
     : { top: 80, bottom: 80, left: 40, right: 40 };
 }
 
+function setInteractive(map: MapLibreMap, on: boolean) {
+  const names = ['dragPan', 'scrollZoom', 'boxZoom', 'dragRotate', 'keyboard', 'doubleClickZoom', 'touchZoomRotate', 'touchPitch'] as const;
+  for (const name of names) {
+    try {
+      const h = (map as any)[name];
+      if (!h) continue;
+      if (on) h.enable();
+      else h.disable();
+    } catch { /* */ }
+  }
+}
+
+function setHeroBase(map: MapLibreMap, hero: boolean) {
+  try {
+    map.setLayoutProperty('sat', 'visibility', hero ? 'visible' : 'none');
+    map.setPaintProperty('sat', 'raster-saturation', hero ? -0.35 : -1);
+    map.setPaintProperty('sat', 'raster-brightness-max', hero ? 0.86 : 0.7);
+    map.setLayoutProperty('dark', 'visibility', hero ? 'none' : 'visible');
+  } catch { /* style not ready */ }
+}
+
 export const GlobeMap = forwardRef(function GlobeMap(
   {
     resorts, snow, typical, fire, win, units, lodgingOn, selectedId, onSelect,
-    radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, active,
+    radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, layout = 'full', parallax = 0,
   }: {
     resorts: any[];
     snow: any;
@@ -43,16 +67,20 @@ export const GlobeMap = forwardRef(function GlobeMap(
     stormsLayerOn?: boolean;
     nwsOn?: boolean;
     nwsGeo?: any;
-    active?: boolean;
+    layout?: MapLayout;
+    parallax?: number;
   },
   ref: Ref<GlobeHandle>,
 ) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const terrainOn = useRef(false);
+  const terrainOk = useRef(true);
   const ready = useRef(false);
   const onSelectRef = useRef(onSelect);
+  const layoutRef = useRef(layout);
   onSelectRef.current = onSelect;
+  layoutRef.current = layout;
 
   useImperativeHandle(ref, () => ({
     flyHome() {
@@ -65,17 +93,27 @@ export const GlobeMap = forwardRef(function GlobeMap(
     flyRegion(g) {
       const map = mapRef.current;
       if (!map || !g) return;
-      map.flyTo({ center: g.center, zoom: g.zoom, pitch: g.pitch || 28, bearing: 0, duration: 2400, essential: true, curve: 1.5, padding: padForSheet() });
+      map.flyTo({ center: g.center, zoom: g.zoom, pitch: g.pitch || 28, bearing: 0, duration: 2400, essential: true, curve: 1.5, padding: padFor(layoutRef.current) });
     },
     flyResort(r) {
       const map = mapRef.current;
       if (!map || !r) return;
       const [x0, y0, x1, y1] = r.bbox || [r.center[0] - 0.2, r.center[1] - 0.15, r.center[0] + 0.2, r.center[1] + 0.15];
-      const pad = padForSheet();
+      const pad = padFor(layoutRef.current);
       const cam = map.cameraForBounds([[x0, y0], [x1, y1]], { padding: pad });
-      const z = r.id === 'eagle-point' ? 11.9 : Math.min(13.6, Math.max(11.2, (cam?.zoom ?? 12) - 0.2));
-      syncTerrain(map);
-      map.flyTo({ center: [(x0 + x1) / 2, (y0 + y1) / 2], zoom: z, pitch: window.innerWidth < 900 ? 58 : 64, bearing: r.bearing || 0, duration: 2800, essential: true, curve: 1.4, padding: pad });
+      const hero = layoutRef.current === 'hero';
+      const z = r.id === 'eagle-point' ? 11.6 : Math.min(hero ? 12.6 : 13.6, Math.max(11.0, (cam?.zoom ?? 12) - 0.2));
+      syncTerrain(map, terrainOn, terrainOk);
+      map.flyTo({
+        center: [(x0 + x1) / 2, (y0 + y1) / 2],
+        zoom: z,
+        pitch: hero ? 54 : (window.innerWidth < 900 ? 58 : 64),
+        bearing: r.bearing || 0,
+        duration: hero ? 1400 : 2800,
+        essential: true,
+        curve: 1.4,
+        padding: pad,
+      });
       loadOSM(map, r.id);
     },
   }));
@@ -94,8 +132,9 @@ export const GlobeMap = forwardRef(function GlobeMap(
       bearing: 0,
       projection: { type: 'globe' },
       style: buildStyle({ contourUrl, fire }) as any,
+      interactive: true,
     });
-    map.addControl(new AttributionControl({ compact: true, customAttribution: 'Snow: <a href="https://open-meteo.com">Open-Meteo</a> (NOAA GFS/HRRR, ECMWF, ERA5)' }), 'top-left');
+    map.addControl(new AttributionControl({ compact: true, customAttribution: 'Snow: <a href="https://open-meteo.com">Open-Meteo</a> · Terrain © <a href="https://mapterhorn.com">Mapterhorn</a>' }), 'bottom-left');
     mapRef.current = map;
 
     map.on('load', () => {
@@ -103,12 +142,13 @@ export const GlobeMap = forwardRef(function GlobeMap(
       try { map.resize(); } catch { /* */ }
       try {
         import('maplibre-contour').then(mlcontour => {
-          const demSource = new mlcontour.default.DemSource({ url: DEM, encoding: 'terrarium', maxzoom: 13, worker: true });
+          const demSource = new mlcontour.default.DemSource({ url: DEM, encoding: 'terrarium', maxzoom: 12, worker: true });
           demSource.setupMaplibre({ Map: MapLibreMap } as any);
         }).catch(() => { /* contours stay off */ });
       } catch { /* */ }
     });
     map.on('click', e => {
+      if (layoutRef.current !== 'full') return;
       const P = 24, { x, y } = e.point;
       const f = map.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-dot', 'resort-label'] });
       if (!f.length) return;
@@ -120,11 +160,23 @@ export const GlobeMap = forwardRef(function GlobeMap(
       onSelectRef.current(f[0].properties.id);
     });
     map.on('mousemove', e => {
+      if (layoutRef.current !== 'full') {
+        map.getCanvas().style.cursor = '';
+        return;
+      }
       const P = 16, { x, y } = e.point;
       map.getCanvas().style.cursor = map.queryRenderedFeatures([[x - P, y - P], [x + P, y + P]], { layers: ['resort-hit', 'resort-label'] }).length ? 'pointer' : '';
     });
-    map.on('zoomend', () => syncTerrain(map));
-    map.on('moveend', () => syncTerrain(map));
+    map.on('zoomend', () => syncTerrain(map, terrainOn, terrainOk));
+    map.on('moveend', () => syncTerrain(map, terrainOn, terrainOk));
+    map.on('error', (err: any) => {
+      const src = err?.sourceId || err?.source?.id;
+      if (src === 'dem' || /mapterhorn|terrain|dem/i.test(String(err?.error?.message || err?.error || ''))) {
+        terrainOk.current = false;
+        try { map.setTerrain(null); } catch { /* */ }
+        terrainOn.current = false;
+      }
+    });
 
     return () => {
       map.remove();
@@ -132,6 +184,19 @@ export const GlobeMap = forwardRef(function GlobeMap(
       ready.current = false;
     };
   }, [fire]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      setInteractive(map, layout === 'full');
+      setHeroBase(map, layout === 'hero');
+      try { map.resize(); } catch { /* */ }
+      if (layout !== 'hidden') syncTerrain(map, terrainOn, terrainOk);
+    };
+    if (map.loaded()) apply();
+    else map.once('load', apply);
+  }, [layout]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -207,26 +272,34 @@ export const GlobeMap = forwardRef(function GlobeMap(
     else map.once('load', apply);
   }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !active) return;
-    const t = requestAnimationFrame(() => { try { map.resize(); } catch { /* */ } });
-    return () => cancelAnimationFrame(t);
-  }, [active]);
+  const hidden = layout === 'hidden';
+  const hero = layout === 'hero';
 
   return (
-    <div className="absolute inset-0" data-testid="globe">
+    <div
+      className={hidden ? 'hidden' : hero ? 'absolute inset-x-0 top-0 z-0 h-[48dvh] overflow-hidden' : 'absolute inset-0 z-10'}
+      data-testid="globe"
+      style={hero ? { transform: `translate3d(0, ${Math.round(parallax * 0.22)}px, 0)`, pointerEvents: 'none' } : undefined}
+    >
       <div ref={el} className="h-full w-full" />
     </div>
   );
 });
 
-function syncTerrain(map: MapLibreMap) {
+function syncTerrain(map: MapLibreMap, terrainOn: { current: boolean }, terrainOk: { current: boolean }) {
   const z = map.getZoom();
-  if (z >= 6) {
-    try { map.setTerrain({ source: 'dem', exaggeration: EXAG }); } catch { /* globe+terrain unsupported */ }
-  } else {
+  if (terrainOk.current && z >= 6 && z <= 13.2) {
+    try {
+      map.setTerrain({ source: 'dem', exaggeration: EXAG });
+      terrainOn.current = true;
+    } catch {
+      terrainOk.current = false;
+      try { map.setTerrain(null); } catch { /* */ }
+      terrainOn.current = false;
+    }
+  } else if (terrainOn.current) {
     try { map.setTerrain(null); } catch { /* */ }
+    terrainOn.current = false;
   }
 }
 

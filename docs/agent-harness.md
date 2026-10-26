@@ -3,7 +3,7 @@
 A small, readable first harness so Bailey can see every piece. Nothing here invents snow or booking URLs — tools wrap the same functions the map already uses.
 
 ```
-browser SearchBar
+browser agent bar
     │  POST /api/agent  { text, pass }
     ▼
 api/agent.js

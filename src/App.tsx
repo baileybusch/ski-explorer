@@ -2,15 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapIcon, ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
-import { Leaderboard } from '@/components/Leaderboard';
 import { BlockBoard } from '@/components/BlockBoard';
-import { SnowCard, snowScore } from '@/components/SnowCard';
 import { SearchOverlay } from '@/components/SearchOverlay';
 import { TripSheet } from '@/components/TripSheet';
 import { SettingsSheet } from '@/components/SettingsSheet';
 import { PlanDialog } from '@/components/PlanDialog';
 import { MapLayers } from '@/components/MapLayers';
-import { GlobeMap, type GlobeHandle } from '@/components/GlobeMap';
+import { ResortProfile } from '@/components/ResortProfile';
+import { GlobeMap, type GlobeHandle, type MapLayout } from '@/components/GlobeMap';
 import { loadCatalog } from '@/lib/catalog';
 import { askAgent } from '@/lib/agentClient';
 import { watchlist } from '@/lib/watchlist';
@@ -22,10 +21,10 @@ import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { initialDesign, persistDesign, type Design } from '@/lib/design';
+import { snowScore } from '@/lib/board';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
-type View = 'board' | 'map';
+type View = 'board' | 'profile' | 'map';
 type Preset = '24h' | '72h' | '7d' | 'fc7';
 
 function initialPass() {
@@ -39,9 +38,10 @@ function initialPass() {
 
 export default function App() {
   const globe = useRef<GlobeHandle>(null);
+  const boardScroll = useRef<HTMLDivElement | null>(null);
+  const savedBoardTop = useRef(0);
   const [catalog, setCatalog] = useState<any>(null);
   const [view, setView] = useState<View>('board');
-  const [design, setDesignState] = useState<Design>(initialDesign);
   const [pass, setPass] = useState(initialPass);
   const [preset, setPreset] = useState<Preset>('fc7');
   const [trip, setTrip] = useState(() => loadTrip());
@@ -64,17 +64,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [activeIds, setActiveIds] = useState<string[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [flippedId, setFlippedId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [planText, setPlanText] = useState('');
   const [planLinks, setPlanLinks] = useState<{ chatgpt?: string; grok?: string }>({});
   const [watchTick, setWatchTick] = useState(0);
-
-  function setDesign(d: Design) {
-    setDesignState(d);
-    persistDesign(d);
-  }
+  const [heroParallax, setHeroParallax] = useState(0);
+  const [restoreTop, setRestoreTop] = useState(0);
 
   useEffect(() => {
     loadCatalog().then(c => {
@@ -82,7 +77,6 @@ export default function App() {
       let nextWin = presetWindow(c.snow, 'fc7');
       let nextTrip = { ...trip };
       const deep = parseTripQuery(location.search);
-      if (deep.design) setDesign(deep.design);
       if (deep.from && deep.to) {
         const last = forecastEnd(c.snow);
         nextWin = {
@@ -102,8 +96,7 @@ export default function App() {
       setWin(nextWin);
       if (deep.resort) {
         setSelectedId(deep.resort);
-        setFlippedId(deep.resort);
-        setExpandedId(deep.resort);
+        setView('profile');
         setTimeout(() => {
           const r = c.resorts.find((x: any) => x.id === deep.resort);
           if (r) globe.current?.flyResort(r);
@@ -146,11 +139,11 @@ export default function App() {
     history.replaceState(null, '', location.pathname + shareSearch({
       resort: extra.resort ?? selectedId,
       from: start, to: end, adults, kids, home: trip.home,
-      mode: extra.mode, pass, region: extra.region, design,
+      mode: extra.mode, pass, region: extra.region,
     }));
   }
 
-  useEffect(() => { if (win) writeURL(); }, [design, pass, win, trip]);
+  useEffect(() => { if (win) writeURL(); }, [pass, win, trip, selectedId]);
 
   function applyRegion(g: any, cat = catalog, p = pass) {
     if (!g || !cat) return;
@@ -159,6 +152,7 @@ export default function App() {
     setActiveIds(ids);
     setSelectedId(null);
     setSearchOpen(false);
+    setMenuOpen(false);
     setView('board');
     globe.current?.flyRegion(g);
     writeURL({ resort: null, region: g.id });
@@ -179,14 +173,27 @@ export default function App() {
     setPlanOpen(true);
   }
 
+  function rememberBoard() {
+    savedBoardTop.current = boardScroll.current?.scrollTop || 0;
+    setRestoreTop(savedBoardTop.current);
+  }
+
   function openResort(id: string, mode: 'explore' | 'plan' = 'explore') {
+    rememberBoard();
     setSelectedId(id);
-    setFlippedId(id);
-    if (design === 'b') setExpandedId(id);
+    setHeroParallax(0);
+    setView('profile');
     const r = catalog?.resorts.find((x: any) => x.id === id);
-    if (r) globe.current?.flyResort(r);
+    if (r) setTimeout(() => globe.current?.flyResort(r), 80);
     writeURL({ resort: id, mode });
     if (mode === 'plan' && r) openPlan([r]);
+  }
+
+  function backToBoard() {
+    setView('board');
+    setHeroParallax(0);
+    writeURL({ resort: null });
+    setRestoreTop(savedBoardTop.current);
   }
 
   function applyActions(actions: any[], cat = catalog) {
@@ -210,6 +217,8 @@ export default function App() {
       if (a.type === 'setWatchOnly' && a.on) {
         setActiveIds(watchlist());
         setSearchOpen(false);
+        setMenuOpen(false);
+        setView('board');
       }
       if (a.type === 'setStorms') {
         setStormsOn(!!a.on);
@@ -245,12 +254,12 @@ export default function App() {
         }
       }
       if (a.type === 'openResort') {
+        rememberBoard();
         setSelectedId(a.id);
-        setFlippedId(a.id);
-        if (design === 'b') setExpandedId(a.id);
         setSearchOpen(false);
+        setView('profile');
         const r = cat.resorts.find((x: any) => x.id === a.id);
-        if (r) globe.current?.flyResort(r);
+        if (r) setTimeout(() => globe.current?.flyResort(r), 80);
         if (a.mode === 'plan' && r) openPlan([r], nextWin, nextTrip, cat);
       }
     }
@@ -314,33 +323,46 @@ export default function App() {
   }, [catalog, pass, activeIds, stormsOn, preset]);
 
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || rowsAll[0]?.r || null;
-  const expandedRow = rowsAll.find(x => x.r.id === expandedId);
   const max = Math.max(0, ...rowsAll.map(snowScore));
   const zeroHint = max === 0 && preset !== 'fc7';
+  const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
+
+  function selectProfile(id: string) {
+    setSelectedId(id);
+    writeURL({ resort: id, mode: 'explore' });
+    const r = catalog?.resorts.find((x: any) => x.id === id);
+    if (r) globe.current?.flyResort(r);
+  }
 
   return (
     <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
       {catalog ? (
-        <div className={view === 'map' ? 'absolute inset-0 z-10' : 'hidden'} data-testid="map-mode">
-          <GlobeMap
-            ref={globe}
-            active={view === 'map'}
-            resorts={(activeIds ? catalog.resorts.filter((r: any) => activeIds.includes(r.id)) : catalog.resorts)}
-            snow={catalog.snow}
-            typical={catalog.typical}
-            fire={catalog.fire}
-            win={win || catalog.win}
-            units={units}
-            lodgingOn={lodgingOn}
-            selectedId={selectedId}
-            radarOn={radarOn}
-            cloudsOn={cloudsOn}
-            stormsLayerOn={stormsLayerOn}
-            nwsOn={nwsOn}
-            nwsGeo={nwsGeo}
-            onSelect={id => { setSelectedId(id); setView('board'); openResort(id); }}
-          />
-          <div className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 z-20">
+        <GlobeMap
+          ref={globe}
+          layout={mapLayout}
+          parallax={heroParallax}
+          resorts={(activeIds ? catalog.resorts.filter((r: any) => activeIds.includes(r.id)) : catalog.resorts)}
+          snow={catalog.snow}
+          typical={catalog.typical}
+          fire={catalog.fire}
+          win={win || catalog.win}
+          units={units}
+          lodgingOn={lodgingOn}
+          selectedId={selectedId}
+          radarOn={radarOn}
+          cloudsOn={cloudsOn}
+          stormsLayerOn={stormsLayerOn}
+          nwsOn={nwsOn}
+          nwsGeo={nwsGeo}
+          onSelect={id => openResort(id)}
+        />
+      ) : (
+        <div className="absolute inset-0 grid place-items-center text-muted-foreground">Loading…</div>
+      )}
+
+      {catalog && win && view === 'map' ? (
+        <div className="absolute inset-0 z-20 pointer-events-none" data-testid="map-mode">
+          <div className="pointer-events-auto absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3">
             <MapLayers
               radarOn={radarOn} setRadarOn={setRadarOn}
               cloudsOn={cloudsOn} setCloudsOn={setCloudsOn}
@@ -349,32 +371,28 @@ export default function App() {
               lodgingOn={lodgingOn} setLodgingOn={setLodgingOn}
             />
           </div>
-          <div className="absolute inset-x-0 bottom-0 z-20 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="mx-auto flex max-w-xl items-center gap-2">
-              <Button type="button" className="min-h-12 flex-1 text-base" onClick={() => setView('board')} data-testid="list-button">
+              <Button type="button" className="min-h-12 flex-1 text-base" onClick={backToBoard} data-testid="list-button">
                 <ListIcon /> Cards
               </Button>
               {selected ? (
-                <Button type="button" variant="secondary" className="min-h-12 flex-1 truncate text-base" onClick={() => { setView('board'); openResort(selected.id); }}>
+                <Button type="button" variant="secondary" className="min-h-12 flex-1 truncate text-base" onClick={() => openResort(selected.id)}>
                   {selected.name}
                 </Button>
               ) : null}
             </div>
           </div>
         </div>
-      ) : (
-        <div className="absolute inset-0 grid place-items-center text-muted-foreground">Loading…</div>
-      )}
+      ) : null}
 
       {catalog && win && view === 'board' ? (
         <div className="flex h-full min-h-dvh flex-col">
           <BoardChrome
             q={q}
             onOpenSearch={() => setSearchOpen(true)}
-            onSettings={() => setMenuOpen(true)}
+            onMenu={() => setMenuOpen(true)}
             loading={loading}
-            pass={pass}
-            setPass={p => { setPass(p); setActiveIds(null); }}
             preset={preset}
             setPreset={p => setPreset(p as Preset)}
             trip={trip}
@@ -383,54 +401,40 @@ export default function App() {
             stormsOn={stormsOn}
           />
           {zeroHint ? (
-            <p className="mx-auto w-full max-w-xl px-4 pt-2 text-sm text-muted-foreground">
+            <p className="px-4 pt-1 text-sm text-muted-foreground">
               Quiet on this window. Try Next 7.
             </p>
           ) : null}
-          {design === 'a' ? (
-            <Leaderboard
-              rows={rowsAll}
-              units={units}
-              trip={trip}
-              win={win}
-              snow={catalog.snow}
-              flippedId={flippedId}
-              onFlip={id => { setFlippedId(id); if (id) setSelectedId(id); }}
-              onPlan={r => { writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
-              onWatch={() => setWatchTick(n => n + 1)}
-            />
-          ) : (
-            <BlockBoard
-              rows={rowsAll}
-              units={units}
-              snow={catalog.snow}
-              onOpen={id => { setSelectedId(id); setExpandedId(id); setFlippedId(null); writeURL({ resort: id, mode: 'explore' }); }}
-            />
-          )}
+          <BlockBoard
+            rows={rowsAll}
+            units={units}
+            snow={catalog.snow}
+            onOpen={id => openResort(id)}
+            scrollerRef={boardScroll}
+            restoreTop={restoreTop}
+          />
         </div>
       ) : null}
 
-      {catalog && win && design === 'b' && expandedRow ? (
-        <div className="absolute inset-0 z-20 flex flex-col bg-background/80 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-8 backdrop-blur-sm" data-testid="expanded-block">
-          <div className="mx-auto min-h-0 w-full max-w-xl flex-1">
-            <SnowCard
-              row={expandedRow}
-              rank={rowsAll.findIndex(x => x.r.id === expandedRow.r.id) + 1}
-              max={max}
-              units={units}
-              trip={trip}
-              win={win}
-              snow={catalog.snow}
-              flipped={flippedId === expandedRow.r.id}
-              onFlip={() => setFlippedId(flippedId === expandedRow.r.id ? null : expandedRow.r.id)}
-              onPlan={() => { writeURL({ resort: expandedRow.r.id, mode: 'plan' }); openPlan([expandedRow.r]); }}
-              onWatch={() => setWatchTick(n => n + 1)}
-            />
-          </div>
-          <Button type="button" variant="ghost" className="mx-auto mt-2 min-h-11" onClick={() => { setExpandedId(null); setFlippedId(null); }}>
-            Close
-          </Button>
-        </div>
+      {catalog && win && view === 'profile' && selectedId && selected ? (
+        <ResortProfile
+          pages={rowsAll.some(x => x.r.id === selectedId) ? rowsAll : [{ r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }, ...rowsAll]}
+          selectedId={selectedId}
+          onSelect={selectProfile}
+          onBack={backToBoard}
+          onPlan={r => { writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
+          onWatch={() => setWatchTick(n => n + 1)}
+          onScroll={setHeroParallax}
+          snow={catalog.snow}
+          typical={catalog.typical}
+          units={units}
+          trip={trip}
+          win={win}
+          pass={pass}
+          lodgingOn={lodgingOn}
+          setLodgingOn={setLodgingOn}
+          onShowMap={r => { setSelectedId(r.id); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
+        />
       ) : null}
 
       {view === 'board' ? (
@@ -476,8 +480,32 @@ export default function App() {
         setUnits={setUnits}
         stormMin={stormMin}
         setStormMin={setStormMin}
-        design={design}
-        setDesign={setDesign}
+        trip={trip}
+        setTrip={setTrip}
+        win={win || { start: '', end: '' }}
+        setCustomDates={setCustomDates}
+        pass={pass}
+        setPass={p => { setPass(p); setActiveIds(null); }}
+        regions={catalog?.regions || []}
+        onRegion={id => {
+          const g = catalog?.regions.find((x: any) => x.id === id);
+          if (g) applyRegion(g);
+        }}
+        onWorldwide={() => { setActiveIds(null); setStormsOn(false); setMenuOpen(false); setView('board'); }}
+        onMyResorts={() => { setActiveIds(watchlist()); setStormsOn(false); setMenuOpen(false); setView('board'); }}
+        watchCount={watchlist().length}
+        stormsOn={stormsOn}
+        setStormsOn={setStormsOn}
+        radarOn={radarOn}
+        setRadarOn={setRadarOn}
+        cloudsOn={cloudsOn}
+        setCloudsOn={setCloudsOn}
+        stormsLayerOn={stormsLayerOn}
+        setStormsLayerOn={setStormsLayerOn}
+        nwsOn={nwsOn}
+        setNwsOn={setNwsOn}
+        lodgingOn={lodgingOn}
+        setLodgingOn={setLodgingOn}
       />
 
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} text={planText} links={planLinks} />

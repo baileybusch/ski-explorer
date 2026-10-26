@@ -1,52 +1,54 @@
-# Design concepts A and B
+# Design: block board + mountain profile
 
-Two boards, same data. Switch with `?design=a` / `?design=b` or the tiny control in Settings. Default is **A**.
+Bailey compared two scoreboard concepts on the same preview. **B won.** A (full-screen leaderboard stack with flip cards) is gone. `?design=a|b` is ignored so old links still open; we no longer write it.
 
-Primary job: friends and families glance at a phone and see **who is winning the snow**. Secondary: search a region, set people/dates, Plan trip.
+Primary job: friends and families glance at a phone and see **who is winning the snow**, then tap into a mountain. Secondary: search a region, set people/dates, Plan trip.
 
-## A — Leaderboard stack
+## Home — block board
 
-One resort per screen. Vertical snap. The snow number is the card.
+A packing grid that **always fills the viewport**. No leftover empty cells.
 
-- Ranked by the selected window (24h / 72h / 7d observed, or next 7 forecast).
-- Full-width block. Lightness encodes snowfall; #1 inverts to paper with the ice accent on the rank.
-- Tap flips to a compact back: 7-day bars, storm line, flights/lodging, Plan trip.
-- Map is a floating button, not a home.
+- Ranked by the selected window (24h / 72h / 7d observed, or Next 7 forecast).
+- Leader is double-width / double-tall when the count is 3 or 5+. Four resorts on a phone are an even 2×2. One or two results scale up to fill.
+- Remaining blocks share rows; the last row stretches so it is never half-empty.
+- If a filter yields few resorts, blocks grow. If there are many, the first screen still tiles edge-to-edge and the rest is continuous scroll (same row size, same no-gap rule at the end).
+- Lightness encodes snowfall; #1 inverts to paper with the ice accent.
+- Tap a block → **profile**, not a flip.
 
-**Fits** the primary use case. You do not hunt. You flick. The #1 card is the answer.
+## Header
 
-**Costs** scanning. Comparing #4 vs #7 means scrolling. A 60-resort Ikon list is a long deck.
+One top row: time windows (24h / 72h / 7d / Next 7) and the **hamburger**. Directly below, a featured agent/search bar with rotating ghost text. The Trip pill (people/dates) sits under search.
 
-## B — Block board
+The hamburger holds: people/dates/home airport/units, pass (Ikon / Epic / All), region/scope, map layers, My Resorts / watchlist, about/credits.
 
-A 2-column grid of 8–12 blocks. The leader is double-width. Each block is snow + name + sparkline. Tap expands into the A card (then flip).
+## Profile
 
-**Fits** comparison. You see the field at once.
+Full-screen. The existing MapLibre map is the **hero background** (pitched 3D terrain, centered on the resort, runs/lifts when we have OSM). Interaction is off so the page scrolls; a slow parallax follows the tile stack. Overlay: name, pass, huge snow number for the selected window, key conditions.
 
-**Costs** density. On an iPhone SE the blocks get tight. The snow number cannot be as huge. The “one idea per card” Cash App feeling is weaker.
+Below the hero, rounded tiles that scroll vertically and swipe horizontally where a group has two faces (hourly ↔ 7-day, facts ↔ mountain stats):
 
-## Tradeoffs
+- Snow bars (24h / 72h / 7d / Next 7)
+- Weather (hourly + 7-day carousel)
+- Storm timeline
+- Trip (people/dates, Google Flights first, lodging, affiliate wrap)
+- Facts
+- Lodging-map toggle
+- Persistent **Plan trip**
 
-| | A | B |
-|---|---|---|
-| Glance at the winner | Best | Good |
-| Compare 8–12 | Weak | Best |
-| Phone-first / SE | Best (one card, no inner scroll) | Tight |
-| Plan from a card | Flip, then Plan | Expand → flip → Plan |
-| Map | Optional FAB | Same |
+Swipe left/right pages to the next/previous resort in the current board order. Back is a chevron or a swipe-down on the hero; the board restores its scroll position.
 
-## Recommendation
+## Terrain
 
-**Ship A as the default.** The product Bailey described is a monitor, not an atlas. A family opening this on the couch wants the top of the pile, in a number they can read from across the kitchen. B is the better *explorer* once someone asks “what else is close?” — keep it as the other concept on the same preview so he can feel both.
-
-Default window is **Next 7**. In October the trailing 24h / 72h / 7d boards are honestly quiet (zeros). The forecast window is where the ranking has meaning right now.
+AWS Terrarium (`elevation-tiles-prod`) painted “API KEY REQUIRED” on the 3D mesh at higher zooms. The DEM is now **Mapterhorn** (`https://tiles.mapterhorn.com/{z}/{x}/{y}.webp`, terrarium, tileSize 512, maxzoom 12, no key). If that source errors, terrain drops and the hero keeps Esri imagery + hillshade without 3D.
 
 ## What this cut
 
-- Weather-app home list, swipe-between-watched, and stacked detail tiles
+- Concept A (snap leaderboard + flip card)
+- A/B toggle and `?design=` write
+- Weather-app home list
 - Globe as home
-- Pass + storms + layers crammed into one hamburger
-- My Resorts as the first section (watch still lives on the card back; the agent can still open a watch-only list)
-- Redundant Explore chrome
+- Top-12-only board with empty last-row cells
 
-Kept: agent bar, trip people/dates, deep links, weather/storms data, watch, Plan trip, affiliates, paused email.
+Kept: agent bar, trip people/dates, deep links (`/?resort=&from=&to=&people=&mode=`), weather/storms, watchlist, Plan trip, affiliates, paused email.
+
+Default window is still **Next 7**. In October the trailing 24h / 72h / 7d boards are honestly quiet.
