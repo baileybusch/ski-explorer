@@ -1,6 +1,33 @@
 # Alerts and paid trip watches
 
-Write-up only. Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). No cron, subscribe, or subscriber-store changes in this revision.
+Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates, Alert me flow, and a disabled cron are in the repo. Nothing is sent.
+
+## Current state (this PR)
+
+| Piece | Status |
+|---|---|
+| `evaluateAlerts(rules, snowJson, now)` | Done. Pure. Threshold, window (24/48/72/168h), pass + region + saved, dedupe `{ruleId}\|{resortId}\|{pulseStart}\|{stormTier}`, quiet hours → `queued`, 12h cap. `rule.tier` is `free` or `paid` (hook only). |
+| Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
+| `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
+| Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
+| Alert me UI | Incoming quiet line + one button on the resort page. Defaults: 12″ / 72h / this resort or my pass. Two taps if email is remembered. |
+| `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |
+| Cron | `vercel.json` → `/api/cron/alerts` daily `0 3 * * *` (Sunday evening PT ≈ recap window). Handler no-ops while the flag is false. Old `/api/cron/digest` still no-ops. |
+| Subscribers | Same Blob `subs/<token>.json`. Rules hang on the existing document. |
+| Payments | **Not built.** `tier` is a field. |
+
+### Before real sends can turn on
+
+1. **Sending domain** — buy one you control. `skiscope.vercel.app` is the app, not mail.
+2. **Resend domain verification** — SPF + DKIM + DMARC. Set `RESEND_FROM` to `SkiScope <alerts@yourdomain>`. `RESEND_API_KEY` stays in Vercel env.
+3. **Flag** — `EMAIL_ALERTS_ENABLED = true` in `public/config.js`.
+4. **Cron** — already wired. On Pro, change the schedule to 6-hourly (`15 */6 * * *`) if you want faster dump alerts. Hobby is one daily tick.
+5. **Allowlist first** — keep `DIGEST_ALLOWLIST=baileybusch@gmail.com` for the first live runs.
+6. **Postal address** in the footer (CAN-SPAM) once a domain exists.
+
+Do not enable sends without 1–2. Confirm + weekly recap + dump alerts will all go through the same `sendEmail` lock.
+
+---
 
 Bailey’s two references:
 
@@ -75,7 +102,7 @@ A daily snapshot of ~158 resorts × a few points is fine on free while the produ
 - [Vercel Cron](https://vercel.com/docs/cron-jobs/usage-and-pricing): Hobby = once per day, timing ±59 min, and Hobby is personal/non-commercial. Pro ($20/mo) = minute-level, which you want for 6-hourly. Each tick is a Function invocation (duration + CPU billed as usual).
 - [Vercel Workflow](https://vercel.com/docs/workflow) is the better home if the job fans out, retries a failed Resend send, or waits on a snapshot refresh. Cron can still be the wake-up.
 
-Existing digest cron was `30 13 * * *` (~6:30 AM PT) and is removed from `vercel.json` while paused.
+Digest cron `30 13 * * *` stays a no-op. The live wire is `/api/cron/alerts` daily at `0 3 * * *` (Sunday evening PT for recaps). Still a no-op while the flag is false.
 
 ### Dedupe so a storm emails once
 
@@ -214,8 +241,8 @@ Email stays paused until phase 0 is done and someone flips the flag on purpose.
 | Phase | What | Effort | Depends on |
 |---|---|---|---|
 | **0. Mail identity** | Buy domain, Resend verify, postal address, `RESEND_FROM`. | Small (ops, not code). | Human + DNS. |
-| **1. Re-enable digest as-is** | Flip `EMAIL_ALERTS_ENABLED`, restore the daily cron. Confirm + weekly/daily digest already written. | Small. One config change + a send test to an allowlist. | Phase 0. |
-| **2. Threshold dump alerts** | Rule schema on the Blob sub, check job using `snow.json` + `stormForResort`, dedupe key, Explore/Plan buttons, quiet hours. | Medium. New `/api/cron/alerts` (or Workflow), small `/alerts` form fields, no new vendor. | Phase 1 + snapshot refresh cadence. |
+| **1. Re-enable sending** | Flip `EMAIL_ALERTS_ENABLED`. Confirm, dump alert, and recap templates already written. Cron already wired. | Small. Flag + allowlisted send test to baileybusch@gmail.com. | Phase 0. |
+| **2. Threshold dump alerts** | **Shipped (paused).** `evaluateAlerts`, Alert me, templates, preview. Turn on with the flag. | Done except ops. | Phase 1. |
 | **3. Paid snow watch** | Stripe Checkout, `kind=trip` without a fare ceiling, cron until `to`, one go/wait sentence from the existing agent (deterministic if Gateway is off). | Medium. New webhook + a “watches” list. Open-Meteo Standard key. | Phase 2 + Stripe + commercial OM. |
 | **4. Fare / room ceiling** | Only after a real API: Travelpayouts cached calendar *or* a Duffel contract you can afford to poll. Lodging = Booking/Expedia after approval. | Large, and maybe never. Contracts, caching, “indicative price” copy, much higher COGS. | Phase 3 + vendor access. **Not possible key-less.** |
 | **5. Agent as the product** | “Keep looking and tell me when to go.” Workflow loop, `/api/agent` tools already include `get_weather` and `find_storms`. Rate-limit and a spend cap per watch. | Medium on top of 3; Large if it also prices. | Phase 3. Skip 4 if the deep link is enough. |

@@ -117,8 +117,14 @@ Snow is still the center. Storms is a list/search filter (still `data-testid="st
 
 Credits: Open-Meteo (CC BY 4.0), RainViewer tiles, NWS alerts.
 
-## Email alerts paused
-- `EMAIL_ALERTS_ENABLED = false` in `public/config.js` (shared by the browser and `/api`). Follow button, footer link and `/alerts` signup are hidden (`/alerts` shows a paused note); `/api/subscribe` returns 503; `/api/cron/digest` is a no-op; the cron entry is removed from `vercel.json`.
-- Subscriber data in Blob and the Resend env vars are untouched. To resume: flip the flag to `true` and re-add `"crons": [{ "path": "/api/cron/digest", "schedule": "30 13 * * *" }]` to `vercel.json`.
-- If email comes back, keep it as **snowfall + location threshold** alerts (example: “Mammoth got 12in+ / forecast 18in+ in 3 days”) whose buttons are the share URLs above (`mode=explore` / `mode=plan`). Do not rebuild signup in this revision.
-- Practical write-up for later (still paused, no code): [docs/alerts-and-paid-watches.md](docs/alerts-and-paid-watches.md) — free dump-alert rules, a Campnab-style paid trip watch, cost model, and prerequisites (domain, Resend, Stripe).
+## Email alerts (built, sending locked)
+
+Board is the front door. Dump alerts + weekly recaps are what people come back for.
+
+- **Evaluator**: `evaluateAlerts(rules, snowJson, now)` in `lib/evaluateAlerts.js` — threshold, window, pass/region, dedupe `{rule}|{resort}|{pulse start}|{tier}`, quiet hours. `npm run eval` covers it.
+- **Templates**: storm alert + weekly / last-storm recap (HTML + text) in `lib/emails.js`. Slate, big numbers, block cards, manage + one-click unsubscribe. At most two outbound buttons via `lib/links.js`.
+- **Preview**: `npm run email:preview` writes `tmp/email-preview/` from committed `snow.json`. `/api/email/preview?type=alert|recap` is render-only. A real test send is **only** `node scripts/email-preview.mjs --send --to baileybusch@gmail.com` with `RESEND_API_KEY` set — no other address.
+- **Signup**: Alert me on Incoming and each resort page. Hidden unless `EMAIL_ALERTS_ENABLED` is true. On a **preview** host only, `?alerts=1` reveals the flow; submissions write nothing and send nothing.
+- **Cron**: `vercel.json` has `/api/cron/alerts` daily (`0 3 * * *`). The handler no-ops while the flag is false. 6-hourly ticks need Vercel Pro.
+- **Still off**: `EMAIL_ALERTS_ENABLED = false`. `/api/subscribe` returns 503 in production. `/api/cron/digest` stays a no-op. Reuse the Blob `subs/` store — do not invent a second one.
+- Before real sends: buy/verify a sending domain on Resend, set `RESEND_FROM`, flip the flag, keep the cron. See [docs/alerts-and-paid-watches.md](docs/alerts-and-paid-watches.md). Paid watches are a `tier: free|paid` hook only — no payments.

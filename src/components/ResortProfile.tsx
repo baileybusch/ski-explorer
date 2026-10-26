@@ -17,7 +17,7 @@ import { snowScore } from '@/lib/board';
 
 export function ResortProfile({
   pages, selectedId, onSelect, onBack, onPlan, onWatch, onScroll, snow, typical, units, trip, win, pass,
-  lodgingOn, setLodgingOn, onShowMap,
+  lodgingOn, setLodgingOn, onShowMap, onAlert, showAlert,
 }: {
   pages: { r: any; m: any; storm?: any; wx?: any }[];
   selectedId: string;
@@ -35,6 +35,8 @@ export function ResortProfile({
   lodgingOn: boolean;
   setLodgingOn: (v: boolean) => void;
   onShowMap: (r: any) => void;
+  onAlert?: (r: any) => void;
+  showAlert?: boolean;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const index = Math.max(0, pages.findIndex(x => x.r.id === selectedId));
@@ -86,6 +88,8 @@ export function ResortProfile({
                   onWatch={onWatch}
                   onPlan={() => onPlan(row.r)}
                   onShowMap={() => onShowMap(row.r)}
+                  onAlert={onAlert}
+                  showAlert={showAlert}
                   onBack={onBack}
                   onPrev={() => { const prev = pages[i - 1]; if (prev) onSelect(prev.r.id); }}
                   onNext={() => { const next = pages[i + 1]; if (next) onSelect(next.r.id); }}
@@ -113,7 +117,7 @@ export function ResortProfile({
 
 function ProfilePage({
   row, rank, active, snow, typical, units, trip, win, pass,
-  onWatch, onPlan, onShowMap, onBack, onPrev, onNext, canPrev, canNext, onScroll,
+  onWatch, onPlan, onShowMap, onAlert, showAlert, onBack, onPrev, onNext, canPrev, canNext, onScroll,
 }: any) {
   const resort = row.r;
   const [wx, setWx] = useState<any>(() => row.wx || snapshotWeather(resort, snow));
@@ -206,6 +210,17 @@ function ProfilePage({
           <p className="mt-1 text-sm text-white/70">
             {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
           </p>
+          {showAlert && onAlert ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-3 min-h-11 rounded-full px-4 text-sm"
+              data-testid="profile-alert-me"
+              onClick={() => onAlert(resort)}
+            >
+              Alert me
+            </Button>
+          ) : null}
           <div className="mt-2 flex items-end justify-between gap-3">
             <div className="font-display leading-none" style={{ fontSize: 'clamp(4.6rem, 22vw, 7.2rem)' }}>
               {num}<span className="text-[0.36em]">{unit}</span>

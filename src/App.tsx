@@ -22,6 +22,8 @@ import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
 import { BOARD_MORE, BOARD_PAGE, incomingScore, snowScore } from '@/lib/board';
+import { AlertMeSheet, type AlertContext } from '@/components/AlertMeSheet';
+import { alertsUiState } from '@/lib/alertsUi';
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 type View = 'board' | 'profile' | 'map';
@@ -72,6 +74,9 @@ export default function App() {
   const [restoreTop, setRestoreTop] = useState(0);
   const [boardMode, setBoardMode] = useState<'recent' | 'incoming'>('recent');
   const [shown, setShown] = useState(BOARD_PAGE);
+  const alertsUi = alertsUiState();
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertCtx, setAlertCtx] = useState<AlertContext>({ source: 'incoming', pass });
 
   useEffect(() => {
     loadCatalog().then(c => {
@@ -96,6 +101,8 @@ export default function App() {
       setTrip(nextTrip);
       saveTrip(nextTrip);
       setWin(nextWin);
+      const qs = new URLSearchParams(location.search);
+      if (qs.get('view') === 'incoming' || qs.get('mode') === 'incoming') setBoardMode('incoming');
       if (deep.resort) {
         setSelectedId(deep.resort);
         setView('profile');
@@ -410,6 +417,8 @@ export default function App() {
             onTrip={() => setTripOpen(true)}
             boardMode={boardMode}
             setBoardMode={m => { setBoardMode(m); setStormsOn(false); }}
+            showAlert={alertsUi.show}
+            onAlert={() => { setAlertCtx({ source: 'incoming', pass }); setAlertOpen(true); }}
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
@@ -448,6 +457,8 @@ export default function App() {
           lodgingOn={lodgingOn}
           setLodgingOn={setLodgingOn}
           onShowMap={r => { setSelectedId(r.id); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
+          showAlert={alertsUi.show}
+          onAlert={r => { setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
         />
       ) : null}
 
@@ -520,6 +531,14 @@ export default function App() {
         setNwsOn={setNwsOn}
         lodgingOn={lodgingOn}
         setLodgingOn={setLodgingOn}
+      />
+
+      <AlertMeSheet
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        ctx={alertCtx}
+        mode={alertsUi.mode}
+        regions={catalog?.regions || []}
       />
 
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} text={planText} links={planLinks} />

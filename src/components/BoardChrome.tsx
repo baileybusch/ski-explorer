@@ -9,6 +9,7 @@ import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
   q, onOpenSearch, onMenu, loading, preset, setPreset, trip, win, onTrip, boardMode, setBoardMode,
+  showAlert, onAlert,
 }: {
   q: string;
   onOpenSearch: () => void;
@@ -21,6 +22,8 @@ export function BoardChrome({
   onTrip: () => void;
   boardMode: 'recent' | 'incoming';
   setBoardMode: (m: 'recent' | 'incoming') => void;
+  showAlert?: boolean;
+  onAlert?: () => void;
 }) {
   const { adults, kids } = partyOf(trip);
   const { start, end } = tripDates(trip, win || { start: '', end: '' });
@@ -65,6 +68,14 @@ export function BoardChrome({
       ) : (
         <p className="px-1 text-xs text-muted-foreground" data-testid="incoming-caption">
           Modeled next-7 forecast — not exact totals. Storm badge = 6″+ in any 72h.
+          {showAlert && onAlert ? (
+            <>
+              {' '}
+              <button type="button" className="underline underline-offset-2" data-testid="incoming-alert-cta" onClick={onAlert}>
+                Get a heads-up when a storm hits your resorts
+              </button>
+            </>
+          ) : null}
         </p>
       )}
       <button

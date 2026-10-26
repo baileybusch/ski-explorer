@@ -22,7 +22,7 @@ input[type=email],input[type=search]{width:100%;min-height:52px;border-radius:14
 .seg{display:flex;gap:6px;padding:4px;margin-top:14px;background:rgba(255,255,255,.07);border-radius:14px}.seg label{flex:1}.seg input{display:none}.seg span{display:grid;place-items:center;min-height:46px;border-radius:11px;font-weight:600;color:var(--dim);cursor:pointer}.seg input:checked+span{background:rgba(255,255,255,.16);color:#fff}
 </style></head><body><main>
 <div class="top"><a class="brand" href="/">❄ SkiScope</a><a href="/">Open map</a></div>
-<h1>Snow alerts</h1><p class="dim" id="intro">Email alerts are paused for now. No digests are being sent, and new signups are closed.</p>
+<h1>Snow alerts</h1><p class="dim" id="intro">Dump alerts and weekly recaps are built but sending is still paused. Use the manage link in any email to change a watch. New signups stay closed until alerts are turned on.</p>
 <div id="app"></div>
 </main>
 <script type="module">
@@ -47,7 +47,7 @@ if (token) {
     const sub = await r.json();
     app.innerHTML = `<div class="card">${qs.get('confirmed') ? '<p class="ok"><b>✓ Confirmed.</b> Your daily digest starts tomorrow morning.</p>' : ''}
       <div><span class="pill">${sub.status === 'active' ? 'Active' : 'Pending confirmation'}</span> <span class="dim">${sub.email}</span></div>
-      ${freqHTML(sub.freq || 'daily')}<p class="dim" style="margin-bottom:0">Resorts you follow (shown first in your digest):</p>${picker(sub.resorts)}
+      ${freqHTML(sub.freq === 'on-trigger' ? 'weekly' : (sub.freq || 'weekly'))}<p class="dim" style="margin-bottom:0">Resorts you follow. Dump-alert threshold and window live on the rule — one-click unsubscribe is in every email.</p>${picker(sub.resorts)}
       <button class="btn" id="save">Save resorts</button><div class="msg" id="msg"></div>
       <a class="btn danger" style="display:grid;place-items:center;text-decoration:none" href="/api/unsubscribe?token=${token}">Unsubscribe from all emails</a></div>`;
     localStorage.setItem('ss_token', token); localStorage.setItem('ss_follows', JSON.stringify(sub.resorts));

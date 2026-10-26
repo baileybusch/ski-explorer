@@ -9,5 +9,8 @@
       { "key": "Content-Type", "value": "text/javascript; charset=utf-8" },
       { "key": "Cache-Control", "value": "public, max-age=86400" }
     ] }
+  ],
+  "crons": [
+    { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ]
 }

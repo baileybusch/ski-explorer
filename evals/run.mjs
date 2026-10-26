@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { parseTripSentence } from '../lib/agent/parseTrip.js';
 import { llmAvailable, runLlm } from '../lib/agent/runAgent.js';
+import { runAlertEvals } from './alerts.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -65,4 +66,10 @@ if (process.env.RUN_LLM === '1' && llmAvailable()) {
 }
 
 console.log(`\n${cases.cases.length - fail}/${cases.cases.length} deterministic cases passed`);
-process.exit(fail ? 1 : 0);
+
+const alerts = runAlertEvals();
+console.log('\nalert evaluator\n');
+for (const line of alerts.lines) console.log(line);
+console.log(`\n${alerts.total - alerts.fail}/${alerts.total} alert evals passed`);
+
+process.exit(fail || alerts.fail ? 1 : 0);
