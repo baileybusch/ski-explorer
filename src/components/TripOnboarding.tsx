@@ -72,7 +72,9 @@ export function TripOnboarding({
     setLodging(t.lodging || 'any');
     setBudget(t.budget || 'mid');
     setStep('dates');
-  }, [open, trip, win]);
+    // Hydrate once when the sheet opens. Persisting mid-flow must not rewind the stepper.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function persist(extra: Record<string, unknown> = {}) {
     const next = {

@@ -316,7 +316,7 @@ export function ManagePage() {
       {deleteOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4" data-testid="manage-delete-confirm">
           <div className="w-full max-w-sm rounded-2xl bg-background p-5 ring-1 ring-foreground/12">
-            <h2 className="font-display text-3xl tracking-wide">Delete this account?</h2>
+            <h2 className="font-display text-3xl tracking-wide">Delete my data?</h2>
             <p className="mt-2 text-sm text-muted-foreground">Removes alerts and preferences on this device. Live deletes also drop the subscriber record.</p>
             <div className="mt-5 flex flex-col gap-2">
               <Button type="button" className="min-h-12 w-full" data-testid="manage-delete-yes" onClick={deleteData}>
