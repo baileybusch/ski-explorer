@@ -10,6 +10,12 @@
       { "key": "Cache-Control", "value": "public, max-age=86400" }
     ] }
   ],
+  "functions": {
+    "api/headless.js": { "includeFiles": "public/data/**" },
+    "api/agent.js": { "includeFiles": "public/data/**" },
+    "api/cron/alerts.js": { "includeFiles": "public/data/**" },
+    "api/email/preview.js": { "includeFiles": "public/data/**" }
+  },
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ],
