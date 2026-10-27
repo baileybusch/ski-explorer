@@ -1,7 +1,19 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const DIR = '/opt/cursor/artifacts/screenshots';
+function shotDir() {
+  for (const dir of ['/opt/cursor/artifacts/screenshots', 'tmp/screenshots']) {
+    try {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '.writable'), '1');
+      return dir;
+    } catch { /* next */ }
+  }
+  return 'tmp/screenshots';
+}
+
+const DIR = shotDir();
 
 test.beforeAll(() => {
   mkdirSync(DIR, { recursive: true });
@@ -27,6 +39,18 @@ test('fresh screenshots: board, hero, storm, trip, manage', async ({ page }, inf
   await page.screenshot({ path: `${DIR}/trip-auto-advance-who.png`, fullPage: false });
   await page.getByTestId('trip-onboarding-back').click();
   await page.getByTestId('trip-onboarding').locator('button', { hasText: 'Close' }).click();
+
+  await page.goto('/?alerts=1');
+  await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('home-signup').scrollIntoViewIfNeeded();
+  await page.getByTestId('home-signup').screenshot({ path: `${DIR}/home-monitor-cta.png` });
+
+  await page.getByTestId('search-trigger').click();
+  await page.getByLabel('Ask SkiScope').fill('Japan');
+  await page.getByLabel('Ask SkiScope').press('Enter');
+  await expect(page.getByTestId('intent-chip')).toBeVisible({ timeout: 15_000 });
+  await page.screenshot({ path: `${DIR}/search-japan-chip.png`, fullPage: false });
+  await page.getByTestId('context-cta').screenshot({ path: `${DIR}/search-japan-cta.png` });
 
   await page.goto('/manage?alerts=1');
   await expect(page.getByTestId('manage-page')).toBeVisible({ timeout: 20_000 });

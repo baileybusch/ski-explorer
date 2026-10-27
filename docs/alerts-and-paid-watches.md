@@ -4,13 +4,17 @@ Email stays **paused** (`EMAIL_ALERTS_ENABLED=false`). The evaluator, templates,
 
 ## Current state (this PR)
 
+Alert model **v2**: one email can hold many subscriptions (`type`: `resort` | `region` | `trip`). Each is independently editable / pauseable / removable on `/manage`. Sends **consolidate** to one email per window. Facts come from `lib/skiscope-tools` — see [agent-harness.md](agent-harness.md). Existing rules migrate via `migrateRule` (region watch → `type=region`, trip dates → `type=trip`).
+
 | Piece | Status |
 |---|---|
-| `evaluateAlerts(rules, snowJson, now)` | Done. Pure. Threshold, window (24/48/72/168h), pass + region + saved, dedupe `{ruleId}\|{resortId}\|{pulseStart}\|{stormTier}`, quiet hours → `queued`, 12h cap. `rule.tier` is `free` or `paid` (hook only). |
-| Storm alert + recap emails | Done. HTML + text, slate block cards, manage + one-click unsub. ≤2 outbound via `lib/links.js`. Deep link `/?resort=` or `/?view=incoming`. |
-| `npm run email:preview` | Renders both from committed `snow.json` to `tmp/email-preview/`. `/api/email/preview?type=alert\|recap` is render-only. |
-| Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. Every other address is refused. Keys are never printed. |
-| Alert me UI | Short flow: pick a resort (pre-selected from a resort page) → email → check-your-email. Home signup already has the email, so it goes resort → done. No threshold or warning-window step. Internal default is **6″ / 72h** (`lib/alertDefaults.js`). Optional **Alert sensitivity** in the preference center (Standard / Big storms only / Every storm). Storm + recap stay on by default with a small toggle on the email screen. |
+| `evaluateAlerts(rules, snowJson, now)` | Resort storm (threshold + window), region leaderboard, trip T-14/T-7/T-3/T-1/T-0. Dedupe, quiet hours, 12h cap. Facts via `executeTool`. |
+| Consolidation | `consolidateAlerts` → one subject / one send per email. |
+| AI readouts | Per event. Grounded + validator + template fallback. [ai-readouts.md](ai-readouts.md). |
+| Storm alert + recap emails | HTML + text, slate cards, manage + one-click unsub. Region / trip / combined templates. |
+| `npm run email:preview` | Renders AI (or template) + forced template + region + combined. |
+| Test send | `--send --to baileybusch@gmail.com` + `RESEND_API_KEY` only. |
+| Alert me UI | Same flow everywhere. Home: Monitor your home resort. Search: context CTA. Trip: Alert me as my trip gets closer. Region: all vs pick. Default **6″ / 72h**. |
 | Accounts | No passwords. Email + signed link. Double opt-in, consent records, preference center. See [accounts-and-email-prefs.md](accounts-and-email-prefs.md). |
 | Sponsor slot | Optional, off by default. Labeled **Sponsored** in alert + recap templates. Preview renders “Example sponsor”. |
 | `?alerts=1` | Preview host (or localhost) only. Production ignores it. Preview POSTs write nothing and send nothing. |

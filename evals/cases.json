@@ -90,6 +90,66 @@
       "id": "japan-storm-track",
       "text": "Any storm track for Japan next week?",
       "expect": { "region": "japan", "storms": true, "from": "2026-10-26", "to": "2026-11-01" }
+    },
+    {
+      "id": "intent-japan",
+      "text": "Japan",
+      "expect": { "region": "japan", "type": "country" }
+    },
+    {
+      "id": "intent-california",
+      "text": "California",
+      "expect": { "region": "california", "type": "state" }
+    },
+    {
+      "id": "intent-alps",
+      "text": "Alps",
+      "expect": { "region": "alps", "type": "region" }
+    },
+    {
+      "id": "intent-rockies",
+      "text": "Rockies",
+      "expect": { "region": "rockies", "type": "region" }
+    },
+    {
+      "id": "intent-colorado",
+      "text": "Colorado",
+      "expect": { "region": "colorado", "type": "state" }
+    },
+    {
+      "id": "intent-utah",
+      "text": "Utah",
+      "expect": { "region": "utah", "type": "state" }
+    },
+    {
+      "id": "intent-tahoe",
+      "text": "Tahoe",
+      "expect": { "region": "tahoe", "type": "state" }
+    },
+    {
+      "id": "intent-pnw",
+      "text": "PNW",
+      "expect": { "region": "pacific-nw", "type": "region" }
+    },
+    {
+      "id": "intent-canada",
+      "text": "Canada",
+      "expect": { "region": "canada", "type": "country" }
+    },
+    {
+      "id": "intent-deer-valley-april",
+      "text": "Deer Valley in April",
+      "expect": { "resort": "deer-valley", "type": "trip" }
+    },
+    {
+      "id": "intent-top-snow-colorado",
+      "text": "top snow in Colorado",
+      "expect": { "region": "colorado", "type": "ranking", "sort": "snow" }
+    },
+    {
+      "id": "intent-ikon-utah",
+      "text": "Ikon Utah",
+      "expect": { "region": "utah", "pass": "ikon" }
     }
   ]
 }

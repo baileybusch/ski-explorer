@@ -20,7 +20,8 @@ export function runSpaRouteEvals() {
   }
 
   check('clean-urls-on', vercel.cleanUrls === true, `cleanUrls=${vercel.cleanUrls}`);
-  const dests = (vercel.rewrites || []).map(r => r.destination);
+  const pageRewrites = (vercel.rewrites || []).filter(r => !String(r.source).startsWith('/api/'));
+  const dests = pageRewrites.map(r => r.destination);
   check('no-index-html', dests.every(d => d !== '/index.html'), `destinations ${dests.join(',')}`);
   check('dest-slash', dests.every(d => d === '/'), `destinations ${dests.join(',')}`);
   const sources = new Set((vercel.rewrites || []).map(r => r.source.replace(/\/$/, '')));

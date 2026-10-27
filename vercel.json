@@ -10,10 +10,22 @@
       { "key": "Cache-Control", "value": "public, max-age=86400" }
     ] }
   ],
+  "functions": {
+    "api/headless.js": { "includeFiles": "public/data/**" },
+    "api/agent.js": { "includeFiles": "public/data/**" },
+    "api/cron/alerts.js": { "includeFiles": "public/data/**" },
+    "api/email/preview.js": { "includeFiles": "public/data/**" }
+  },
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ],
   "rewrites": [
+    { "source": "/api/mcp", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/mcp/", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/search", "destination": "/api/headless?surface=search" },
+    { "source": "/api/search/", "destination": "/api/headless?surface=search" },
+    { "source": "/api/data", "destination": "/api/headless?surface=data" },
+    { "source": "/api/data/", "destination": "/api/headless?surface=data" },
     { "source": "/manage", "destination": "/" },
     { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },
