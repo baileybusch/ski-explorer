@@ -20,7 +20,7 @@ const ID_RE = /^[a-z0-9-]{2,40}$/;
 const SERVER_FIELDS = ['lastFired', 'lastKey', 'lastKeys', 'tripStagesSent', 'pendingSend'];
 
 /** Client-edited rules, validated; alert history stays server-owned per rule id. */
-function cleanRules(rules, email, prior = []) {
+export function cleanRules(rules, email, prior = []) {
   return rules.slice(0, 20).filter(r => r && typeof r === 'object').map(r => {
     const rule = normalizeRule({
       ...r,
