@@ -20,6 +20,7 @@ import { runReadoutEvals } from './readout.mjs';
 import { runWeatherEvals } from './weather.mjs';
 import { runObservedEvals } from './observed.mjs';
 import { runAskEvals } from './ask.mjs';
+import { runFunnelEvals } from './funnel.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -146,5 +147,10 @@ console.log('\nask skiscope\n');
 for (const line of askEv.lines) console.log(line);
 console.log(`\n${askEv.total - askEv.fail}/${askEv.total} ask evals passed`);
 
+const funnel = await runFunnelEvals();
+console.log('\nemail funnel\n');
+for (const line of funnel.lines) console.log(line);
+console.log(`\n${funnel.total - funnel.fail}/${funnel.total} funnel evals passed`);
+
 process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
-  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || askEv.fail ? 1 : 0);
+  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || askEv.fail || funnel.fail ? 1 : 0);
