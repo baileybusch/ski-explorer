@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { FlowShell, useAutoAdvance } from '@/components/FlowShell';
+import { ChoiceTile, FlowShell, useAutoAdvance } from '@/components/FlowShell';
 import { type AlertsUiMode } from '@/lib/alertsUi';
 import { sensitivityOf } from '../../lib/alertDefaults.js';
 import { loadPrefs } from '@/lib/session';
@@ -14,12 +14,20 @@ import { CONSENT_TEXT } from '../../lib/consentText.js';
 export type AlertContext = {
   resortId?: string | null;
   resortName?: string | null;
+  region?: string | null;
+  regionName?: string | null;
+  type?: 'resort' | 'region' | 'trip';
+  regionScope?: 'all' | 'subset';
+  from?: string | null;
+  to?: string | null;
+  adults?: number;
+  kids?: number;
   pass?: string;
   email?: string | null;
-  source?: 'incoming' | 'resort' | 'menu' | 'edit' | 'signup';
+  source?: 'incoming' | 'resort' | 'menu' | 'edit' | 'signup' | 'home' | 'search' | 'trip';
 };
 
-const STEPS = ['resorts', 'confirm', 'success'] as const;
+const STEPS = ['scope', 'resorts', 'confirm', 'success'] as const;
 type Step = typeof STEPS[number];
 
 function namesOf(ids: string[], resorts: { id: string; name: string }[]) {
@@ -44,12 +52,14 @@ export function AlertOnboarding({
   const [step, setStep] = useState<Step>('resorts');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [scope, setScope] = useState<'all' | 'subset'>('all');
   const [stormOn, setStormOn] = useState(true);
   const [recapOn, setRecapOn] = useState(true);
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const advance = useAutoAdvance();
+  const kind = ctx.type || (ctx.region ? 'region' : ctx.from ? 'trip' : 'resort');
 
   useEffect(() => {
     if (!open) return;
@@ -57,13 +67,16 @@ export function AlertOnboarding({
       ? editRule.resorts
       : ctx.resortId ? [ctx.resortId] : [];
     setSelected(startIds);
+    setScope((editRule as any)?.regionScope || ctx.regionScope || 'all');
     setStormOn(editRule ? editRule.freq !== 'weekly' : true);
     setRecapOn(editRule ? editRule.recap !== false : true);
     setEmail(editRule?.email || ctx.email || accountEmail() || '');
     setQuery('');
     setMsg('');
-    setStep(startIds.length && !editRule ? 'confirm' : 'resorts');
-  }, [open, ctx.resortId, ctx.email, editRule]);
+    if (kind === 'region' && !editRule) setStep('scope');
+    else if (kind === 'trip' && startIds.length && !editRule) setStep('confirm');
+    else setStep(startIds.length && !editRule ? 'confirm' : 'resorts');
+  }, [open, ctx.resortId, ctx.email, ctx.type, ctx.region, editRule, kind]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -76,23 +89,38 @@ export function AlertOnboarding({
   }, [query, resorts, selected]);
 
   const labels = namesOf(selected, resorts);
-  const where = labels.length ? labels.join(', ') : 'your resorts';
-  const preview = `We'll email you when ${where} is about to get dumped on.`;
+  const where = kind === 'region'
+    ? (scope === 'subset' && labels.length ? labels.join(', ') : (ctx.regionName || ctx.region || 'this region'))
+    : labels.length ? labels.join(', ') : (ctx.resortName || 'your resorts');
+  const preview = kind === 'trip'
+    ? `We'll email you as ${where} gets closer — T-14, T-7, T-3, T-1, morning of.`
+    : kind === 'region'
+      ? `We'll email you when the situation moves in ${where}.`
+      : `We'll email you when ${where} is about to get dumped on.`;
 
   function pickResort(id: string) {
+    if (kind === 'region') {
+      setSelected(cur => cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]);
+      setMsg('');
+      return;
+    }
     setSelected([id]);
     setMsg('');
     const addr = (email || ctx.email || '').trim();
     advance(() => {
-      if (validEmail(addr) && ctx.source === 'signup') submit([id], addr);
+      if (validEmail(addr) && (ctx.source === 'signup' || ctx.source === 'home')) submit([id], addr);
       else setStep('confirm');
     });
   }
 
   function back() {
-    if (step === 'resorts') onOpenChange(false);
-    else if (step === 'success') onOpenChange(false);
-    else setStep('resorts');
+    if (step === 'success') onOpenChange(false);
+    else if (step === 'confirm') {
+      if (kind === 'region' && scope === 'all') setStep('scope');
+      else if (kind === 'trip' && ctx.resortId) onOpenChange(false);
+      else setStep('resorts');
+    } else if (step === 'resorts' && kind === 'region') setStep('scope');
+    else onOpenChange(false);
   }
 
   async function submit(ids = selected, addr = email) {
@@ -102,7 +130,7 @@ export function AlertOnboarding({
       setStep('confirm');
       return;
     }
-    if (!ids.length) {
+    if (kind !== 'region' && !ids.length) {
       setMsg('Pick at least one resort');
       setStep('resorts');
       return;
@@ -113,9 +141,14 @@ export function AlertOnboarding({
     const payload: Partial<LocalRule> = {
       id: editRule?.id,
       email: next,
-      watch: 'resort',
+      type: kind,
+      watch: kind === 'region' ? 'region' : 'resort',
       pass: ctx.pass || 'both',
-      resorts: ids,
+      resorts: kind === 'region' && scope === 'all' ? [] : ids,
+      region: kind === 'region' ? (ctx.region || null) : null,
+      regionScope: kind === 'region' ? scope : undefined,
+      tripStart: kind === 'trip' ? ctx.from || null : undefined,
+      tripEnd: kind === 'trip' ? ctx.to || null : undefined,
       minSnowIn: sense.minSnowIn,
       windowHours: sense.windowHours,
       freq: stormOn ? 'on-trigger' : 'weekly',
@@ -133,7 +166,12 @@ export function AlertOnboarding({
       const r = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...payload, source: ctx.source || 'signup' }),
+        body: JSON.stringify({
+          ...payload,
+          source: ctx.source || 'signup',
+          adults: ctx.adults,
+          kids: ctx.kids,
+        }),
       });
       const j = await r.json().catch(() => ({ error: 'Could not save' }));
       if (j.error) {
@@ -149,7 +187,8 @@ export function AlertOnboarding({
   }
 
   const title = {
-    resorts: 'Which resort?',
+    scope: `Monitor ${ctx.regionName || 'this region'}?`,
+    resorts: kind === 'region' ? 'Which resorts?' : 'Which resort?',
     confirm: 'Your email',
     success: "You're set.",
   }[step];
@@ -193,10 +232,35 @@ export function AlertOnboarding({
       onBack={step === 'success' ? undefined : back}
       title={title}
       hint={hint}
-      progress={step === 'success' ? 2 : STEPS.indexOf(step) + 1}
+      progress={step === 'success' ? 2 : (step === 'scope' ? 1 : 2)}
       total={2}
       footer={footer}
     >
+      {step === 'scope' ? (
+        <div className="mt-5 flex min-w-0 flex-col gap-3" data-testid="alert-region-scope">
+          <ChoiceTile
+            selected={scope === 'all'}
+            title={`All of ${ctx.regionName || 'the region'}`}
+            hint="Leaderboard when the situation moves"
+            testId="alert-scope-all"
+            onClick={() => {
+              setScope('all');
+              advance(() => setStep('confirm'));
+            }}
+          />
+          <ChoiceTile
+            selected={scope === 'subset'}
+            title="Pick resorts"
+            hint="Only the mountains you choose"
+            testId="alert-scope-subset"
+            onClick={() => {
+              setScope('subset');
+              advance(() => setStep('resorts'));
+            }}
+          />
+        </div>
+      ) : null}
+
       {step === 'resorts' ? (
         <div className="mt-5 flex min-w-0 flex-col gap-3">
           <Input

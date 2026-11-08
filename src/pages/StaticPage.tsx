@@ -10,6 +10,7 @@ const COPY = {
       'Snow is modeled Open-Meteo, not resort-reported. Terrain is Mapterhorn. The basemap is OpenFreeMap (OpenMapTiles + OpenStreetMap). Runs and lifts are our own OpenSkiMap / OpenStreetMap GeoJSON. Radar is RainViewer. US winter alerts are NWS. Flights and lodging are search links. We may earn a commission if an affiliate id is set — see the disclosure.',
       'Data sources: OpenStreetMap contributors; OpenFreeMap / OpenMapTiles; Mapterhorn terrain; OpenSkiMap piste data; RainViewer radar (personal/educational API — licensing to-do before commercial radar); NWS; NIFC fire perimeters. Weather data by Open-Meteo.com (CC BY 4.0). Open-Meteo’s free tier is non-commercial — a paid plan is required before sponsors go live.',
       'Email alerts are paused until a sending domain exists. This page is product copy, not a legal filing.',
+      'SkiScope is headless: the same typed data tools power the public MCP endpoint at /api/mcp, on-site search, the alert evaluator, and the readout writer. Install: claude mcp add --transport http skiscope https://skiscope.vercel.app/api/mcp',
     ],
   },
   privacy: {

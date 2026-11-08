@@ -1,37 +1,53 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeftIcon, MapIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RadarPlayer } from '@/components/RadarPlayer';
 import { SnowHistory } from '@/components/SnowHistory';
 import { SeeYouOutThere } from '@/components/SeeYouOutThere';
-import { snowAmount, passLabel, tempLabel, windLabel, type SnowUnits, type TempUnits } from '@/lib/format';
+import { SnowStake } from '@/components/SnowStake';
+import { snowAmount, passLabel, tempLabel, windLabel, fzlLabel, type SnowUnits, type TempUnits } from '@/lib/format';
 import { dumpAria, SnowSplit } from '@/components/SnowSplit';
 import { weatherGlyph, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
-import { interestingBlurb, peopleLabel, tripDates } from '../../lib/trip.js';
 import { outboundRel, resortSite } from '../../lib/links.js';
-import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
+import { fmtFt, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
+import { BOARD_LAYOUT, stakeMax } from '@/lib/boardLayout';
+
+/** "2026-11-08T16:51" → "4:51 pm" (F users) or "16:51". Open-Meteo already returns resort-local time. */
+function clock(iso: string | null | undefined, tempUnits: TempUnits) {
+  if (!iso) return null;
+  const m = /T(\d{2}):(\d{2})/.exec(iso);
+  if (!m) return null;
+  const h = Number(m[1]);
+  if (tempUnits === 'C') return `${m[1]}:${m[2]}`;
+  return `${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+function daylight(rise?: string | null, set?: string | null) {
+  if (!rise || !set) return null;
+  const mins = (Date.parse(set) - Date.parse(rise)) / 60000;
+  if (!Number.isFinite(mins) || mins <= 0) return null;
+  return `${Math.floor(mins / 60)} h ${Math.round(mins % 60)} min`;
+}
+
+function weekday(date: string) {
+  return parseISO(date).toLocaleDateString('en-US', { weekday: 'short' });
+}
 
 export function ResortProfile({
-  row, onBack, onPlan, onScroll, snow, typical, units, tempUnits = 'F', trip, win, onShowMap, onAlert, onEditTrip, history, social,
+  row, onBack, onScroll, snow, units, tempUnits = 'F', onShowMap, onAlert, history, social,
 }: {
   row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
-  onPlan: (r: any) => void;
   onScroll?: (y: number) => void;
   snow: any;
-  typical: any;
   units: SnowUnits;
   tempUnits?: TempUnits;
-  trip: any;
-  win: any;
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
-  onEditTrip?: () => void;
   history?: any;
   social?: { instagram?: string; featuredPosts?: string[] } | null;
 }) {
@@ -48,18 +64,21 @@ export function ResortProfile({
     return () => { live = false; };
   }, [resort, snow, row.wx]);
 
+  const isLive = wx?.source === 'Open-Meteo forecast';
   const cur = wx?.current || {};
   const snapDays = forecastDays(resort, snow, { days: 7 });
   const liveByDate = Object.fromEntries((wx?.daily || []).map((d: any) => [d.date, d]));
   const daily = snapDays.map(d => ({ ...d, ...(liveByDate[d.date] || {}) }));
-  const maxSnow = Math.max(0.1, ...daily.map((d: any) => d.snowCm || 0));
-  const { start: from, end: to } = tripDates(trip, win);
+  const dayMax = Math.max(BOARD_LAYOUT.stakeFloorCm / 2, ...daily.map((d: any) => d.snowCm || 0));
   const site = resortSite(resort);
   const passName = passLabel(resort);
   const dump = dumpParts(resort, snow);
-  const hi = daily[0]?.tmax ?? cur.tempC;
-  const lo = daily[0]?.tmin ?? resort.tmin;
+  const today = isLive ? wx.daily?.[0] : null;
+  const hi = today?.tmax ?? daily[0]?.tmax ?? cur.tempC;
+  const lo = today?.tmin ?? daily[0]?.tmin ?? resort.tmin;
   const glyph = weatherGlyph({ ...row.m, wcode: cur.wcode ?? row.m?.wcode });
+  const fzl = wx?.hourly?.find((h: any) => Number.isFinite(h.fzlM))?.fzlM;
+  const place = [resort.town, resort.region || resort.state].filter(Boolean).join(', ');
 
   function onPointerDown(e: React.PointerEvent) {
     start.current = { x: e.clientX, y: e.clientY };
@@ -73,6 +92,18 @@ export function ResortProfile({
     if (scroller.current && scroller.current.scrollTop > 8) return;
     if (dy > 72 && Math.abs(dx) < 56) onBack();
   }
+
+  const wrap = 'mx-auto w-full px-4 min-[840px]:px-6';
+  const facts: [string, string][] = [];
+  if (resort.summit) facts.push(['Summit', units === 'cm' ? `${Math.round(resort.summit).toLocaleString()} m` : `${fmtFt(resort.summit)} ft`]);
+  if (resort.base) facts.push(['Base', units === 'cm' ? `${Math.round(resort.base).toLocaleString()} m` : `${fmtFt(resort.base)} ft`]);
+  if (resort.summit && resort.base) {
+    const v = resort.summit - resort.base;
+    facts.push(['Vertical', units === 'cm' ? `${Math.round(v).toLocaleString()} m` : `${fmtFt(v)} ft`]);
+  }
+  if (resort.runs) facts.push(['Runs mapped', String(resort.runs)]);
+  if (resort.lifts) facts.push(['Lifts', String(resort.lifts)]);
+  if (resort.iata) facts.push(['Nearest airport', resort.iata]);
 
   return (
     <div className="relative z-10 flex h-full min-h-dvh flex-col overflow-hidden" data-testid="resort-profile">
@@ -107,136 +138,191 @@ export function ResortProfile({
         onPointerUp={onPointerUp}
       >
         <section
-          className="relative flex h-[48dvh] flex-col justify-end px-4 pb-5 pt-[max(3.4rem,calc(env(safe-area-inset-top)+2.6rem))] text-white"
+          className="relative flex min-h-[min(46dvh,24rem)] flex-col justify-end pb-6 pt-[max(3.6rem,calc(env(safe-area-inset-top)+2.8rem))] text-white min-[840px]:min-h-[22rem] min-[840px]:pb-8"
           data-testid="profile-hero"
         >
           <div className="hero-scrim pointer-events-none absolute inset-0" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-2">
+          <div
+            className={`${wrap} relative z-10 grid gap-5 min-[840px]:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] min-[840px]:items-end min-[840px]:gap-10`}
+            style={{ maxWidth: BOARD_LAYOUT.maxWidth }}
+          >
+            <div className="min-w-0">
               {passName ? <Badge variant="secondary">{passName}</Badge> : null}
+              <h1 className="mt-2 text-[2rem] font-semibold leading-[1.05] tracking-tight min-[840px]:text-5xl">{resort.name}</h1>
+              {place ? <p className="mt-1.5 text-sm text-white/70 min-[840px]:text-base">{place}</p> : null}
+              <p className="mt-3 text-sm text-white/80" data-testid="hero-conditions">
+                {glyph} {tempLabel(cur.tempC, tempUnits)} now. High {tempLabel(hi, tempUnits)}, low {tempLabel(lo, tempUnits)}.
+                {cur.windKmh != null ? ` Wind ${windLabel(cur.windKmh, units)}.` : ''}
+              </p>
             </div>
-            <h1 className="mt-1 text-3xl font-semibold leading-none tracking-tight">{resort.name}</h1>
-            <p className="mt-1 text-sm text-white/70">
-              {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
-            </p>
-            <div className="mt-2 flex min-w-0 items-end justify-between gap-3">
-              <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units)}>
-                <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" />
-              </div>
-              <div className="mb-2 text-right text-base text-white/80">
-                <div>{glyph} {tempLabel(cur.tempC, tempUnits)}</div>
-                <div className="text-sm text-white/65">
-                  H {tempLabel(hi, tempUnits)} / L {tempLabel(lo, tempUnits)}
-                  {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
-                </div>
-                {resort.base_depth ? <div className="text-sm text-white/65">Base {snowAmount(resort.base_depth, units)}</div> : null}
-              </div>
+            <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}>
+              <SnowSplit
+                pastCm={dump.past72Cm}
+                nextCm={dump.next7Cm}
+                units={units}
+                size="hero"
+                estimated={dump.estimated}
+                max={stakeMax([dump.past72Cm, dump.next7Cm])}
+              />
             </div>
           </div>
         </section>
 
-        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-          <Card data-testid="tile-storm-status">
-            <CardHeader>
-              <CardTitle>Storm status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-base leading-relaxed" data-testid="storm-status-text">{status.text}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground">Modeled forecast.</p>
+        <div
+          className="relative z-20 -mt-3 rounded-t-[1.6rem] bg-background pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 min-[840px]:pt-6"
+        >
+          <div className={wrap} style={{ maxWidth: BOARD_LAYOUT.maxWidth }}>
+            <section
+              className="grid gap-4 rounded-[var(--radius-card)] bg-card p-5 ring-1 ring-foreground/10 min-[840px]:grid-cols-[minmax(0,1fr)_14rem] min-[840px]:items-center min-[840px]:gap-10 min-[840px]:p-6"
+              aria-label="Storm status"
+              data-testid="tile-storm-status"
+            >
+              <div className="min-w-0">
+                <p className="max-w-[62ch] text-[17px] leading-relaxed min-[840px]:text-xl min-[840px]:leading-snug" data-testid="storm-status-text">
+                  {status.text}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {dump.estimated ? 'Last 72h is estimated from the weather model.' : 'Last 72h is measured at the nearest SNOTEL station.'} Next 7 days is a model forecast.
+                </p>
+              </div>
               {onAlert ? (
-                <Button type="button" className="mt-4 min-h-12 w-full text-base" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
+                <Button type="button" className="min-h-12 w-full text-base" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
                   Alert me
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card data-testid="weather-panel">
-            <CardHeader>
-              <CardTitle>7-day forecast</CardTitle>
-              <CardDescription>{wx?.source === 'Open-Meteo forecast' ? 'Live Open-Meteo.' : 'Snapshot until live weather loads.'}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                {daily.map((d: any) => (
-                  <div key={d.date} className="flex items-center gap-3">
-                    <div className="w-10 shrink-0 text-sm font-medium">
-                      {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </div>
-                    <div className="w-8 shrink-0 text-center text-base">{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</div>
-                    <div className="w-12 shrink-0 text-sm">{tempLabel(d.tmax, tempUnits)}</div>
-                    <div className="min-w-0 flex-1">
-                      <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.round(((d.snowCm || 0) / maxSnow) * 100)}%` }} />
-                      </div>
-                    </div>
-                    <div className="w-12 shrink-0 text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</div>
-                  </div>
-                ))}
+            <div className="mt-8 grid gap-x-10 gap-y-10 min-[840px]:mt-10 min-[840px]:grid-cols-12">
+              <Block
+                title="Next 7 days"
+                note={isLive ? 'Live from Open-Meteo.' : 'From the morning snapshot until live weather loads.'}
+                className="min-[840px]:col-span-7"
+                testId="weather-panel"
+              >
+                <ol className="flex flex-col gap-2.5 min-[840px]:hidden">
+                  {daily.map((d: any) => (
+                    <li key={d.date} className="grid grid-cols-[2.75rem_1.5rem_2.75rem_minmax(0,1fr)_3.25rem] items-center gap-3">
+                      <span className="text-sm font-medium">{weekday(d.date)}</span>
+                      <span className="text-center" aria-hidden>{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</span>
+                      <span className="tabular text-sm text-muted-foreground">{tempLabel(d.tmax, tempUnits)}</span>
+                      <SnowStake cm={d.snowCm || 0} max={dayMax} kind="forecast" size="row" />
+                      <span className="tabular text-right text-sm font-medium">{snowAmount(d.snowCm, units)}</span>
+                    </li>
+                  ))}
+                </ol>
+                <ol
+                  className="hidden gap-3 min-[840px]:grid"
+                  style={{ gridTemplateColumns: `repeat(${daily.length}, minmax(0, 1fr))` }}
+                  data-testid="forecast-columns"
+                >
+                  {daily.map((d: any) => {
+                    const pct = Math.min(100, ((d.snowCm || 0) / dayMax) * 100);
+                    return (
+                      <li key={d.date} className="flex flex-col items-center gap-2 text-center">
+                        <span className="text-sm font-medium">{weekday(d.date)}</span>
+                        <span aria-hidden>{weatherGlyph({ wcode: d.wcode, outlookCm: d.snowCm, tmax: d.tmax })}</span>
+                        <span className="relative h-14 w-full border-b border-foreground/25" aria-hidden>
+                          {d.snowCm > 0 ? (
+                            <span className="stake-forecast absolute bottom-0 left-1/2 w-8 -translate-x-1/2 rounded-t-[2px]" style={{ height: `max(4px, ${pct}%)` }} />
+                          ) : null}
+                        </span>
+                        <span className="font-display tabular text-2xl leading-none">{snowAmount(d.snowCm, units)}</span>
+                        <span className="tabular text-xs text-muted-foreground">
+                          {tempLabel(d.tmax, tempUnits)} / {tempLabel(d.tmin, tempUnits)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Weather data by <a href="https://open-meteo.com/" className="underline underline-offset-4">Open-Meteo.com</a>
+                </p>
+              </Block>
+
+              <Block title="Today on the mountain" className="min-[840px]:col-span-5" testId="tile-today">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <Fact label="Sunrise" value={clock(today?.sunrise, tempUnits)} testId="sunrise" />
+                  <Fact label="Sunset" value={clock(today?.sunset, tempUnits)} testId="sunset" />
+                  <Fact label="Daylight" value={daylight(today?.sunrise, today?.sunset)} />
+                  <Fact label="Wind now" value={cur.windKmh != null ? windLabel(cur.windKmh, units) : null} />
+                  <Fact label="Gusts" value={cur.gustKmh != null ? windLabel(cur.gustKmh, units) : null} />
+                  <Fact label="Freezing level" value={fzl != null ? fzlLabel(fzl, units) : null} />
+                </dl>
+                {!today ? (
+                  <p className="mt-4 text-xs text-muted-foreground">Sunrise, sunset, and wind fill in when live weather loads.</p>
+                ) : null}
+              </Block>
+
+              <Block
+                title="Radar"
+                note="The last hour of precipitation around the mountain."
+                className="min-[840px]:col-span-7"
+                testId="tile-radar"
+              >
+                <RadarPlayer lon={resort.center[0]} lat={resort.center[1]} active />
+              </Block>
+
+              <Block title="Mountain Facts" note="From OpenSkiMap." className="min-[840px]:col-span-5" testId="tile-facts">
+                {resort.id === 'eagle-point' ? <p className="mb-4 text-sm">Closed for 26/27 after the Cottonwood Fire. Targeting a November 2027 reopening.</p> : null}
+                {facts.length ? (
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    {facts.map(([k, v]) => <Fact key={k} label={k} value={v} />)}
+                  </dl>
+                ) : (
+                  <p className="text-sm text-muted-foreground">OpenSkiMap has no stats for this mountain yet.</p>
+                )}
+                {site ? (
+                  <Button variant="outline" className="mt-5 min-h-12 w-full text-base" asChild>
+                    <a href={site.href} target="_blank" rel={outboundRel(site.sponsored)} data-testid="official-site">
+                      Official site
+                    </a>
+                  </Button>
+                ) : null}
+              </Block>
+
+              <Block
+                title="Snow history"
+                note="This storm, this season, and how it compares with past winters."
+                className="min-[840px]:col-span-12"
+                testId="tile-snow"
+              >
+                <SnowHistory resort={resort} snow={snow} history={history} units={units} />
+              </Block>
+
+              <div className="min-[840px]:col-span-12">
+                <SeeYouOutThere resort={resort} social={social} />
               </div>
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                Weather data by <a href="https://open-meteo.com/" className="underline-offset-4 hover:underline">Open-Meteo.com</a>
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="tile-radar">
-            <CardHeader>
-              <CardTitle>Radar</CardTitle>
-              <CardDescription>RainViewer near the mountain. Play/pause the last frames.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RadarPlayer lon={resort.center[0]} lat={resort.center[1]} active />
-            </CardContent>
-          </Card>
-
-          <Card data-testid="tile-snow">
-            <CardHeader>
-              <CardTitle>Snow history</CardTitle>
-              <CardDescription>Current snowfall, this season, and the last five.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SnowHistory resort={resort} snow={snow} history={history} units={units} />
-            </CardContent>
-          </Card>
-
-          <Card data-testid="tile-trip">
-            <CardHeader>
-              <CardTitle>Plan a trip</CardTitle>
-              <CardDescription>
-                {fmtShort(from)}–{fmtShort(to)} · {peopleLabel(trip)}
-                {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={onEditTrip || (() => onPlan(resort))}>
-                Plan a trip
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="tile-facts">
-            <CardHeader>
-              <CardTitle>Facts</CardTitle>
-              <CardDescription>OpenSkiMap stats.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-base">
-              <p>{interestingBlurb(resort) || 'OpenSkiMap facts when we have a match.'}</p>
-              {resort.id === 'eagle-point' ? <p className="text-sm">Closed 26/27 after the Cottonwood Fire. Targeting Nov 2027.</p> : null}
-              <div>Vertical {resort.summit && resort.base ? `${fmtFt(resort.summit - resort.base)} ft` : '—'}</div>
-              {site ? (
-                <Button variant="outline" className="min-h-12 w-full text-base" asChild>
-                  <a href={site.href} target="_blank" rel={outboundRel(site.sponsored)} data-testid="official-site">
-                    Official site
-                  </a>
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <SeeYouOutThere resort={resort} social={social} />
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Block({
+  title, note, className = '', testId, children,
+}: {
+  title: string;
+  note?: string;
+  className?: string;
+  testId?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`min-w-0 border-t border-foreground/12 pt-4 ${className}`} data-testid={testId}>
+      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      {note ? <p className="mt-0.5 text-sm text-muted-foreground">{note}</p> : null}
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function Fact({ label, value, testId }: { label: string; value: string | null | undefined; testId?: string }) {
+  return (
+    <div className="min-w-0" data-testid={testId}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 truncate text-lg font-medium tabular">{value ?? '—'}</dd>
     </div>
   );
 }

@@ -4,16 +4,33 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "headers": [
+    { "source": "/data/observed.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=120, stale-while-revalidate=1800" }] },
     { "source": "/data/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=600, stale-while-revalidate=86400" }] },
     { "source": "/maplibre-gl-worker.mjs", "headers": [
       { "key": "Content-Type", "value": "text/javascript; charset=utf-8" },
       { "key": "Cache-Control", "value": "public, max-age=86400" }
     ] }
   ],
+  "functions": {
+    "api/headless.js": { "includeFiles": "public/data/**", "maxDuration": 60 },
+    "api/agent.js": { "includeFiles": "public/data/**" },
+    "api/cron/alerts.js": { "includeFiles": "public/data/**" },
+    "api/email/preview.js": { "includeFiles": "public/data/**" }
+  },
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
   ],
   "rewrites": [
+    { "source": "/api/mcp", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/mcp/", "destination": "/api/headless?surface=mcp" },
+    { "source": "/api/search", "destination": "/api/headless?surface=search" },
+    { "source": "/api/search/", "destination": "/api/headless?surface=search" },
+    { "source": "/api/data", "destination": "/api/headless?surface=data" },
+    { "source": "/api/data/", "destination": "/api/headless?surface=data" },
+    { "source": "/api/observed", "destination": "/api/headless?surface=observed" },
+    { "source": "/api/observed/", "destination": "/api/headless?surface=observed" },
+    { "source": "/api/ask", "destination": "/api/headless?surface=ask" },
+    { "source": "/api/ask/", "destination": "/api/headless?surface=ask" },
     { "source": "/manage", "destination": "/" },
     { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },

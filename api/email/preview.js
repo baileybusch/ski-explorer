@@ -5,7 +5,9 @@
 import { readFileSync } from 'node:fs';
 import { EMAIL_ALERTS_ENABLED } from '../../public/config.js';
 import { evaluateAlerts, rankRecap } from '../../lib/evaluateAlerts.js';
-import { stormAlertEmail, recapEmail } from '../../lib/emails.js';
+import { stormAlertEmail, recapEmail, situationEmail } from '../../lib/emails.js';
+import { writeReadout, deterministicReadout } from '../../lib/readout.js';
+import { loadCatalog } from '../../lib/skiscope-tools/index.js';
 
 function loadJSON(rel) {
   return JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
@@ -58,9 +60,26 @@ export default async function handler(req, res) {
   const ranked = rankRecap(catalog, { limit: 5 });
 
   const sponsor = { on: true, example: true };
-  const payload = type === 'recap' || type === 'last-storm'
-    ? recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: null, kind: type === 'last-storm' ? 'last-storm' : 'weekly', sponsor })
-    : stormAlertEmail({ alert: demoAlert(snow, index), token: null, sponsor });
+  let payload;
+  if (type === 'recap' || type === 'last-storm') {
+    payload = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: null, kind: type === 'last-storm' ? 'last-storm' : 'weekly', sponsor });
+  } else {
+    const alert = demoAlert(snow, index);
+    const tools = loadCatalog();
+    const readout = await writeReadout({
+      type: type === 'region' ? 'region' : 'resort',
+      region: type === 'region' ? 'japan' : undefined,
+      resortId: alert.lead?.resortId,
+      resortName: alert.lead?.resortName,
+      subject: alert.subject,
+    }, { catalog: tools });
+    if (type === 'template') {
+      readout.text = deterministicReadout({ type: 'resort', event: 'storm', resortName: alert.lead?.resortName }, readout.facts);
+      readout.mode = 'deterministic';
+    }
+    payload = situationEmail({ alert: { ...alert, type: type === 'region' ? 'region' : 'resort' }, readout, token: null, sponsor });
+    void stormAlertEmail;
+  }
 
   if (req.query.format === 'json') {
     return res.json({ subject: payload.subject, text: payload.text, htmlBytes: payload.html.length, sent: false });

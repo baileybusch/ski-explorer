@@ -7,7 +7,7 @@ import { type AlertsUiMode, withAlerts } from '@/lib/alertsUi';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 
 export function SettingsSheet({
-  open, onOpenChange, units, setUnits, tempUnits, setTempUnits, mode,
+  open, onOpenChange, units, setUnits, tempUnits, setTempUnits, mode, onPlanTrip,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -16,6 +16,7 @@ export function SettingsSheet({
   tempUnits: TempUnits;
   setTempUnits: (u: TempUnits) => void;
   mode: AlertsUiMode;
+  onPlanTrip?: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -50,6 +51,17 @@ export function SettingsSheet({
             >
               My alerts
             </Button>
+            {onPlanTrip ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-12 w-full justify-start text-base"
+                data-testid="plan-trip"
+                onClick={onPlanTrip}
+              >
+                Plan a trip
+              </Button>
+            ) : null}
           </div>
 
           <Separator />

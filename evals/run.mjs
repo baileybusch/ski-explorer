@@ -13,6 +13,13 @@ import { runDumpScoreEvals } from './dumpScore.mjs';
 import { runAuthTokenEvals } from './authToken.mjs';
 import { runSnowHistoryEvals } from './snowHistory.mjs';
 import { runSpaRouteEvals } from './spaRoutes.mjs';
+import { runToolEvals } from './tools.mjs';
+import { runMcpEvals } from './mcp.mjs';
+import { runSubscriptionEvals } from './subscriptions.mjs';
+import { runReadoutEvals } from './readout.mjs';
+import { runWeatherEvals } from './weather.mjs';
+import { runObservedEvals } from './observed.mjs';
+import { runAskEvals } from './ask.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -36,6 +43,8 @@ function check(parsed, expect) {
   if (expect.mode && parsed.mode !== expect.mode) miss.push(`mode ${parsed.mode} != ${expect.mode}`);
   if (expect.nearRegion && parsed.near?.region !== expect.nearRegion) miss.push(`near ${parsed.near?.region} != ${expect.nearRegion}`);
   if (expect.storms != null && !!parsed.storms !== !!expect.storms) miss.push(`storms ${parsed.storms} != ${expect.storms}`);
+  if (expect.type && parsed.type !== expect.type) miss.push(`type ${parsed.type} != ${expect.type}`);
+  if (expect.metric && parsed.metric !== expect.metric) miss.push(`metric ${parsed.metric} != ${expect.metric}`);
   return miss;
 }
 
@@ -102,4 +111,40 @@ console.log('\nspa routes\n');
 for (const line of spa.lines) console.log(line);
 console.log(`\n${spa.total - spa.fail}/${spa.total} spa-route evals passed`);
 
-process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail ? 1 : 0);
+const tools = runToolEvals();
+console.log('\ntool layer\n');
+for (const line of tools.lines) console.log(line);
+console.log(`\n${tools.total - tools.fail}/${tools.total} tool evals passed`);
+
+const mcp = runMcpEvals();
+console.log('\nmcp\n');
+for (const line of mcp.lines) console.log(line);
+console.log(`\n${mcp.total - mcp.fail}/${mcp.total} mcp evals passed`);
+
+const subs = runSubscriptionEvals();
+console.log('\nsubscriptions\n');
+for (const line of subs.lines) console.log(line);
+console.log(`\n${subs.total - subs.fail}/${subs.total} subscription evals passed`);
+
+const readouts = runReadoutEvals();
+console.log('\nreadouts\n');
+for (const line of readouts.lines) console.log(line);
+console.log(`\n${readouts.total - readouts.fail}/${readouts.total} readout evals passed`);
+
+const wx = runWeatherEvals();
+console.log('\nweather\n');
+for (const line of wx.lines) console.log(line);
+console.log(`\n${wx.total - wx.fail}/${wx.total} weather evals passed`);
+
+const observed = runObservedEvals();
+console.log('\nobserved snow\n');
+for (const line of observed.lines) console.log(line);
+console.log(`\n${observed.total - observed.fail}/${observed.total} observed evals passed`);
+
+const askEv = await runAskEvals();
+console.log('\nask skiscope\n');
+for (const line of askEv.lines) console.log(line);
+console.log(`\n${askEv.total - askEv.fail}/${askEv.total} ask evals passed`);
+
+process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
+  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || askEv.fail ? 1 : 0);

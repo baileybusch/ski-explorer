@@ -1,17 +1,25 @@
-name: Refresh snow data
+# Live copy: .github/workflows/refresh-observed.yml
+# Hourly GH Actions (free) because Vercel Hobby cron is once/day.
+# Observed = NRCS SNOTEL; forecast chip = Open-Meteo 1 point/resort (~158 weighted calls).
+name: Refresh observed snow
 on:
-  schedule: [{ cron: "17 12 * * *" }]   # daily ~5am PT
+  schedule: [{ cron: "17 * * * *" }]
   workflow_dispatch:
 permissions: { contents: write }
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: python scripts/fetch_snow.py
-      - run: |
-          git config user.name "snow-bot"; git config user.email "actions@github.com"
-          git add public/data/snow.json
-          git diff --cached --quiet || (git commit -m "data: refresh snowfall $(date -u +%F)" && git push)
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with: { node-version: "24" }
+    - uses: actions/setup-python@v5
+      with: { python-version: "3.12" }
+    - run: node scripts/fetch_observed.mjs
+    - run: python scripts/fetch_snow.py
+    - run: |
+        git config user.name "snow-bot"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add public/data/observed.json public/data/snotel-map.json public/data/snow.json
+        git diff --cached --quiet || git commit -m "data: refresh observed snow $(date -u +%FT%H:%MZ)"
+        git push

@@ -85,7 +85,8 @@ Do not commit secrets. Public affiliate ids are fine. The commission line only a
 - **Clean home** (later replaced by the Weather-style list in the same PR): one chat/search bar, rotating ghosts, agent harness. See below.
 - **Rotating ghost text** on the bar (pauses on focus): Japan spring break, Ikon near Denver, Dolomites, Utah dumping, Mammoth family.
 - **Natural-language bar**: a sentence like `Japan trip for 5 spring break mar 7-14` is parsed into trip state, flies the globe, fills the list, and writes the menu values.
-- **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. See [docs/agent-harness.md](docs/agent-harness.md).
+- **Agent**: `POST /api/agent` streams NDJSON. Always runs the deterministic gazetteer/date parser. Uses the Vercel AI SDK through the AI Gateway only when OIDC or `AI_GATEWAY_API_KEY` is present — **no key in the repo**. Same snow tools as MCP and the alert writer. See [docs/agent-harness.md](docs/agent-harness.md).
+- **MCP**: `POST /api/mcp` Streamable HTTP. `claude mcp add --transport http skiscope https://skiscope.vercel.app/api/mcp`. [docs/mcp.md](docs/mcp.md).
 - **Evals**: `npm run eval` (15 sentences, pinned date). Optional `RUN_LLM=1`.
 
 ### Bailey setup for the LLM path
@@ -95,6 +96,17 @@ On the Vercel project: **Settings → Security → OIDC Federation** (AI Gateway
 Locally: `vercel link && vercel env pull`, **or** set `AI_GATEWAY_API_KEY` from the AI Gateway dashboard (do not commit it). Optional `AI_GATEWAY_MODEL` (default `openai/gpt-5.4-mini`).
 
 Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `this week` / `mar 7-14`). “What storms are heading for Utah this week?” turns on the Storms chip and flies to Utah.
+
+## Ask SkiScope (generative-UI chat)
+
+The home search box opens a chat thread (full-screen on phones, right panel on desktop; the board stays home). Questions like "which resort is getting the most snow?", "good resort for a Japan ski trip", "California resorts with the most projected snow", or "best resorts to go to in March" stream a short answer plus inline cards built from SkiScope data.
+
+- **Server**: `POST /api/ask` → `api/headless.js?surface=ask` (no new function; Hobby stays at 12). AI SDK `streamText` + tools through the Vercel AI Gateway, returned as a UI message stream (`pipeUIMessageStreamToResponse`). Model `openai/gpt-6-luna` (override with `ASK_MODEL`), ≤4 steps, ≤600 output tokens, last 6 messages, per-IP rate limit, `ASK_LLM=off` kill switch — about $0.001 per question.
+- **Client**: `useChat` from `@ai-sdk/react` with typed `tool-*` parts (`src/lib/askTypes.ts`) rendered by `src/components/ask/AskParts.tsx`: ranked list, resort mini card, comparison table, month-climatology chart, sources footnote. Tap a card to open the resort page; "See all N on the board" applies the region and sort to the board. Deep link: `/?ask=most+snow+right+now`.
+- **Tools** (`lib/skiscope-tools/askTools.js`, pure): `rankResorts` (actual72h | actual24h | forecast7d, region/country/state/pass), `getResort`, `compareResorts`, `monthClimatology` (month, region). Also on MCP as `rank_resorts`, `get_resort`, `month_climatology`.
+- **Same ranking as the board**: the board, the Ask tools, and the browser fallback all rank through `lib/boardRank.js` (`rankBoard`: pass → region → observed-only → `compareBoard`). Each request carries the board's scope (pass, region, observed-only) and its observed snapshot, so a server answer ranks exactly the rows the board is showing. Questions that name a pass or place ("both passes", "Japan", "anywhere in the world") override the scope. `evals/ask.mjs` asserts top-N equality across 54 board scopes and through `POST /api/ask`.
+- **Fallback, no error noise**: if the Gateway is not configured, errors (e.g. no card on the team yet), or stalls past 8s before producing output, the server answers with the deterministic planner (`lib/ask/answer.js`), emitting the same tool parts. If `/api/ask` itself is unreachable (Vite dev, offline), the browser runs the same planner locally. `data-mode` on each answer says `llm` or `fallback`.
+- **Climatology**: `public/data/climatology.json`, built by `npm run climatology` from the committed ERA5 season archives (`public/data/seasons/`, Open-Meteo historical archive, ~10 seasons; Nov–Apr north, Jun–Sep south). Labeled as a historical average, never a forecast. Add seasons/resorts with `python3 scripts/fetch_seasons.py` (throttled under the free limits), then rebuild.
 
 ## v7: Weather-style list → detail → map
 
@@ -106,7 +118,7 @@ A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is igno
 
 ## v9: block board is the product
 
-Home is a **gap-free block grid** of the **top 11**, then Show more. Top row: **Recent** / **Incoming** + hamburger. Featured search under that. Compact **24h / 48h / 72h / 7d** under the search (past on Recent, forecast on Incoming). No calendar dates in the header. Each block is name + snow + a short forecast strip; the leader also shows a lazy RainViewer thumb. Tap a block for a resort page: storm status (tweet-style, from snow.json), static 7-day, radar, snow history, Plan trip, facts (official site). Back + map in the hero corners. No Watch, no swipe between resorts. **Alert me** is the only solid primary CTA. Menu is account + alerts. People / airport / dates live only in Plan trip on a resort. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md).
+Home is compact 2-up cards on phones and a **leaderboard table** on desktop (16 rows, then Show more). Every resort shows **Last 72h** and **Next 7 days** with equal weight on snow-stake bars (solid = fell, hatched = forecast). **Rank by** (Actual 72h default, Actual 24h, Forecast 7d, Name) plus region and Observed only filters apply to the whole board. Layout tokens live in `src/lib/boardLayout.ts`. Radar is on the resort page, not the board. Tap a block for storm status, 7-day, radar, snow history, Mountain Facts. **Alert me** is the only solid primary CTA. Plan trip lives in the menu. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md), [docs/dump-score.md](docs/dump-score.md).
 
 ## Weather and storms
 

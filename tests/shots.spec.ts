@@ -1,34 +1,54 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const DIR = '/opt/cursor/artifacts/screenshots';
+function shotDir() {
+  for (const dir of [
+    '/opt/cursor/artifacts/screenshots',
+    '/workspace/artifacts/screenshots',
+    'tmp/screenshots',
+  ]) {
+    try {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '.writable'), '1');
+      return dir;
+    } catch { /* next */ }
+  }
+  return 'tmp/screenshots';
+}
+
+const DIR = shotDir();
 
 test.beforeAll(() => {
   mkdirSync(DIR, { recursive: true });
 });
 
-test('fresh screenshots: board, hero, storm, trip, manage', async ({ page }, info) => {
-  test.skip(info.project.name !== 'iphone-13', 'one device is enough for the artifact set');
+test('design screenshots: home + resort per device', async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const device = info.project.name;
+  const desktop = device.startsWith('desktop');
   await page.goto('/?alerts=1');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('block').first().screenshot({ path: `${DIR}/board-card-actual-forecast.png` });
-  await page.screenshot({ path: `${DIR}/board-ranked.png`, fullPage: false });
+  await expect(page.getByTestId('board-toolbar')).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${DIR}/design-home-${device}.png` });
+
+  if (desktop) {
+    const vp = page.viewportSize()!;
+    await page.setViewportSize({ width: vp.width, height: 1500 });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${DIR}/design-home-${device}-full-board.png` });
+    await page.setViewportSize(vp);
+  }
 
   await page.getByTestId('block').first().click();
   await expect(page.getByTestId('profile-hero')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('profile-hero').screenshot({ path: `${DIR}/resort-hero-actual-forecast.png` });
-  await page.getByTestId('tile-storm-status').screenshot({ path: `${DIR}/storm-status.png` });
-
-  await page.getByTestId('plan-trip').click();
-  await expect(page.getByTestId('trip-onboarding')).toBeVisible();
-  await page.screenshot({ path: `${DIR}/trip-dates.png`, fullPage: false });
-  await page.getByTestId('trip-month-2026-12').click();
-  await expect(page.getByTestId('trip-who')).toBeVisible({ timeout: 8_000 });
-  await page.screenshot({ path: `${DIR}/trip-auto-advance-who.png`, fullPage: false });
-  await page.getByTestId('trip-onboarding-back').click();
-  await page.getByTestId('trip-onboarding').locator('button', { hasText: 'Close' }).click();
-
-  await page.goto('/manage?alerts=1');
-  await expect(page.getByTestId('manage-page')).toBeVisible({ timeout: 20_000 });
-  await page.screenshot({ path: `${DIR}/manage-direct-url.png`, fullPage: false });
+  await expect(page.getByTestId('tile-storm-status')).toBeVisible();
+  await expect(page.getByTestId('tile-trip')).toHaveCount(0);
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${DIR}/design-resort-${device}.png` });
+  await page.getByTestId('tile-today').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${DIR}/design-resort-${device}-lower.png` });
+  await page.getByTestId('tile-snow').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${DIR}/design-resort-${device}-history.png` });
 });

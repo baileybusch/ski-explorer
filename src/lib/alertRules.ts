@@ -4,9 +4,13 @@ import { DEFAULT_ALERT_MIN_SNOW_IN, DEFAULT_ALERT_WINDOW_HOURS } from '../../lib
 export type LocalRule = {
   id: string;
   email?: string;
+  type?: 'resort' | 'region' | 'trip';
   watch: 'resort' | 'saved' | 'region' | 'pass';
   pass?: string | null;
   region?: string | null;
+  regionScope?: 'all' | 'subset';
+  tripStart?: string | null;
+  tripEnd?: string | null;
   resorts?: string[];
   savedResorts?: string[];
   minSnowIn: number;
@@ -50,9 +54,13 @@ export function addLocalRule(partial: Partial<LocalRule>): LocalRule {
   const rule: LocalRule = {
     id: partial.id || `loc_${Math.random().toString(36).slice(2, 10)}`,
     email: partial.email || accountEmail(),
+    type: partial.type || (partial.region ? 'region' : 'resort'),
     watch: (partial.watch as LocalRule['watch']) || 'pass',
     pass: partial.pass || 'both',
     region: partial.region || null,
+    regionScope: partial.regionScope || 'all',
+    tripStart: partial.tripStart || null,
+    tripEnd: partial.tripEnd || null,
     resorts: partial.resorts || [],
     savedResorts: partial.savedResorts || [],
     minSnowIn: partial.minSnowIn || DEFAULT_ALERT_MIN_SNOW_IN,
@@ -76,12 +84,17 @@ export function deleteLocalRule(id: string) {
 }
 
 export function ruleSummary(rule: LocalRule, names: { id: string; name: string }[] = []) {
+  if (rule.type === 'trip') {
+    const who = (rule.resorts || []).map(id => names.find(n => n.id === id)?.name || id).join(', ') || 'a trip';
+    return `Trip · ${who}${rule.tripStart ? ` ${rule.tripStart}` : ''}`;
+  }
+  if (rule.type === 'region' || rule.watch === 'region') {
+    return `Region · ${rule.region || 'a region'}${rule.regionScope === 'subset' ? ' (subset)' : ''}`;
+  }
   const where = rule.watch === 'resort'
     ? (rule.resorts || []).map(id => names.find(n => n.id === id)?.name || id).join(', ') || 'a resort'
     : rule.watch === 'saved'
       ? 'saved resorts'
-      : rule.watch === 'region'
-        ? (rule.region || 'a region')
-        : rule.pass === 'ikon' ? 'Ikon' : rule.pass === 'epic' ? 'Epic' : 'Ikon + Epic';
-  return where;
+      : rule.pass === 'ikon' ? 'Ikon' : rule.pass === 'epic' ? 'Epic' : 'Ikon + Epic';
+  return rule.type === 'resort' ? `Resort · ${where}` : where;
 }

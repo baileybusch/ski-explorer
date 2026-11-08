@@ -11,8 +11,10 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { rankRecap, evaluateAlerts } from '../lib/evaluateAlerts.js';
-import { stormAlertEmail, recapEmail } from '../lib/emails.js';
+import { stormAlertEmail, recapEmail, situationEmail, combinedEmail } from '../lib/emails.js';
 import { canSendEmail, sendEmail } from '../api/_lib.js';
+import { writeReadout, deterministicReadout } from '../lib/readout.js';
+import { loadCatalog } from '../lib/skiscope-tools/index.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, 'tmp', 'email-preview');
@@ -75,19 +77,39 @@ const toArg = process.argv.includes('--to') ? process.argv[process.argv.indexOf(
 const snow = load('public/data/snow.json');
 const index = load('public/data/resorts-index.json');
 const catalog = { ...snow, index };
+const tools = loadCatalog();
 const ranked = rankRecap(catalog, { limit: 5 });
 const sponsor = { on: true, example: true };
-const alert = stormAlertEmail({ alert: demoAlert(snow, index), token: 'previewtoken00000000000000000000', email: TEST_ONLY, sponsor });
+const demo = demoAlert(snow, index);
+const readout = await writeReadout({
+  type: 'resort', event: 'storm', resortId: demo.lead?.resortId, resortName: demo.lead?.resortName, subject: demo.subject,
+}, { catalog: tools });
+const templateReadout = { ...readout, text: deterministicReadout({ type: 'resort', event: 'storm', resortName: demo.lead?.resortName }, readout.facts), mode: 'deterministic' };
+const alert = situationEmail({ alert: demo, readout, token: 'previewtoken00000000000000000000', email: TEST_ONLY, sponsor });
+const alertTemplate = situationEmail({ alert: demo, readout: templateReadout, token: 'previewtoken00000000000000000000', email: TEST_ONLY, sponsor });
 const recap = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'weekly', email: TEST_ONLY, sponsor });
 const last = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: 'previewtoken00000000000000000000', kind: 'last-storm', email: TEST_ONLY, sponsor });
+const regionDemo = { type: 'region', region: 'japan', subject: 'Situation detected in Japan', facts: { where: 'Japan', rows: ranked.incoming.slice(0, 5).map(r => ({ id: r.id, name: r.name, past72: r.past72In, next7: r.incomingIn })) }, affected: ranked.incoming.slice(0, 5).map(r => ({ resortId: r.id, resortName: r.name, past72In: r.past72In, next7In: r.incomingIn })) };
+const regionRo = await writeReadout({ type: 'region', region: 'japan' }, { catalog: tools });
+const region = situationEmail({ alert: regionDemo, readout: regionRo, token: 'previewtoken00000000000000000000', email: TEST_ONLY, sponsor });
+const combined = combinedEmail({
+  pack: { email: TEST_ONLY, events: [demo, regionDemo], subject: 'Situation detected: two watches' },
+  readouts: [readout, regionRo],
+  token: 'previewtoken00000000000000000000',
+  email: TEST_ONLY,
+  sponsor,
+});
 
 mkdirSync(outDir, { recursive: true });
 const files = {
   'storm-alert.html': alert.html,
   'storm-alert.txt': alert.text,
+  'storm-alert-template.html': alertTemplate.html,
   'recap.html': recap.html,
   'recap.txt': recap.text,
   'last-storm.html': last.html,
+  'region-alert.html': region.html,
+  'combined-alert.html': combined.html,
 };
 for (const [name, body] of Object.entries(files)) writeFileSync(join(outDir, name), body);
 writeFileSync(join(outDir, 'subjects.json'), JSON.stringify({ alert: alert.subject, recap: recap.subject, lastStorm: last.subject }, null, 2));

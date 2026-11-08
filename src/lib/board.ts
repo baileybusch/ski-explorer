@@ -1,8 +1,11 @@
 /** Shared board ranking, tone, and gap-free pack layout. */
-export { compareDump, dumpParts, dumpScoreIn } from '../../lib/dumpScore.js';
+export { compareDump, compareBoard, dumpParts, dumpScoreIn, relativeUpdated, boardIsMonotonic } from '../../lib/dumpScore.js';
+export { rankBoard, regionResortIds } from '../../lib/boardRank.js';
+export { gridCols, BOARD_LAYOUT, layoutGap, layoutCardH, layoutPadX } from './boardLayout';
+export type { BoardSortId } from './boardLayout';
 
-export const BOARD_PAGE = 11;
-export const BOARD_MORE = 10;
+export const BOARD_PAGE = 16;
+export const BOARD_MORE = 12;
 
 export function snowScore(row: { m: any }) {
   return row.m.windowCm || 0;
@@ -25,12 +28,6 @@ export function sparkPath(values: number[], w = 72, h = 22) {
   return values.map((v, i) => `${i === 0 ? 'M' : 'L'}${i * step},${h - (v / max) * h}`).join(' ');
 }
 
-export function gridCols(width: number) {
-  if (width >= 1100) return 4;
-  if (width >= 720) return 3;
-  return 2;
-}
-
 export type PackedCell = {
   i: number;
   col: number;
@@ -41,8 +38,9 @@ export type PackedCell = {
 
 /**
  * Pack n blocks into `cols` so the last row is never half-empty.
- * n=1 full cell; n=2 stacked full-width; n=4 + 2-col = equal 2×2;
- * otherwise the leader is 2×2 and leftovers stretch to finish the row.
+ * Featured (#1) is always full-width, one row; cards below fill left-to-right.
+ * Column counts and heights live in boardLayout.ts so a later desktop sketch
+ * can retune them in one place.
  */
 export function packCells(n: number, cols: number): { cells: PackedCell[]; rows: number } {
   const cells: PackedCell[] = [];
@@ -62,26 +60,11 @@ export function packCells(n: number, cols: number): { cells: PackedCell[]; rows:
     };
   }
 
-  const featured = !(n === 4 && cols === 2);
   let i = 0;
   let row = 0;
-
-  if (featured) {
-    const leadCols = Math.min(2, cols);
-    const leadRows = 2;
-    cells.push({ i: 0, col: 0, row: 0, colSpan: leadCols, rowSpan: leadRows });
-    i = 1;
-    const sideCols = cols - leadCols;
-    if (sideCols > 0) {
-      for (let r = 0; r < leadRows && i < n; r++) {
-        for (let c = 0; c < sideCols && i < n; c++) {
-          cells.push({ i, col: leadCols + c, row: r, colSpan: 1, rowSpan: 1 });
-          i += 1;
-        }
-      }
-    }
-    row = leadRows;
-  }
+  cells.push({ i: 0, col: 0, row: 0, colSpan: cols, rowSpan: 1 });
+  i = 1;
+  row = 1;
 
   while (i < n) {
     const left = n - i;
@@ -107,13 +90,4 @@ export function packCells(n: number, cols: number): { cells: PackedCell[]; rows:
   }
 
   return { cells, rows: row };
-}
-
-export function rowHeight(rows: number, availH: number, gap: number) {
-  if (rows <= 0) return Math.max(availH, 80);
-  return Math.max(72, (availH - gap * (rows - 1)) / rows);
-}
-
-export function targetRows(availH: number, gap: number, minRow: number) {
-  return Math.max(2, Math.floor((availH + gap) / (minRow + gap)));
 }
