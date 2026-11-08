@@ -12,7 +12,7 @@
     ] }
   ],
   "functions": {
-    "api/headless.js": { "includeFiles": "public/data/**" },
+    "api/headless.js": { "includeFiles": "public/data/**", "maxDuration": 60 },
     "api/agent.js": { "includeFiles": "public/data/**" },
     "api/cron/alerts.js": { "includeFiles": "public/data/**" },
     "api/email/preview.js": { "includeFiles": "public/data/**" }
@@ -29,6 +29,8 @@
     { "source": "/api/data/", "destination": "/api/headless?surface=data" },
     { "source": "/api/observed", "destination": "/api/headless?surface=observed" },
     { "source": "/api/observed/", "destination": "/api/headless?surface=observed" },
+    { "source": "/api/ask", "destination": "/api/headless?surface=ask" },
+    { "source": "/api/ask/", "destination": "/api/headless?surface=ask" },
     { "source": "/manage", "destination": "/" },
     { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },

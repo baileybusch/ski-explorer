@@ -3,6 +3,7 @@
  *   /api/mcp    MCP Streamable HTTP
  *   /api/search AI / deterministic search
  *   /api/data   public JSON tools
+ *   /api/ask    Ask SkiScope chat (AI SDK UI message stream)
  *
  * vercel.json rewrites those paths here (?surface=).
  */
@@ -10,10 +11,12 @@ import mcp from './_mcp.js';
 import search from './_search.js';
 import data from './_data.js';
 import observed from './_observed.js';
+import ask from './_ask.js';
 
 export default async function handler(req, res) {
   const surface = String(req.query?.surface || '').toLowerCase();
   const path = String(req.url || '');
+  if (surface === 'ask' || path.startsWith('/api/ask')) return ask(req, res);
   if (surface === 'mcp' || path.startsWith('/api/mcp')) return mcp(req, res);
   if (surface === 'search' || path.startsWith('/api/search')) return search(req, res);
   if (surface === 'observed' || path.startsWith('/api/observed')) return observed(req, res);

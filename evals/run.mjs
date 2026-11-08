@@ -19,6 +19,7 @@ import { runSubscriptionEvals } from './subscriptions.mjs';
 import { runReadoutEvals } from './readout.mjs';
 import { runWeatherEvals } from './weather.mjs';
 import { runObservedEvals } from './observed.mjs';
+import { runAskEvals } from './ask.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -140,5 +141,10 @@ console.log('\nobserved snow\n');
 for (const line of observed.lines) console.log(line);
 console.log(`\n${observed.total - observed.fail}/${observed.total} observed evals passed`);
 
+const askEv = await runAskEvals();
+console.log('\nask skiscope\n');
+for (const line of askEv.lines) console.log(line);
+console.log(`\n${askEv.total - askEv.fail}/${askEv.total} ask evals passed`);
+
 process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
-  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail ? 1 : 0);
+  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || askEv.fail ? 1 : 0);

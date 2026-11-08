@@ -16,8 +16,9 @@ test('Japan search shows interpretation chip and context CTA', async ({ page }) 
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('search-trigger').click();
   await expect(page.getByTestId('search')).toBeVisible();
-  await page.getByLabel('Ask SkiScope').fill('Japan');
-  await page.getByLabel('Ask SkiScope').press('Enter');
+  await page.getByLabel('Ask SkiScope', { exact: true }).last().fill('Japan');
+  await page.getByLabel('Ask SkiScope', { exact: true }).last().press('Enter');
+  await page.getByTestId('ask-show-board').click({ timeout: 20_000 });
   await expect(page.getByTestId('intent-chip')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('intent-chip')).toContainText(/Japan/i);
   await expect(page.getByTestId('context-cta')).toBeVisible();

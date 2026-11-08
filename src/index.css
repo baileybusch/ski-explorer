@@ -184,8 +184,28 @@ input::placeholder {
   box-shadow: inset 0 0 0 1px currentColor;
 }
 
+/* Third stake texture: past-season average. Hollow so it never reads as snow that fell or is coming. */
+.stake-history {
+  background: color-mix(in oklch, currentColor 10%, transparent);
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes ask-fill {
+  from { transform: scaleX(0.08); }
+  to { transform: scaleX(1); }
+}
+
+.ask-pending {
+  transform-origin: left center;
+  animation: ask-fill 1.1s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-pending { animation: none; }
 }
 
 .hero-scrim {
