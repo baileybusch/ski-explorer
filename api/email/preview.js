@@ -1,11 +1,15 @@
 /**
- * Render-only preview of storm-alert + recap emails from committed snow.json.
- * Never sends. Protected: Bearer CRON_SECRET when set, otherwise preview/dev only.
+ * Render-only preview of every email template from committed snow.json. Never sends.
+ * ?type=index lists them all: welcome W1–W3, confirm, resort / region alerts, recaps.
+ * Protected: Bearer CRON_SECRET or a signed-in /admin session; open on preview/dev deployments.
  */
 import { readFileSync } from 'node:fs';
 import { EMAIL_ALERTS_ENABLED } from '../../public/config.js';
 import { evaluateAlerts, rankRecap } from '../../lib/evaluateAlerts.js';
-import { stormAlertEmail, recapEmail, situationEmail } from '../../lib/emails.js';
+import { stormAlertEmail, recapEmail, situationEmail, welcomeEmail } from '../../lib/emails.js';
+import { welcomeRows, watchLabel, WELCOME_STEPS } from '../../lib/welcome.js';
+import { confirmEmail } from '../_lib.js';
+import { isAdmin } from '../admin/render.js';
 import { writeReadout, deterministicReadout } from '../../lib/readout.js';
 import { loadCatalog } from '../../lib/skiscope-tools/index.js';
 
@@ -45,23 +49,64 @@ function demoAlert(snow, index) {
   };
 }
 
+const PREVIEW_SUB = {
+  token: '0'.repeat(32),
+  email: 'preview@example.com',
+  status: 'active',
+  confirmed: new Date().toISOString(),
+  resorts: ['alta', 'snowbird'],
+  rules: [
+    { id: 'rul_a', watch: 'resort', type: 'resort', resorts: ['alta', 'snowbird'], pass: 'both' },
+    { id: 'rul_b', watch: 'region', type: 'region', region: 'japan', resorts: [], pass: 'both' },
+  ],
+};
+
+export const TEMPLATES = [
+  ...WELCOME_STEPS.map((s, i) => ({ type: `welcome-${i + 1}`, label: `W${i + 1} · ${s.label}`, when: s.day ? `day ${s.day} after confirm` : 'immediately after confirm' })),
+  { type: 'confirm', label: 'Double opt-in confirmation', when: 'at signup' },
+  { type: 'alert', label: 'Storm alert · resort', when: 'per subscription, on trigger' },
+  { type: 'region', label: 'Storm alert · region leaderboard', when: 'per region subscription, on trigger' },
+  { type: 'template', label: 'Storm alert · template note (no AI)', when: 'fallback when the AI readout is off' },
+  { type: 'recap', label: 'Weekly recap', when: 'Sunday' },
+  { type: 'last-storm', label: 'Last-storm recap', when: 'after a big storm' },
+];
+
+function indexPage() {
+  const rows = TEMPLATES.map(t => `<li><a href="?type=${t.type}" target="_blank" rel="noreferrer">${t.label}</a><span>${t.when}</span></li>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Email templates</title>
+<style>body{margin:0;background:#08090b;color:#f2f3f5;font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif}main{max-width:640px;margin:0 auto;padding:32px 20px}h1{font-size:28px;margin:0 0 6px}p{color:#7a808a;margin:0 0 20px}ul{list-style:none;padding:0;margin:0}li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(242,243,245,.12)}a{color:#f2f3f5;font-weight:600}span{color:#7a808a;font-size:13px;text-align:right}</style></head>
+<body><main><h1>Email templates</h1><p>Render-only previews from the committed snow snapshot. Nothing is sent from here.</p><ul>${rows}</ul></main></body></html>`;
+}
+
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
   const env = process.env.VERCEL_ENV;
-  const auth = req.headers.authorization === `Bearer ${secret}`;
+  const auth = (secret && req.headers.authorization === `Bearer ${secret}`) || isAdmin(req);
   const openPreview = env === 'preview' || env === 'development' || env === 'test';
   if (secret && !auth && !openPreview) return res.status(401).json({ error: 'unauthorized' });
-  if (!secret && env === 'production' && !EMAIL_ALERTS_ENABLED) return res.status(401).json({ error: 'unauthorized' });
+  if (!secret && !auth && env === 'production' && !EMAIL_ALERTS_ENABLED) return res.status(401).json({ error: 'unauthorized' });
 
   const type = String(req.query.type || 'alert');
+  if (type === 'index') {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.setHeader('cache-control', 'no-store');
+    return res.send(indexPage());
+  }
   const snow = loadJSON('../../public/data/snow.json');
   const index = loadJSON('../../public/data/resorts-index.json');
-  const catalog = { ...snow, index };
+  const regions = loadJSON('../../public/data/gazetteer.json').regions || [];
+  const catalog = { ...snow, index, regions };
   const ranked = rankRecap(catalog, { limit: 5 });
 
   const sponsor = { on: true, example: true };
   let payload;
-  if (type === 'recap' || type === 'last-storm') {
+  const welcome = type.match(/^welcome-([123])$/);
+  if (welcome) {
+    const step = `w${welcome[1]}`;
+    payload = welcomeEmail({ step, rows: welcomeRows(PREVIEW_SUB, catalog), label: watchLabel(PREVIEW_SUB, catalog), shareRegion: 'utah', token: null });
+  } else if (type === 'confirm') {
+    payload = { subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(PREVIEW_SUB), text: '' };
+  } else if (type === 'recap' || type === 'last-storm') {
     payload = recapEmail({ recent: ranked.recent, incoming: ranked.incoming, token: null, kind: type === 'last-storm' ? 'last-storm' : 'weekly', sponsor });
   } else {
     const alert = demoAlert(snow, index);

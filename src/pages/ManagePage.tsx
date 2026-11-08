@@ -13,18 +13,31 @@ import { alertsUiState, withAlerts } from '@/lib/alertsUi';
 import { ALERT_SENSITIVITY, sensitivityOf } from '../../lib/alertDefaults.js';
 import { loadCatalog } from '@/lib/catalog';
 import {
-  type LocalRule, accountEmail, deleteLocalRule, loadRules, setAccountEmail, signOutAccount, updateLocalRule,
+  type LocalRule, accountEmail, deleteLocalRule, loadRules, saveRules, setAccountEmail, signOutAccount, updateLocalRule,
 } from '@/lib/alertRules';
+import { doNotSell, setDoNotSell, visitorId } from '@/lib/visitor';
 import { clearSession, loadPrefs, savePrefs, sessionEmail, setSession } from '@/lib/session';
 import { defaultPrefs, normalizePrefs, RECAP_DAYS } from '../../lib/accountPrefs.js';
-import { CONSENT_TEXT } from '../../lib/consentText.js';
+import { DNS_LINK_TEXT } from '../../lib/consentText.js';
+import { ConsentNote } from '@/components/ConsentNote';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 
 type Screen = 'out' | 'check' | 'in';
 
-export function ManagePage() {
+async function authCall(action: string, payload?: unknown) {
+  const r = await fetch(`/api/auth?action=${action}`, {
+    method: payload === undefined ? 'GET' : 'POST',
+    headers: payload === undefined ? undefined : { 'content-type': 'application/json' },
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+  });
+  return r.ok ? r.json() : null;
+}
+
+/** /manage (preferences) and /my-alerts (alerts first). Live mode reads and writes the server account. */
+export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) {
   const [mode] = useState(() => alertsUiState().mode);
   const preview = mode === 'preview';
+  const live = mode === 'live';
   const [screen, setScreen] = useState<Screen>('out');
   const [email, setEmail] = useState('');
   const [session, setSessionState] = useState('');
@@ -36,37 +49,65 @@ export function ManagePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [units, setUnits] = useState<SnowUnits>(() => (localStorage.getItem('ss_units') as SnowUnits) || 'in');
   const [tempUnits, setTempUnits] = useState<TempUnits>(() => (localStorage.getItem('ss_temp') as TempUnits) || 'F');
-  const hashAlerts = typeof location !== 'undefined' && location.hash === '#alerts';
+  const alertsFirst = focus === 'alerts' || (typeof location !== 'undefined' && location.hash === '#alerts');
+
+  function applyAccount(j: any) {
+    if (!j?.email) return false;
+    setSession(j.email);
+    setAccountEmail(j.email);
+    setSessionState(j.email);
+    setEmail(j.email);
+    setScreen('in');
+    if (Array.isArray(j.rules)) {
+      saveRules(j.rules);
+      setRules(loadRules());
+    }
+    if (j.prefs) {
+      const p = normalizePrefs({ ...j.prefs, doNotSell: j.prefs.doNotSell || doNotSell() });
+      savePrefs(p);
+      setPrefs(p);
+    }
+    return true;
+  }
+
+  async function pullAccount() {
+    if (!live) return;
+    const j = await authCall('me').catch(() => null);
+    if (!applyAccount(j)) {
+      clearSession();
+      setSessionState('');
+      setScreen('out');
+    }
+  }
+
+  async function pushRules() {
+    setRules(loadRules());
+    if (!live || !sessionEmail()) return;
+    await authCall('save', { rules: loadRules(), sid: visitorId() }).catch(() => null);
+  }
 
   useEffect(() => {
     setEmail(sessionEmail() || accountEmail());
     const sess = sessionEmail();
     setSessionState(sess);
     if (sess) setScreen('in');
-    setPrefs(loadPrefs());
+    setPrefs(normalizePrefs({ ...loadPrefs(), doNotSell: loadPrefs().doNotSell || doNotSell() }));
     setRules(loadRules());
     loadCatalog().then(c => setResorts(c.resorts || [])).catch(() => {});
     const token = new URLSearchParams(location.search).get('token');
-    if (token && !preview) {
-      fetch(`/api/auth?action=exchange&token=${encodeURIComponent(token)}`, { method: 'POST' })
-        .then(r => r.json())
+    if (token && live) {
+      authCall(`exchange&token=${encodeURIComponent(token)}`, { sid: visitorId() })
         .then(j => {
-          if (j.email) {
-            setSession(j.email);
-            setAccountEmail(j.email);
-            setSessionState(j.email);
-            setEmail(j.email);
-            setScreen('in');
-            if (j.prefs) {
-              savePrefs(j.prefs);
-              setPrefs(normalizePrefs(j.prefs));
-            }
-            toast.success('Signed in');
-          }
+          if (applyAccount(j)) toast.success('Signed in');
+          else toast.error('That sign-in link expired.');
+          history.replaceState(history.state, '', location.pathname + location.hash);
         })
         .catch(() => toast.error('That sign-in link expired.'));
+    } else if (sess && live) {
+      pullAccount();
     }
-  }, [preview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
 
   useEffect(() => { localStorage.setItem('ss_units', units); }, [units]);
   useEffect(() => { localStorage.setItem('ss_temp', tempUnits); }, [tempUnits]);
@@ -75,6 +116,7 @@ export function ManagePage() {
     setRules(loadRules());
     setPrefs(loadPrefs());
     setSessionState(sessionEmail());
+    if (live) pullAccount();
   }
 
   function signInLocal(addr = email) {
@@ -117,32 +159,34 @@ export function ManagePage() {
       loadRules().forEach(r => updateLocalRule(r.id, { minSnowIn: sense.minSnowIn, windowHours: sense.windowHours }));
       setRules(loadRules());
     }
+    if (next.doNotSell !== undefined && next.doNotSell !== prefs.doNotSell) {
+      setDoNotSell(next.doNotSell);
+      if (live) authCall('save', { prefs: merged, sid: visitorId() }).catch(() => null);
+    }
   }
 
   async function saveNow() {
     savePrefs(prefs);
-    if (!preview) {
-      try {
-        await fetch('/api/auth?action=save', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ prefs, rules }),
-        });
-      } catch { /* preview / offline */ }
+    if (live) {
+      const j = await authCall('save', { prefs, rules: loadRules(), sid: visitorId() }).catch(() => null);
+      if (!j) { toast.error('Could not save. Sign in again.'); return; }
+      applyAccount(j);
     }
     toast.success('Preferences saved.');
   }
 
   function unsubAll() {
+    if (live) authCall('unsubscribe', {}).catch(() => null);
     loadRules().forEach(r => deleteLocalRule(r.id));
     const off = { ...defaultPrefs(), stormAlerts: false, recap: false, sponsor: false };
     savePrefs(off);
     setPrefs(off);
     refresh();
-    toast.success('Unsubscribed on this device.');
+    toast.success(live ? 'Unsubscribed from every email.' : 'Unsubscribed on this device.');
   }
 
   function deleteData() {
+    if (live) authCall('delete', {}).catch(() => null);
     unsubAll();
     signOutAccount();
     clearSession();
@@ -152,6 +196,18 @@ export function ManagePage() {
     setDeleteOpen(false);
     toast.success('Local account data deleted.');
   }
+
+  const alertsList = (
+    <div id="alerts">
+      <AlertsList
+        rules={rules}
+        resorts={resorts}
+        onAlert={() => { setEditRule(null); setAlertOpen(true); }}
+        onEdit={rule => { setEditRule(rule); setAlertOpen(true); }}
+        onChange={pushRules}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-dvh bg-background text-foreground" data-testid="manage-page" data-signed-in={screen === 'in' ? '1' : '0'} data-screen={screen}>
@@ -163,15 +219,15 @@ export function ManagePage() {
 
       <main className="mx-auto flex w-full max-w-lg flex-col gap-8 px-3 py-8">
         <div>
-          <h1 className="font-display text-5xl tracking-wide">{hashAlerts && screen === 'in' ? 'My alerts' : 'Preferences'}</h1>
+          <h1 className="font-display text-5xl tracking-wide" data-testid="manage-title">{alertsFirst ? 'My alerts' : 'Preferences'}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {preview ? 'Preview on this device. Nothing is emailed while sending is paused.' : 'Manage the emails we send you.'}
+            {preview ? 'Preview on this device. Nothing is emailed while sending is paused.' : alertsFirst ? 'The mountains and regions we watch for you.' : 'Manage the emails we send you.'}
           </p>
         </div>
 
         {screen === 'out' ? (
           <section className="flex flex-col gap-3" data-testid="manage-signed-out">
-            <p className="text-sm text-muted-foreground">Enter your email and we&apos;ll send you a sign-in link.</p>
+            <p className="text-sm text-muted-foreground">Your email is your account. Enter it and we&apos;ll send you a sign-in link; no password.</p>
             <Input
               type="email"
               inputMode="email"
@@ -185,7 +241,7 @@ export function ManagePage() {
             <Button type="button" className="min-h-12 w-full text-base" onClick={requestLink} data-testid="manage-send-link">
               Email me a sign-in link
             </Button>
-            <p className="text-xs leading-relaxed text-muted-foreground">{CONSENT_TEXT}</p>
+            <ConsentNote className="text-xs" testId="manage-consent" />
             {preview ? (
               <Button type="button" variant="outline" className="min-h-12 w-full text-base" onClick={() => signInLocal()} data-testid="manage-dev-signin">
                 Dev: sign-in link
@@ -216,6 +272,12 @@ export function ManagePage() {
 
         {screen === 'in' ? (
           <section className="flex flex-col gap-8" data-testid="manage-signed-in">
+            {alertsFirst ? (
+              <section className="flex flex-col gap-3" data-testid="my-alerts-section">
+                <h2 className="text-base font-medium">Watching</h2>
+                {alertsList}
+              </section>
+            ) : null}
             <section className="flex flex-col gap-3" data-testid="manage-email-section">
               <h2 className="text-base font-medium">Email</h2>
               <p className="text-lg font-medium" data-testid="manage-session-email">{session}</p>
@@ -244,15 +306,7 @@ export function ManagePage() {
                   ))}
                 </ToggleGroup>
               </Field>
-              <div id="alerts">
-                <AlertsList
-                  rules={rules}
-                  resorts={resorts}
-                  onAlert={() => { setEditRule(null); setAlertOpen(true); }}
-                  onEdit={rule => { setEditRule(rule); setAlertOpen(true); }}
-                  onChange={refresh}
-                />
-              </div>
+              {alertsFirst ? null : alertsList}
             </section>
 
             <section className="flex flex-col gap-3" data-testid="manage-recap">
@@ -277,6 +331,17 @@ export function ManagePage() {
                 <span>Sponsor / partner content</span>
                 <Switch checked={prefs.sponsor} onCheckedChange={v => patchPrefs({ sponsor: v })} data-testid="pref-sponsor" />
               </label>
+            </section>
+
+            <section className="flex flex-col gap-3" data-testid="manage-privacy">
+              <h2 className="text-base font-medium">Privacy</h2>
+              <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 py-2 ring-1 ring-foreground/12">
+                <span className="text-sm">{DNS_LINK_TEXT}</span>
+                <Switch checked={prefs.doNotSell} onCheckedChange={v => patchPrefs({ doNotSell: v })} data-testid="pref-dns" />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                On: we keep using your questions and watched mountains for your own alerts, but never share or sell them to sponsors or partners. <a className="underline underline-offset-2" href={withAlerts('/privacy')}>Privacy Policy</a>
+              </p>
             </section>
 
             <section className="flex flex-col gap-3" data-testid="manage-quiet">

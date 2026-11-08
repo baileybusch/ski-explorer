@@ -130,6 +130,8 @@ export default async function handler(req, res) {
       sub.status = 'active';
       sub.confirmed = new Date().toISOString();
       await saveSub(sub);
+      const { sendDueWelcome } = await import('../lib/welcomeSend.js');
+      await sendDueWelcome(sub).catch(err => console.warn('[auth] welcome', err?.message || err));
     }
     try { setSession(res, verified.email); } catch { /* preview without secret */ }
     const sid = incoming.sid || req.query.sid;

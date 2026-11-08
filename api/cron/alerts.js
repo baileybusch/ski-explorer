@@ -1,5 +1,5 @@
 /**
- * Pulse job: evaluate dump alerts + Sunday-evening recap.
+ * Pulse job: evaluate dump alerts, welcome series W2/W3 (W1 goes out at confirm), Sunday recap.
  * Sending stays behind EMAIL_ALERTS_ENABLED. Wired in vercel.json; this
  * handler is a no-op while the flag is false.
  */
@@ -12,6 +12,7 @@ import { evaluateAlerts, shouldSendRecap, rankRecap, consolidateAlerts } from '.
 import { situationEmail, combinedEmail, recapEmail } from '../../lib/emails.js';
 import { writeReadout } from '../../lib/readout.js';
 import { loadCatalog } from '../../lib/skiscope-tools/index.js';
+import { sendDueWelcome } from '../../lib/welcomeSend.js';
 
 export const config = { maxDuration: 300 };
 
@@ -100,6 +101,17 @@ export default async function handler(req, res) {
     await new Promise(r => setTimeout(r, 600));
   }
 
+  let welcomeSent = 0;
+  const welcomeSnow = { ...snow, index, regions };
+  for (const s of subs) {
+    if (allow.length && !allow.includes(s.email)) continue;
+    const w = await sendDueWelcome(s, { now: now.getTime(), snowJson: welcomeSnow });
+    if (!w) continue;
+    if (w.result.status && w.result.status < 300) welcomeSent++;
+    else failed++;
+    await new Promise(r => setTimeout(r, 600));
+  }
+
   let recapSent = 0;
   if (shouldSendRecap(now)) {
     const ranked = rankRecap(snow, { limit: 5 });
@@ -123,6 +135,7 @@ export default async function handler(req, res) {
     alerts: alerts.length,
     queued: queued.length,
     sent,
+    welcomeSent,
     recapSent,
     failed,
   });

@@ -16,7 +16,9 @@
     "api/agent.js": { "includeFiles": "public/data/**" },
     "api/cron/alerts.js": { "includeFiles": "public/data/**" },
     "api/email/preview.js": { "includeFiles": "public/data/**" },
-    "api/admin/render.js": { "includeFiles": "public/data/**" }
+    "api/admin/render.js": { "includeFiles": "public/data/**" },
+    "api/confirm.js": { "includeFiles": "public/data/**" },
+    "api/auth.js": { "includeFiles": "public/data/**" }
   },
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }

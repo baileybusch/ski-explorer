@@ -22,6 +22,8 @@ export default async function handler(req, res) {
     sub.status = 'active';
     sub.confirmed = new Date().toISOString();
     await saveSub(sub);
+    const { sendDueWelcome } = await import('../lib/welcomeSend.js');
+    await sendDueWelcome(sub).catch(err => console.warn('[confirm] welcome', err?.message || err));
   }
   res.redirect(302, `/manage?confirmed=1`);
 }
