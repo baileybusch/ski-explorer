@@ -30,7 +30,7 @@ test('region filter and observed-only apply to the board', async ({ page }) => {
   expect(japanIds.length).toBeGreaterThan(0);
   expect(japanIds.every(id => /niseko|furano|rusutsu|kiroro|tomamu|larch|zao|hakuba|shiga|appi|arai|madarao|mt-t|myoko|nekoma/i.test(id))).toBeTruthy();
 
-  await page.getByTestId('board-region').selectOption({ label: 'All' });
+  await page.getByTestId('board-region').selectOption({ label: 'All regions' });
   await page.getByTestId('observed-only').click();
   await expect(page.getByTestId('observed-only')).toHaveAttribute('aria-pressed', 'true');
   const flags = await page.getByTestId('block').evaluateAll(els => els.map(e => e.getAttribute('data-estimated')));

@@ -107,7 +107,7 @@ A (flip leaderboard) vs B (block board). Bailey picked **B**. `?design=` is igno
 
 ## v9: block board is the product
 
-Home is a **gap-free block grid** (16, then Show more). Each card shows **Last 72h** and **Next 7 days** as equal two-stat columns. Compact **Sort** (Actual 72h default, Actual 24h, Forecast 7d, Name) plus region and Observed filters apply to the whole board. Layout tokens live in `src/lib/boardLayout.ts`. Radar is on the resort page, not the board. Tap a block for storm status, 7-day, radar, snow history, Mountain Facts. **Alert me** is the only solid primary CTA. Plan trip lives in the menu. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md), [docs/dump-score.md](docs/dump-score.md).
+Home is compact 2-up cards on phones and a **leaderboard table** on desktop (16 rows, then Show more). Every resort shows **Last 72h** and **Next 7 days** with equal weight on snow-stake bars (solid = fell, hatched = forecast). **Rank by** (Actual 72h default, Actual 24h, Forecast 7d, Name) plus region and Observed only filters apply to the whole board. Layout tokens live in `src/lib/boardLayout.ts`. Radar is on the resort page, not the board. Tap a block for storm status, 7-day, radar, snow history, Mountain Facts. **Alert me** is the only solid primary CTA. Plan trip lives in the menu. Notes: [docs/design-concepts.md](docs/design-concepts.md), [docs/design-tokens.md](docs/design-tokens.md), [docs/dump-score.md](docs/dump-score.md).
 
 ## Weather and storms
 

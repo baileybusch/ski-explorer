@@ -16,7 +16,7 @@ tie-break = next7d_forecast, then name A–Z
 
 Inches = centimeters / 2.54. **Ranking uses last 72h observed only.** Never show the sum of actual + forecast as if it had already fallen.
 
-A quiet line above the board reads **Ranked by last 72h**. Cards show **Last 72h** and **Next 7 days** as equal two-stat columns (no `+X coming` chip). A compact **Sort** control can switch the whole board to Actual 24h, Forecast 7d, or Name; **Region** and **Observed** filter the same list. Layout tokens live in `src/lib/boardLayout.ts` so a later desktop sketch can retune max-width, columns, and card heights in one place.
+Cards (phone) and table rows (desktop) show **Last 72h** and **Next 7 days** with equal weight, each on a snow-stake bar: solid for fallen snow, hatched for forecast, one shared scale. A compact **Rank by** control (Actual 72h default, Actual 24h, Forecast 7d, Name) reorders the whole board; on desktop the column headers do the same. **All regions** and **Observed only** filter the same list. Layout tokens live in `src/lib/boardLayout.ts`; see [design-tokens.md](design-tokens.md).
 
 ## Tie-breaks (deterministic)
 

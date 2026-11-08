@@ -11,7 +11,7 @@ export function RadarPlayer({
 }) {
   const [frames, setFrames] = useState<string[]>([]);
   const [i, setI] = useState(0);
-  const [play, setPlay] = useState(true);
+  const [play, setPlay] = useState(() => !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
   useEffect(() => {
     if (!active) return;
@@ -37,7 +37,7 @@ export function RadarPlayer({
 
   return (
     <div className="flex flex-col gap-2" data-testid="radar-player">
-      <div className="relative overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: '1.4 / 1' }}>
+      <div className="relative aspect-[1.4/1] overflow-hidden rounded-xl bg-muted min-[840px]:aspect-[16/9]">
         {src ? (
           <img src={src} alt="RainViewer radar" className="h-full w-full object-cover" />
         ) : (
@@ -51,7 +51,7 @@ export function RadarPlayer({
         <Button type="button" variant="outline" className="min-h-11" onClick={() => setPlay(p => !p)} data-testid="radar-play">
           {play ? 'Pause' : 'Play'}
         </Button>
-        <p className="text-xs text-muted-foreground">RainViewer · modeled radar, not a snow total.</p>
+        <p className="text-xs text-muted-foreground">Radar from RainViewer. Shows precipitation, not snow totals.</p>
       </div>
     </div>
   );

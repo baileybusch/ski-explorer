@@ -22,19 +22,18 @@ export function SeeYouOutThere({
   if (!handle) return null;
 
   return (
-    <section className="rounded-[1.6rem] px-4 py-8 ring-1 ring-foreground/12" data-testid="see-you-out-there">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">See you out there</p>
-      <h2 className="mt-2 font-display text-4xl tracking-wide">{resort.name}</h2>
-      <p className="mt-2 text-base text-muted-foreground">
-        The mountain, after the numbers. Follow the resort for what the cameras catch.
+    <section className="border-t border-foreground/12 pt-4" data-testid="see-you-out-there">
+      <h2 className="text-lg font-semibold tracking-tight">See you out there</h2>
+      <p className="mt-0.5 max-w-[62ch] text-sm text-muted-foreground">
+        The mountain after the numbers. Follow {resort.name} for what the cameras catch.
       </p>
-      <Button type="button" variant="outline" className="mt-5 min-h-12 w-full text-base" asChild>
+      <Button type="button" variant="outline" className="mt-5 min-h-12 w-full text-base min-[840px]:w-auto min-[840px]:px-6" asChild>
         <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noopener" data-testid="ig-follow">
           Follow @{handle} on Instagram
         </a>
       </Button>
       {posts.length ? (
-        <div className="mt-6 flex flex-col gap-4" data-testid="ig-embeds">
+        <div className="mt-6 grid gap-4 min-[840px]:grid-cols-3" data-testid="ig-embeds">
           {posts.map(url => (
             <blockquote
               key={url}
