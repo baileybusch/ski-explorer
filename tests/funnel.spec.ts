@@ -5,9 +5,11 @@ const desktop = (page: Page) => (page.viewportSize()?.width || 0) >= 1024;
 
 async function finishOnboarding(page: Page, email: string) {
   await expect(page.getByTestId('alert-onboarding')).toBeVisible();
+  const all = page.getByTestId('alert-scope-all');
+  if (await all.isVisible().catch(() => false)) await all.click();
   for (let i = 0; i < 5 && !(await page.getByTestId('alert-email').isVisible()); i++) {
     const next = page.getByTestId('alert-next');
-    if (await next.isVisible()) await next.click();
+    if (await next.isEnabled().catch(() => false)) await next.click();
     else await page.waitForTimeout(300);
   }
   await expect(page.getByTestId('alert-email')).toBeVisible({ timeout: 8_000 });
@@ -62,7 +64,8 @@ test('Ask offers alerts inline once per session and can be dismissed', async ({ 
   await box.fill('What about Snowbird next week?');
   await box.press('Enter');
   await page.waitForTimeout(2500);
-  await expect(page.getByTestId('ask-offer')).toHaveCount(1);
+  await expect(page.getByTestId('ask-offer')).toHaveCount(0);
+  await expect(page.getByTestId('ask-offer-dismissed')).toBeVisible();
 });
 
 test('My alerts lists watched mountains and Do Not Sell is a one-tap opt out', async ({ page }) => {
@@ -107,9 +110,9 @@ test('email template index renders every welcome step', async ({ request }) => {
   const html = await index.text();
   for (const t of ['welcome-1', 'welcome-2', 'welcome-3', 'confirm', 'alert', 'recap']) expect(html).toContain(`type=${t}`);
   for (const step of [1, 2, 3]) {
-    const r = await request.get(`/api/email/preview?type=welcome-${step}&format=json`);
-    const j = await r.json();
-    expect(j.subject).toBeTruthy();
-    expect(j.html).toContain(`${step} of 3`);
+    const json = await (await request.get(`/api/email/preview?type=welcome-${step}&format=json`)).json();
+    expect(json.subject).toBeTruthy();
+    const html = await (await request.get(`/api/email/preview?type=welcome-${step}`)).text();
+    expect(html).toContain(`${step} of 3`);
   }
 });

@@ -244,8 +244,8 @@ export default function App() {
   const landingName = catalog && landing ? categoryName(landing, catalog.regions, catalog.resorts) : null;
   const landingMeta = landing && landingName ? categoryMeta(landing, { name: landingName, brand: BRAND.name }) : null;
   useEffect(() => {
-    document.title = landingMeta && view === 'board' ? landingMeta.title : BRAND.title;
-  }, [landingMeta?.title, view]);
+    document.title = landingMeta && (view === 'board' || landing?.kind === 'resort') ? landingMeta.title : BRAND.title;
+  }, [landingMeta?.title, view, landing?.kind]);
 
   function rememberBoard() {
     savedBoardTop.current = boardScroll.current?.scrollTop || 0;
