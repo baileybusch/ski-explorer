@@ -71,6 +71,31 @@ Rank by [..] [regions]              ┌ 1  APPI Resort        24h   Last 72h    
 
 None on load. The radar loop is the only autoplay and it starts paused under `prefers-reduced-motion`.
 
+## Ask SkiScope (chat)
+
+Subject: ski buddies trading "who's getting the most". The chat should look like the board answering back, not a generic assistant.
+
+- **Third stake texture.** Solid = fell, hatched = forecast, **hollow outline = past-season average** (`.stake-history`). A historical average can never be mistaken for a forecast at a glance, and the caption always says "Historical average".
+- **Answer first, evidence below.** The model's (or fallback's) sentence sits above the cards; cards are raised panels (`bg-card`, ring 10%) with a plain sentence-case caption ("Japan, ranked by actual 72h"). No bubbles on assistant text; the user's question is a small right-aligned bubble.
+- **Ranked rows** reuse the leaderboard grammar: rank in Barlow, name (wraps to 2 lines) + region, then two equal columns with number and stake on one shared scale per answer. Sorted column header is brighter. Tap a row → resort page.
+- **Footnote** per answer: sources and as-of date in 11px muted prose, no labels or dots.
+- **Layout.** Phone: full-screen sheet, "‹ Board" back, composer pinned to the safe area. Desktop: 30rem right panel; at ≥1100px the board reflows beside it instead of being covered.
+- **Buttons.** Send/stop are outline icon buttons; "See all N on the board" is ghost. Alert me stays the only filled white button.
+- **Motion.** One moment only: the pending stake fills back and forth while the answer is on its way (off under reduced motion). No per-card entrances.
+
+```
+Phone                         Desktop ≥1100px
+‹ Board   Ask SkiScope  New   ┌ board (reflowed) ──────┬ Ask SkiScope   New × ┐
+            [question]         │                        │          [question] │
+Answer sentence…               │                        │ Answer sentence…    │
+┌ Japan, ranked by actual 72h ┐│                        │ ┌ ranked rows ─────┐│
+│1 Name      8.6″▬   1″▨     ││                        │ └──────────────────┘│
+└ See all 15 on the board ────┘│                        │ ┌ hollow month bars┐│
+┌ Historical average by month ┐│                        │ footnote            │
+│ ▯ ▯ ▯ ▯ ▯ ▯                 ││                        │ [ask…          (↑)] │
+[Ask about snow…          (↑)]
+```
+
 ## Notes for the next pass
 
 - Tried: 4-column card grid on desktop (pass 5). Rejected: zigzag rank order, no column alignment.

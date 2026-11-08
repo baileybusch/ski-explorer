@@ -12,7 +12,7 @@ Cursor / other clients: transport `http`, URL `https://skiscope.vercel.app/api/m
 
 `GET /api/mcp` returns server info + the tool list (for humans and install checks).
 
-Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, `/api/data`, and `/api/observed` rewrite to one function (`api/headless.js`). The public URLs stay the same.
+Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, `/api/data`, `/api/observed`, and `/api/ask` rewrite to one function (`api/headless.js`). The public URLs stay the same.
 
 ## Tools
 
@@ -27,6 +27,9 @@ Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, `/api/dat
 | `get_snow_history` | `resort`, `units` | 24h / 72h / storm / season vs last-five same date |
 | `compare_resorts` | `ids[]` (1–8), `units` | Side-by-side |
 | `plan_trip_snapshot` | `resort`, `start`, `end`, `units` | Trip brief from the same facts |
+| `rank_resorts` | `sort` (`actual72h` / `actual24h` / `forecast7d`), `region` / `country` / `state` / `pass`, `observedOnly`, `limit` | Same order as the home board; cm + inches |
+| `get_resort` | `resort` | Actual + forecast, storm status, facts, 7-day forecast, monthly historical averages |
+| `month_climatology` | `month` (1–12, optional), `region` / `country` / `state` / `pass`, `limit` | Historical average (ERA5, ~10 seasons). Omit `month` for a month-by-month profile. Not a forecast. |
 
 `units` is `in` (default) or `cm`. Every result includes `meta.generatedAt`, `meta.source`, `meta.attribution`.
 

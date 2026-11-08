@@ -97,6 +97,16 @@ Locally: `vercel link && vercel env pull`, **or** set `AI_GATEWAY_API_KEY` from 
 
 Without either, the bar still works in **deterministic-only** mode (regex + gazetteer, including spring break / this weekend / next week / `this week` / `mar 7-14`). “What storms are heading for Utah this week?” turns on the Storms chip and flies to Utah.
 
+## Ask SkiScope (generative-UI chat)
+
+The home search box opens a chat thread (full-screen on phones, right panel on desktop; the board stays home). Questions like "which resort is getting the most snow?", "good resort for a Japan ski trip", "California resorts with the most projected snow", or "best resorts to go to in March" stream a short answer plus inline cards built from SkiScope data.
+
+- **Server**: `POST /api/ask` → `api/headless.js?surface=ask` (no new function; Hobby stays at 12). AI SDK `streamText` + tools through the Vercel AI Gateway, returned as a UI message stream (`pipeUIMessageStreamToResponse`). Model `openai/gpt-6-luna` (override with `ASK_MODEL`), ≤4 steps, ≤600 output tokens, last 6 messages, per-IP rate limit, `ASK_LLM=off` kill switch — about $0.001 per question.
+- **Client**: `useChat` from `@ai-sdk/react` with typed `tool-*` parts (`src/lib/askTypes.ts`) rendered by `src/components/ask/AskParts.tsx`: ranked list, resort mini card, comparison table, month-climatology chart, sources footnote. Tap a card to open the resort page; "See all N on the board" applies the region and sort to the board. Deep link: `/?ask=most+snow+right+now`.
+- **Tools** (`lib/skiscope-tools/askTools.js`, pure): `rankResorts` (actual72h | actual24h | forecast7d, region/country/state/pass), `getResort`, `compareResorts`, `monthClimatology` (month, region). Also on MCP as `rank_resorts`, `get_resort`, `month_climatology`.
+- **Fallback, no error noise**: if the Gateway is not configured, errors (e.g. no card on the team yet), or stalls past 8s before producing output, the server answers with the deterministic planner (`lib/ask/answer.js`), emitting the same tool parts. If `/api/ask` itself is unreachable (Vite dev, offline), the browser runs the same planner locally. `data-mode` on each answer says `llm` or `fallback`.
+- **Climatology**: `public/data/climatology.json`, built by `npm run climatology` from the committed ERA5 season archives (`public/data/seasons/`, Open-Meteo historical archive, ~10 seasons; Nov–Apr north, Jun–Sep south). Labeled as a historical average, never a forecast. Add seasons/resorts with `python3 scripts/fetch_seasons.py` (throttled under the free limits), then rebuild.
+
 ## v7: Weather-style list → detail → map
 
 Replaced by the scoreboard. The Weather chrome was too busy for a glance-at-the-snow monitor.

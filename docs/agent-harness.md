@@ -45,6 +45,9 @@ flowchart LR
 | `get_snow_history` | 24h / 72h / storm / season-to-date vs last-five same date |
 | `compare_resorts` | Side-by-side, max 8 ids |
 | `plan_trip_snapshot` | Snow + forecast + storm + history for a trip window |
+| `rank_resorts` / `get_resort` / `month_climatology` | Ask SkiScope tools (`askTools.js`, pure, also run in the browser fallback). Exposed to the chat model as `rankResorts`, `getResort`, `compareResorts`, `monthClimatology` |
+
+Ask SkiScope (`POST /api/ask`, `lib/ask/`) is the chat consumer: `streamText` + those tools through the Gateway, rendered as typed tool parts by `useChat`; deterministic planner with identical parts when the Gateway is unavailable.
 
 Every result is `{ ok, data, text, meta: { generatedAt, source, attribution, units } }`.
 

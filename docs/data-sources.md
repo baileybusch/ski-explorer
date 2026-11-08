@@ -35,6 +35,15 @@ Footer is wordmark + Privacy, Terms, Contact. Affiliate disclosure stays conditi
 
 `public/data/history.json` is **coarse reanalysis** (Open-Meteo historical archive / ERA5-class), not resort-reported snow. Season start is Oct 1 (N) / Jul 1 (S). Same-date bars compare season-to-date totals through the same calendar date. Units follow the in/cm toggle. Label the tile “modeled”.
 
+## Month climatology (Ask SkiScope)
+
+`public/data/climatology.json` answers "best resorts in January / March". It is the **average snowfall per calendar month** across past seasons, computed offline by `scripts/build_climatology.mjs` from the committed season archives in `public/data/seasons/` (Open-Meteo historical archive, ERA5 daily `snowfall_sum` at mid-mountain). No request-time API calls.
+
+- Coverage: Nov–Apr for the Northern Hemisphere (`<year>.json`), Jun–Sep for the Southern (`<year>sh.json`), 2015-16 onward; resorts with fewer than 5 seasons are left out of month rankings while better-covered resorts exist.
+- Labeling: every surface says "Historical average … not a forecast". The tool output carries `label`, `seasons`, `source`, and `note`.
+- Caveat: ERA5 runs low in big mountains (Alta's January averages ~30″ here vs much more reported). Use it to compare resorts and months, not as absolute totals; the footnote says so.
+- Budget: filling new resorts costs ≈ resorts × seasons × 13 weighted calls; `fetch_seasons.py` paces under 400/min and 4,500/hour.
+
 ## Weather providers ($0)
 
 `lib/weather/providers/*` + one-line flip:
