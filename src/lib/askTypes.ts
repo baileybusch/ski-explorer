@@ -98,11 +98,16 @@ export type ClimateOutput =
 
 type Scope = { region?: string; country?: string; state?: string; pass?: 'ikon' | 'epic' | 'all' };
 
+export type OfferTarget = { type: 'resort' | 'region'; id: string; name: string };
+export type OfferOutput = { target: OfferTarget | null; headline: string; reason: string };
+
 export type AskTools = {
   rankResorts: { input: Scope & { sort?: AskSort; observedOnly?: boolean; limit?: number }; output: RankOutput };
   getResort: { input: { resort: string }; output: ResortOutput };
   compareResorts: { input: { ids: string[] }; output: CompareOutput };
   monthClimatology: { input: Scope & { month?: number; limit?: number }; output: ClimateOutput };
+  /** Inline alert signup card, appended by lib/ask/offer.js (not model-called). */
+  offerAlertSignup: { input: { reason: string; target: OfferTarget | null }; output: OfferOutput };
 };
 
 /** The home board's scope; Ask tools default to it (lib/boardRank.js). */

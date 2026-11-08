@@ -1,6 +1,8 @@
 import { DefaultChatTransport, type ChatTransport, type UIMessageChunk } from 'ai';
 import { deterministicStream, lastUserText } from '../../lib/ask/answer.js';
 import { observedSnapshot } from '../../lib/boardRank.js';
+import { decideOffer, offerChunks } from '../../lib/ask/offer.js';
+import { offerState, visitorId } from '@/lib/visitor';
 import type { AskUIMessage, BoardScope } from '@/lib/askTypes';
 
 type Ctx = { units: 'in' | 'cm'; catalog: any; board: BoardScope };
@@ -16,7 +18,8 @@ function loadClimatology() {
 async function localAnswer(messages: AskUIMessage[], ctx: Ctx): Promise<ReadableStream<UIMessageChunk>> {
   const { catalog, units, board } = ctx;
   const cat = { resorts: catalog.resorts, snow: catalog.snow, regions: catalog.regions, climatology: await loadClimatology(), board };
-  return deterministicStream(lastUserText(messages), cat, { units, today: catalog.today }) as ReadableStream<UIMessageChunk>;
+  const extra = offerChunks(decideOffer({ messages, cat, state: offerState() }));
+  return deterministicStream(lastUserText(messages), cat, { units, today: catalog.today }, { extra }) as ReadableStream<UIMessageChunk>;
 }
 
 /** Resolve with the server stream only once it has produced a chunk; otherwise answer locally. */
@@ -63,7 +66,7 @@ export class AskTransport implements ChatTransport<AskUIMessage> {
       // The board's scope and observed snapshot, so server answers rank exactly what the board shows.
       body: () => {
         const { units, board, catalog } = this.ctx();
-        return { units, board, snapshot: observedSnapshot(catalog?.snow) };
+        return { units, board, snapshot: observedSnapshot(catalog?.snow), sid: visitorId(), offer: offerState() };
       },
     });
   }

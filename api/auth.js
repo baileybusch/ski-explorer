@@ -12,6 +12,36 @@ import { authRateLimit, clientIp } from '../lib/authLimit.js';
 import { normalizePrefs, defaultPrefs } from '../lib/accountPrefs.js';
 import { findByEmail, saveSub, deleteSub, sendEmail, isEmail, SITE, body } from './_lib.js';
 import { NEUTRAL_MANAGE, isPendingExpired } from '../lib/consent.js';
+import { randomBytes } from 'node:crypto';
+import { normalizeRule } from '../lib/evaluateAlerts.js';
+import { recordEvents } from '../lib/insightsStore.js';
+
+const ID_RE = /^[a-z0-9-]{2,40}$/;
+const SERVER_FIELDS = ['lastFired', 'lastKey', 'lastKeys', 'tripStagesSent', 'pendingSend'];
+
+/** Client-edited rules, validated; alert history stays server-owned per rule id. */
+function cleanRules(rules, email, prior = []) {
+  return rules.slice(0, 20).filter(r => r && typeof r === 'object').map(r => {
+    const rule = normalizeRule({
+      ...r,
+      tier: 'free',
+      resorts: (r.resorts || []).filter(x => typeof x === 'string' && ID_RE.test(x)),
+      region: typeof r.region === 'string' && ID_RE.test(r.region) ? r.region : null,
+    }, email);
+    rule.id = typeof r.id === 'string' && /^[A-Za-z0-9_-]{4,40}$/.test(r.id) ? r.id : `rul_${randomBytes(6).toString('hex')}`;
+    rule.paused = r.paused === true;
+    const old = rule.id && prior.find(x => x.id === rule.id);
+    for (const k of SERVER_FIELDS) {
+      if (old && old[k] !== undefined) rule[k] = old[k];
+      else delete rule[k];
+    }
+    return rule;
+  });
+}
+
+function track(events) {
+  return recordEvents(events, { durable: true }).catch(err => console.warn('[auth] insights', err?.message || err));
+}
 
 function json(res, code, payload) {
   res.setHeader('cache-control', 'no-store');
@@ -102,6 +132,8 @@ export default async function handler(req, res) {
       await saveSub(sub);
     }
     try { setSession(res, verified.email); } catch { /* preview without secret */ }
+    const sid = incoming.sid || req.query.sid;
+    if (sid) await track({ type: 'link', email: verified.email, sid });
     return json(res, 200, { ok: true, ...publicAccount(sub, verified.email) });
   }
 
@@ -120,9 +152,14 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST' && action === 'save') {
     if (sub) {
+      const wasDns = sub.prefs?.doNotSell === true;
       if (incoming.prefs) sub.prefs = normalizePrefs({ ...sub.prefs, ...incoming.prefs });
-      if (Array.isArray(incoming.rules)) sub.rules = incoming.rules.slice(0, 20);
+      if (Array.isArray(incoming.rules)) {
+        sub.rules = cleanRules(incoming.rules, sess.email, sub.rules || []);
+        sub.resorts = [...new Set(sub.rules.flatMap(r => r.resorts || []))];
+      }
       await saveSub(sub);
+      if (sub.prefs.doNotSell !== wasDns) await track({ type: 'dns', email: sess.email, sid: incoming.sid, optOut: sub.prefs.doNotSell });
     }
     return json(res, 200, { ok: true, ...publicAccount(sub, sess.email) });
   }
@@ -133,6 +170,7 @@ export default async function handler(req, res) {
       sub.status = 'unsubscribed';
       (sub.rules || []).forEach(r => { r.paused = true; });
       await saveSub(sub);
+      await track({ type: 'unsubscribe', email: sess.email });
     }
     return json(res, 200, { ok: true });
   }

@@ -622,6 +622,11 @@ export default function App() {
         onAsked={setLastAsk}
         onOpenResort={id => openResort(id)}
         onShowBoard={showOnBoard}
+        onAlertSignup={() => {
+          setEditRule(null);
+          setAlertCtx({ source: 'chat', type: 'resort', pass });
+          setAlertOpen(true);
+        }}
         regions={catalog?.regions || []}
         onRegion={id => {
           const g = catalog?.regions.find((x: any) => x.id === id);

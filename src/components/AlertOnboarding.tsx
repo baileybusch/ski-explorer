@@ -9,6 +9,7 @@ import { loadPrefs } from '@/lib/session';
 import { type LocalRule, accountEmail } from '@/lib/alertRules';
 import { type CaptureSource, subscribeRule, validEmail } from '@/lib/subscribe';
 import { ConsentNote } from '@/components/ConsentNote';
+import { doNotSell } from '@/lib/visitor';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -155,7 +156,7 @@ export function AlertOnboarding({
         mode,
         source: ctx.source || 'signup',
         editId: editRule?.id,
-        extra: { adults: ctx.adults, kids: ctx.kids },
+        extra: { adults: ctx.adults, kids: ctx.kids, doNotSell: doNotSell() },
       });
       if ('error' in r) {
         setMsg(r.error);
