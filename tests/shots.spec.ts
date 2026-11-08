@@ -41,6 +41,14 @@ test('design screenshots: home + resort per device', async ({ page }, info) => {
     await page.setViewportSize(vp);
   }
 
+  await page.getByTestId('board-sort').selectOption('forecast7d');
+  await expect(page.getByTestId('cell-forecast').first()).toHaveAttribute('data-active', '1');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${DIR}/leaderboard-forecast-${device}.png` });
+  await page.getByTestId('board-sort').selectOption('actual72');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${DIR}/leaderboard-default-${device}.png` });
+
   await page.getByTestId('block').first().click();
   await expect(page.getByTestId('profile-hero')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('tile-storm-status')).toBeVisible();

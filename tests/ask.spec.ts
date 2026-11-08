@@ -32,12 +32,13 @@ async function ask(page: Page, text: string) {
   return answer;
 }
 
-test('search box opens the Ask thread with suggestions; board stays home', async ({ page }) => {
+test('search box opens the Ask thread with suggestions; board stays home', async ({ page }, info) => {
   await openAsk(page);
   await expect(page.getByTestId('ask-suggestion')).toHaveCount(6);
   await expect(page.getByTestId('region-japan')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('search')).toBeHidden();
+  if (info.project.name.startsWith('desktop')) await expect(page.getByTestId('search')).toHaveAttribute('data-docked', '1');
+  else await expect(page.getByTestId('search')).toBeHidden();
   await expect(page.getByTestId('board-b')).toBeVisible();
 });
 
@@ -62,6 +63,18 @@ async function boardTop(page: Page) {
   })));
 }
 
+/** Board order once filters have settled (two identical reads in a row). */
+async function settledBoardTop(page: Page) {
+  let prev = '';
+  await expect.poll(async () => {
+    const cur = JSON.stringify(await boardTop(page));
+    const same = cur === prev;
+    prev = cur;
+    return same;
+  }, { intervals: [150, 250, 400] }).toBe(true);
+  return JSON.parse(prev) as Awaited<ReturnType<typeof boardTop>>;
+}
+
 async function askTop(answer: ReturnType<Page['getByTestId']>) {
   return answer.getByTestId('ask-row').evaluateAll(els => els.map(e => ({
     id: e.getAttribute('data-resort'), est: e.getAttribute('data-estimated'),
@@ -71,7 +84,7 @@ async function askTop(answer: ReturnType<Page['getByTestId']>) {
 test('chat ranking is the board ranking: same snapshot, scope, order, and est.', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  const board = await boardTop(page);
+  const board = await settledBoardTop(page);
   await page.getByTestId('search-trigger').click();
   const answer = await ask(page, 'Which resort is getting the most snow right now?');
   const chat = await askTop(answer);
@@ -84,7 +97,8 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   await page.getByTestId('board-region').selectOption('utah');
   await page.getByTestId('observed-only').click();
   await expect(page.getByTestId('block').first()).toHaveAttribute('data-estimated', '0');
-  const scopedBoard = await boardTop(page);
+  await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'actual24');
+  const scopedBoard = await settledBoardTop(page);
   await page.getByTestId('search-trigger').click();
   const scopedAnswer = await ask(page, 'Most snow in the last 24 hours');
   const scoped = await askTop(scopedAnswer);
@@ -126,12 +140,13 @@ test('compare and resort answers; tapping a card opens the resort page', async (
   await expect(page.getByTestId('search')).toBeHidden();
 });
 
-test('California projected snow ranks by forecast; show on board applies region and sort', async ({ page }) => {
+test('California projected snow ranks by forecast; show on board applies region and sort', async ({ page }, info) => {
   await openAsk(page);
   const answer = await ask(page, 'California resorts with the most projected snow');
   await expect(answer.getByTestId('ask-ranked')).toContainText('California, ranked by forecast 7d');
   await answer.getByTestId('ask-show-board').click();
-  await expect(page.getByTestId('search')).toBeHidden();
+  if (info.project.name.startsWith('desktop')) await expect(page.getByTestId('search')).toBeVisible();
+  else await expect(page.getByTestId('search')).toBeHidden();
   await expect(page.getByTestId('intent-chip')).toContainText(/California/);
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'forecast7d');
 });

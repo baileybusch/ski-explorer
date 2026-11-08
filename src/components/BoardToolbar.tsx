@@ -22,10 +22,10 @@ export function BoardToolbar({
     if (extra) chips.unshift(extra);
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-1 pb-3" data-testid="board-toolbar">
+    <div className="flex items-center gap-x-2 gap-y-2 px-1 pb-2.5 min-[720px]:flex-wrap min-[720px]:pb-3" data-testid="board-toolbar">
       <p className="sr-only" aria-live="polite" data-testid="board-rank-hint">{BOARD_SORT_HINT[sort]}</p>
-      <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-        <span>Rank by</span>
+      <label className="flex shrink-0 items-center gap-2 text-[13px] text-muted-foreground">
+        <span className="max-[719px]:sr-only">Rank by</span>
         <select
           className={selectClass}
           value={sort}
@@ -52,7 +52,7 @@ export function BoardToolbar({
       </select>
       <button
         type="button"
-        className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[13px] min-[840px]:h-9 min-[840px]:px-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${observedOnly ? 'border-foreground/60 text-foreground' : 'border-foreground/15 text-muted-foreground'}`}
+        className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] min-[840px]:h-9 min-[840px]:px-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${observedOnly ? 'border-foreground/60 text-foreground' : 'border-foreground/15 text-muted-foreground'}`}
         data-testid="observed-only"
         aria-pressed={observedOnly}
         title="Hide resorts whose last 72h is a model estimate"
