@@ -1,62 +1,113 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-test('desktop board is a bounded leaderboard aligned to the featured row', async ({ page }, info) => {
-  test.skip(!info.project.name.startsWith('desktop'), 'desktop proportions only');
+const isDesktop = (name: string) => name.startsWith('desktop');
+
+async function openBoard(page: Page) {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('board-shell')).toHaveCSS('max-width', '1200px');
-  await expect(page.getByTestId('board-b')).toHaveAttribute('data-layout', 'table');
-  await expect(page.getByTestId('board-table-head')).toBeVisible();
+  await expect(page.getByTestId('block').first()).toBeVisible();
+}
 
-  const featured = page.getByTestId('block').first();
-  await expect(featured).toHaveAttribute('data-featured', '1');
-  const fBox = (await featured.boundingBox())!;
-  expect(fBox.width).toBeGreaterThan(1000);
-  expect(fBox.width).toBeLessThanOrEqual(1200);
-  expect(fBox.height).toBeGreaterThan(130);
-  expect(fBox.height).toBeLessThan(200);
+/** Right edge of each stat column per row: numbers line up when every row shares one x. */
+async function statEdges(page: Page, testid: string) {
+  return page.getByTestId('block').getByTestId(testid).evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().right)));
+}
 
-  const rows = page.getByTestId('board-rows').getByTestId('block');
-  expect(await rows.count()).toBeGreaterThan(8);
-  const heights = await rows.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
-  expect(new Set(heights).size).toBe(1);
-
-  const actualX = await rows.getByTestId('cell-actual').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().left)));
-  const forecastX = await rows.getByTestId('cell-forecast').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().left)));
-  expect(new Set(actualX).size).toBe(1);
-  expect(new Set(forecastX).size).toBe(1);
-  const fActual = (await featured.getByTestId('snow-actual-col').boundingBox())!;
-  const fForecast = (await featured.getByTestId('snow-forecast-col').boundingBox())!;
-  expect(Math.abs(fActual.x - actualX[0])).toBeLessThanOrEqual(2);
-  expect(Math.abs(fForecast.x - forecastX[0])).toBeLessThanOrEqual(2);
+test('one full-width leaderboard list on every size; #1 only lightly featured', async ({ page }, info) => {
+  await openBoard(page);
+  await expect(page.getByTestId('board-b')).toHaveAttribute('data-layout', 'list');
+  await expect(page.getByTestId('board-list-head')).toBeVisible();
+  const boxes = await page.getByTestId('block').evaluateAll(els => els.map(e => {
+    const r = e.getBoundingClientRect();
+    return { l: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height) };
+  }));
+  expect(boxes.length).toBeGreaterThan(8);
+  expect(new Set(boxes.map(b => b.l)).size).toBe(1);
+  expect(new Set(boxes.map(b => b.w)).size).toBe(1);
+  const rowH = boxes[1].h;
+  expect(new Set(boxes.slice(1).map(b => b.h)).size).toBe(1);
+  expect(boxes[0].h).toBeGreaterThan(rowH);
+  expect(boxes[0].h).toBeLessThanOrEqual(Math.round(rowH * 1.35));
+  await expect(page.getByTestId('block').first()).toHaveAttribute('data-featured', '1');
+  if (isDesktop(info.project.name)) {
+    await expect(page.getByTestId('board-shell')).toHaveCSS('max-width', '1200px');
+    await expect(page.getByTestId('board-b')).toHaveAttribute('data-density', 'full');
+  } else {
+    await expect(page.getByTestId('board-b')).toHaveAttribute('data-density', 'compact');
+  }
 });
 
-test('desktop column headers sort the board', async ({ page }, info) => {
-  test.skip(!info.project.name.startsWith('desktop'), 'table headers are desktop only');
-  await page.goto('/');
-  await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('sort-col-forecast7d').click();
+test('stat columns stay fixed and right-aligned while the sort re-ranks rows', async ({ page }) => {
+  await openBoard(page);
+  const before = { a: await statEdges(page, 'cell-actual'), f: await statEdges(page, 'cell-forecast') };
+  expect(new Set(before.a).size).toBe(1);
+  expect(new Set(before.f).size).toBe(1);
+  await expect(page.getByTestId('cell-actual').first()).toHaveAttribute('data-active', '1');
+  await expect(page.getByTestId('cell-forecast').first()).toHaveAttribute('data-active', '0');
+
+  await page.getByTestId('board-sort').selectOption('forecast7d');
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'forecast7d');
+  await expect(page.getByTestId('cell-forecast').first()).toHaveAttribute('data-active', '1');
+  await expect(page.getByTestId('cell-actual').first()).toHaveAttribute('data-active', '0');
+  await page.waitForTimeout(400);
+  const after = { a: await statEdges(page, 'cell-actual'), f: await statEdges(page, 'cell-forecast') };
+  expect(after.a[0]).toBe(before.a[0]);
+  expect(after.f[0]).toBe(before.f[0]);
+  expect(new Set(after.f).size).toBe(1);
+  const next7 = await page.getByTestId('block').evaluateAll(els => els.map(e => Number(e.getAttribute('data-next7'))));
+  for (let i = 1; i < next7.length; i++) expect(next7[i - 1]).toBeGreaterThanOrEqual(next7[i]);
+});
+
+test('column headers sort the board and stay pinned while scrolling', async ({ page }, info) => {
+  await openBoard(page);
+  await page.getByTestId('sort-col-forecast7d').click();
   await expect(page.getByTestId('board-sort')).toHaveValue('forecast7d');
   await expect(page.getByTestId('sort-col-forecast7d')).toHaveAttribute('aria-pressed', 'true');
-  await page.getByTestId('sort-col-actual72').click();
+  if (isDesktop(info.project.name)) {
+    await page.getByTestId('sort-col-actual24').click();
+    await expect(page.getByTestId('board-sort')).toHaveValue('actual24');
+    await page.getByTestId('sort-col-actual72').click();
+  } else {
+    await page.getByTestId('sort-col-actual').click();
+    await expect(page.getByTestId('board-sort')).toHaveValue('actual72');
+    await expect(page.getByTestId('sort-col-actual')).toHaveText(/Last 72h/);
+    await page.getByTestId('sort-col-actual').click();
+    await expect(page.getByTestId('board-sort')).toHaveValue('actual24');
+    await expect(page.getByTestId('sort-col-actual')).toHaveText(/Last 24h/);
+    await page.getByTestId('sort-col-actual').click();
+  }
   await expect(page.getByTestId('board-sort')).toHaveValue('actual72');
+
+  const board = page.getByTestId('board-b');
+  const top = (await board.boundingBox())!.y;
+  await board.evaluate(el => { el.scrollTop = 600; });
+  await page.waitForTimeout(150);
+  const head = (await page.getByTestId('board-list-head').boundingBox())!;
+  expect(Math.abs(head.y - top)).toBeLessThanOrEqual(2);
 });
 
-test('phone board stays compact cards with no blank cells', async ({ page }, info) => {
-  test.skip(info.project.name.startsWith('desktop'), 'phone only');
-  await page.goto('/');
-  await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('board-b')).toHaveAttribute('data-layout', 'cards');
-  await expect(page.getByTestId('board-b')).toHaveAttribute('data-cols', '2');
-  const featured = (await page.getByTestId('block').first().boundingBox())!;
-  const vh = page.viewportSize()!.height;
-  expect(featured.height).toBeLessThan(vh * 0.25);
-  const grid = (await page.getByTestId('board-cards').boundingBox())!;
-  const cards = await page.getByTestId('block').evaluateAll(els => els.map(e => {
+test('iPhone 13 shows at least 8 resorts on the first screen', async ({ page }, info) => {
+  test.skip(info.project.name !== 'iphone-13', 'iPhone 13 density target');
+  await openBoard(page);
+  const visible = await page.getByTestId('block').evaluateAll(els => els.filter(e => {
     const r = e.getBoundingClientRect();
-    return { l: r.left, r: r.right };
-  }));
-  const last = cards.slice(-2);
-  expect(Math.max(...last.map(c => c.r))).toBeGreaterThan(grid.x + grid.width - 2);
+    return r.top >= 0 && r.bottom <= window.innerHeight;
+  }).length);
+  expect(visible).toBeGreaterThanOrEqual(8);
+});
+
+test('desktop docks Ask SkiScope beside the board', async ({ page }, info) => {
+  test.skip(!isDesktop(info.project.name), 'docked panel is desktop only');
+  await openBoard(page);
+  const panel = page.getByTestId('search');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute('data-docked', '1');
+  await expect(page.getByTestId('ask-close')).toHaveCount(0);
+  const p = (await panel.boundingBox())!;
+  const list = (await page.getByTestId('board-list').boundingBox())!;
+  expect(list.x + list.width).toBeLessThanOrEqual(p.x + 1);
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeVisible();
+  await page.getByTestId('search-trigger').click();
+  await expect(page.getByLabel('Ask SkiScope', { exact: true }).last()).toBeFocused();
 });

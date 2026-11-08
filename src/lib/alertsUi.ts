@@ -1,4 +1,5 @@
 import { EMAIL_ALERTS_ENABLED } from '../../public/config.js';
+import { brandParams } from '@/lib/brand';
 
 export type AlertsUiMode = 'paused' | 'live' | 'preview';
 
@@ -36,13 +37,17 @@ export const WINDOWS = [
   { id: 168, label: '7d' },
 ];
 
+/** Internal link that keeps preview-only params (?alerts=1, ?brand=, ?wordmark=). */
 export function withAlerts(path: string) {
   if (typeof location === 'undefined') return path;
-  const flagged = new URLSearchParams(location.search).get('alerts') === '1';
-  if (!flagged) return path;
+  const keep: [string, string][] = [
+    ...(new URLSearchParams(location.search).get('alerts') === '1' ? [['alerts', '1'] as [string, string]] : []),
+    ...brandParams(),
+  ];
+  if (!keep.length) return path;
   const [p, hash] = path.split('#');
   const joiner = p.includes('?') ? '&' : '?';
-  return `${p}${joiner}alerts=1${hash ? `#${hash}` : ''}`;
+  return `${p}${joiner}${new URLSearchParams(keep).toString()}${hash ? `#${hash}` : ''}`;
 }
 
 export const FREQS = [

@@ -1,17 +1,19 @@
 import { expect, test } from '@playwright/test';
 
-test('board cards show last 72h and next 7 days as equal stats', async ({ page }) => {
+test('board rows show last 72h and next 7 days as equal stat columns', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('board-rank-hint')).toHaveText(/Ranked by last 72h/);
-  const card = page.getByTestId('block').first();
-  await expect(card.getByTestId('snow-actual')).toBeVisible();
-  await expect(card.getByTestId('snow-actual-label')).toHaveText(/Last 72h/i);
-  await expect(card.getByTestId('snow-forecast-label')).toHaveText(/Next 7 days/i);
-  await expect(card.getByTestId('snow-forecast')).toBeVisible();
-  await expect(card.getByTestId('snow-forecast')).not.toHaveText(/coming/i);
+  const row = page.getByTestId('block').first();
+  await expect(row.getByTestId('cell-actual')).toBeVisible();
+  await expect(row.getByTestId('cell-forecast')).toBeVisible();
+  await expect(row.getByTestId('cell-forecast')).not.toHaveText(/coming/i);
+  await expect(page.getByTestId('board-list-head')).toContainText(/Last 72h/);
+  await expect(page.getByTestId('board-list-head')).toContainText(/Next 7/);
+  const est = await row.getAttribute('data-estimated');
+  await expect(row.getByTestId('cell-actual').getByTestId('est-tag')).toHaveCount(est === '1' ? 1 : 0);
   await expect(page.getByTestId('radar-thumb')).toHaveCount(0);
-  const aria = await card.getAttribute('aria-label');
+  const aria = await row.getAttribute('aria-label');
   expect(aria || '').toMatch(/last 72 hours/i);
   expect(aria || '').toMatch(/forecast next 7 days/i);
 });

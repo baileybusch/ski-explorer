@@ -1,4 +1,5 @@
-import { LogoMark } from '@/components/LogoMark';
+import { BrandLogo } from '@/components/BrandLogo';
+import { BRAND } from '@/lib/brand';
 import { withAlerts } from '@/lib/alertsUi';
 import { affiliateConfigured } from '../../public/config.js';
 
@@ -12,9 +13,8 @@ const LINKS = [
 export function SiteFooter() {
   return (
     <footer className="mx-auto mt-10 w-full max-w-xl px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]" data-testid="site-footer">
-      <a href={withAlerts('/')} className="flex items-center gap-2" aria-label="SkiScope home">
-        <LogoMark className="size-6" />
-        <span className="font-display text-lg tracking-wide">SKISCOPE</span>
+      <a href={withAlerts('/')} className="flex items-center gap-2" aria-label={`${BRAND.name} home`}>
+        <BrandLogo size="footer" />
       </a>
       <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
         {LINKS.map(l => (

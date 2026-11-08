@@ -29,11 +29,14 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { intentChip, ctaKind } from '../lib/intent.js';
 import { type LocalRule } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
+import { brandParams } from '@/lib/brand';
 import type { SnowUnits, TempUnits } from '@/lib/format';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 const AskPanel = lazy(() => import('@/components/ask/AskPanel').then(m => ({ default: m.AskPanel })));
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
+const ASK_DOCK_MIN = 1100;
 type View = 'board' | 'profile' | 'map';
 
 type SearchFacets = {
@@ -88,6 +91,8 @@ export default function App() {
   const [lastAsk, setLastAsk] = useState('');
   const [askRequest, setAskRequest] = useState<{ text: string; n: number } | null>(null);
   const [askMounted, setAskMounted] = useState(false);
+  const [askFocus, setAskFocus] = useState(0);
+  const wide = useMediaQuery(`(min-width: ${ASK_DOCK_MIN}px)`);
   const [activeIds, setActiveIds] = useState<string[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -154,7 +159,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { if (searchOpen) setAskMounted(true); }, [searchOpen]);
   useEffect(() => { saveTrip(trip); }, [trip]);
   useEffect(() => { localStorage.setItem('ss_pass', pass); }, [pass]);
   useEffect(() => { localStorage.setItem('ss_units', units); }, [units]);
@@ -190,6 +194,7 @@ export default function App() {
       from: start, to: end, adults, kids, home: trip.home,
       mode: extra.mode, pass, region: extra.region ?? facets.regionId,
       alerts: alertsUi.mode === 'preview' ? '1' : undefined,
+      ...Object.fromEntries(brandParams()),
     }));
   }
 
@@ -322,6 +327,11 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, [view, catalog]);
 
+  /** Desktop: the Ask panel stays docked beside the board instead of opening on demand. */
+  const askDocked = wide && view === 'board' && !!catalog;
+  const askVisible = searchOpen || askDocked;
+  useEffect(() => { if (askVisible) setAskMounted(true); }, [askVisible]);
+
   const rowsAll = useMemo(() => {
     if (!catalog) return [];
     void watchTick;
@@ -420,7 +430,7 @@ export default function App() {
       ) : null}
 
       {catalog && win && view === 'board' ? (
-        <div className={`flex h-full min-h-dvh flex-col ${searchOpen ? 'min-[1100px]:pr-[30rem]' : ''}`} data-ask-open={searchOpen ? '1' : '0'}>
+        <div className={`flex h-full min-h-dvh flex-col ${askVisible ? 'min-[1100px]:pr-[30rem]' : ''}`} data-ask-open={askVisible ? '1' : '0'} data-ask-docked={askDocked ? '1' : '0'}>
           <div
             className="mx-auto flex min-h-0 w-full flex-1 flex-col"
             style={{ maxWidth: BOARD_LAYOUT.maxWidth }}
@@ -428,7 +438,7 @@ export default function App() {
           >
           <BoardChrome
             q={lastAsk}
-            onOpenSearch={() => setSearchOpen(true)}
+            onOpenSearch={() => (askDocked ? setAskFocus(n => n + 1) : setSearchOpen(true))}
             onMenu={() => setMenuOpen(true)}
             onHome={resetHome}
             onClearScope={resetHome}
@@ -524,7 +534,9 @@ export default function App() {
       {askMounted ? (
       <Suspense fallback={null}>
       <AskPanel
-        open={searchOpen}
+        open={askVisible}
+        docked={askDocked}
+        focusTick={askFocus}
         onClose={() => setSearchOpen(false)}
         units={units}
         catalog={catalog}
@@ -539,7 +551,7 @@ export default function App() {
         }}
         onWorldwide={resetHome}
         pass={pass}
-        board={{ pass, regionId: facets.regionId || null, observedOnly }}
+        board={{ pass, regionId: facets.regionId || null, observedOnly, sort: boardSort }}
         setPass={p => { setPass(p as typeof PASSES[number]); setActiveIds(null); }}
         stormsOn={stormsOn}
         setStormsOn={on => { setStormsOn(on); setFacets(f => ({ ...f, storms: on })); if (on) setSearchOpen(false); }}

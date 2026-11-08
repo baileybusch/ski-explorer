@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 import { normalizeRule } from '../lib/evaluateAlerts.js';
 import { SITE as DEFAULT_SITE } from '../lib/site.js';
+import { DEFAULT_BRAND } from '../lib/brand.js';
 import { defaultPrefs } from '../lib/accountPrefs.js';
 import { canReceiveEmail } from '../lib/consent.js';
 import { CONFIRM_TTL_SEC, signAuthToken } from '../lib/authToken.js';
@@ -85,7 +86,7 @@ export async function sendEmail({ to, subject, html, text, unsubscribeUrl, force
   }
   if (!process.env.RESEND_API_KEY) return { skipped: 'RESEND_API_KEY not set' };
   const headers = unsubscribeUrl ? { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
-  const payload = { from: process.env.RESEND_FROM || 'SkiScope <onboarding@resend.dev>', to: [addr], subject, html, headers };
+  const payload = { from: process.env.RESEND_FROM || `${DEFAULT_BRAND.emailSender} <onboarding@resend.dev>`, to: [addr], subject, html, headers };
   if (text) payload.text = text;
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },

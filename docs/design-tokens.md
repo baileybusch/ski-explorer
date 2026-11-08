@@ -41,21 +41,21 @@ Scale (px, from the classic typographic scale): 11 · 12 · 13 · 15 · 18 · 21
 Tokens live in `src/lib/boardLayout.ts` — retune there when a desktop sketch arrives.
 
 ```
-Phone (< 840px)                     Desktop (≥ 840px, max 1200px, centered)
-[logo]                [≡]           [logo]      [ search ............ ]      [≡]
-[ search ............. ]            Rank by [Actual 72h] [All regions] [Observed only]   Updated
-Rank by [..] [regions]              ┌ 1  APPI Resort        24h   Last 72h      Next 7 days ┐
-[Observed] Updated                  │    Hachimantai, Japan 0.1   8.6″ ▬▬▬▬▬   0.1″ ▨        │
-┌ 1 Featured (full width) ┐         └──────────────────────────────────────────────────────┘
-│ Last 72h     Next 7 days│              Resort      Region    Last 24h  Last 72h ↓  Next 7 days
-│ 8.6″ ▬▬▬     0.1″ ▨     │          2   Niseko …    Japan        1.2″   6.9″ ▬▬▬    1″ ▨
-└─────────────────────────┘          3   …
-┌ 2 ……… ┐ ┌ 3 ……… ┐                    (rows stack-ranked; headers sort)
+Phone (< 720px, "compact")              Desktop (≥ 720px, "full"; ≥1100px Ask docks right)
+[mark POWTRACKER]          [≡]          [mark] [ search ........ ] [≡]      │ Ask SkiScope
+[ search .................. ]           Rank by [Actual 72h] [All] [Obs]    │ starters…
+[Actual 72h][All regions][Observed]     Resort          24h  ↓Last 72h  Next 7 days
+Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬   0.1 ▨ ▒│ chips…
+▒1 APPI Resort      est 8.6″   0.1″▒     2 Niseko …       1.2  est 6.9▬    1   ▨  │
+ 2 Niseko Annupuri  est 6.9″   1″        3 …                                      │ [ask… (↑)]
+ 3 …   (8+ rows on an iPhone 13)
 ```
 
-- **Desktop is a leaderboard table, not a card grid.** A 4-column grid reads rank order in a zigzag and scatters the numbers; a table lets the eye run straight down Last 72h or Next 7 days. The featured #1 row shares the table’s column template, so its numbers line up with the column below it (Playwright asserts this).
-- **Phone stays compact 2-up cards** (3-up from 600px). Featured is one full-width row, never a screen-filler. No blank cells (`packCells`).
-- Left-aligned text, right-aligned 24h figures, numbers left-aligned at their column start so the stake begins at the same x on every row.
+- **One leaderboard list everywhere.** Every resort is a full-width row: rank, name + region on the left, then fixed stat columns on the right. Phones and desktop share `BoardList`; only the column template changes (`list.compact` / `list.full`).
+- **Columns never move.** Changing Rank by re-ranks rows (280ms FLIP, off under reduced motion) but the column template is fixed. The active column gets the bright number and bright header with the sort arrow; inactive numbers drop to 55% and their stakes to 45%.
+- **Headers are sticky and tappable.** On phones the Actual header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
+- **#1 is only lightly featured**: 7% tint, slightly taller row, semibold name. It shares the template so its numbers sit in the same columns as everyone else's.
+- **Desktop Ask is a docked side panel** (≥1100px, `role="complementary"`, no close X). The search box focuses its input instead of opening a sheet.
 - Resort page uses the same 1200px column: hero (name left, two-stat right), storm status as the only raised panel (with Alert me), then ruled sections on a 12-column grid: Next 7 days (7) | Today on the mountain (5), Radar (7) | Mountain Facts (5), Snow history (12).
 
 ## Shape
@@ -69,7 +69,7 @@ Rank by [..] [regions]              ┌ 1  APPI Resort        24h   Last 72h    
 
 ## Motion
 
-None on load. The radar loop is the only autoplay and it starts paused under `prefers-reduced-motion`.
+None on load. The radar loop is the only autoplay and it starts paused under `prefers-reduced-motion`. Board re-rank is a short FLIP slide, skipped under reduced motion.
 
 ## Ask SkiScope (chat)
 
@@ -96,8 +96,16 @@ Answer sentence…               │                        │ Answer sentence�
 [Ask about snow…          (↑)]
 ```
 
+## Brand
+
+Everything brand-facing reads `lib/brand.js`: name, both wordmarks, logo mark id, page title, tagline, email sender name, favicon. `index.html` gets the default title + favicon at build time (Vite `brandHtml` plugin). `?brand=powtracker` (optionally `&wordmark=mixed`) swaps the brand in the browser only; internal links and URL rewrites carry the param. Server paths (emails, Resend sender) always use the default brand.
+
+- **SkiScope mark**: monochrome mountain + flake.
+- **PowTracker mark**: three ranked bars (the leaderboard), each wearing a domed cap of new snow, with a six-arm flake in the open corner. Caps solid, bars 40%, `currentColor` so it follows the slate theme. Bars and caps survive at 16px; the flake ticks resolve from ~32px. Favicon: `public/brand/powtracker.svg` (dark tile), mark alone: `powtracker-mark.svg`.
+- **Wordmarks**: `caps` = Barlow Condensed 800, "POW" bright + "TRACKER" at 60% (matches the board's display face); `mixed` = Sora, bold "Pow" + medium "Tracker" at 60% for places condensed caps feel loud.
+
 ## Notes for the next pass
 
 - Tried: 4-column card grid on desktop (pass 5). Rejected: zigzag rank order, no column alignment.
+- Tried: 2-up phone cards (pass 9). Rejected: numbers didn't line up between cards, and the sort column couldn't stay put.
 - Tried: uppercase micro-labels on stats. Rejected: template tell, and they truncated at 320px.
-- Phone cards keep lightness-by-snow; the desktop table drops it because the stakes already carry the amount.

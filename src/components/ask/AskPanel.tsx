@@ -4,6 +4,7 @@ import { ArrowUpIcon, ChevronLeftIcon, SquareIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { AskTransport } from '@/lib/askTransport';
+import { BRAND } from '@/lib/brand';
 import type { AskUIMessage, BoardScope, RankOutput } from '@/lib/askTypes';
 import type { SnowUnits } from '@/lib/format';
 import { REGION_CHIPS } from '@/lib/design';
@@ -92,9 +93,13 @@ function Thread({
 
 export function AskPanel({
   open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard,
-  regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn, board,
+  regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn, board, docked = false, focusTick = 0,
 }: {
   open: boolean;
+  /** Desktop: a persistent side panel beside the board (no close, no Escape, no autofocus on load). */
+  docked?: boolean;
+  /** Bump to move focus into the composer (header search box while docked). */
+  focusTick?: number;
   onClose: () => void;
   units: SnowUnits;
   catalog: any;
@@ -140,17 +145,22 @@ export function AskPanel({
   }, [open, request, catalog]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || docked) return;
     if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) return;
     inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (focusTick) inputRef.current?.focus();
+  }, [focusTick]);
+
+  useEffect(() => {
+    if (!open || docked) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, docked, onClose]);
 
   const lastUserId = [...messages].reverse().find(m => m.role === 'user')?.id;
   useEffect(() => {
@@ -169,25 +179,28 @@ export function AskPanel({
 
   return (
     <div
-      className={`${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-background min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]`}
+      className={`${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-background min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 ${docked ? '' : 'min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]'}`}
       data-testid="search"
-      role="dialog"
-      aria-modal="false"
-      aria-label="Ask SkiScope"
+      data-docked={docked ? '1' : '0'}
+      role={docked ? 'complementary' : 'dialog'}
+      aria-modal={docked ? undefined : false}
+      aria-label={`Ask ${BRAND.name}`}
     >
       <header className="relative flex items-center gap-1 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 min-[840px]:px-3 min-[840px]:pt-3">
         <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2 text-[15px] min-[840px]:hidden" data-testid="search-cancel" onClick={onClose}>
           <ChevronLeftIcon className="size-5" /> Board
         </Button>
-        <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask SkiScope</h2>
+        <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask {BRAND.name}</h2>
         {messages.length ? (
           <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm max-[839px]:absolute max-[839px]:right-2" data-testid="ask-new" onClick={() => { stop(); setMessages([]); }}>
             New
           </Button>
         ) : null}
-        <Button type="button" variant="ghost" size="icon" className="hidden min-h-11 min-w-11 min-[840px]:inline-flex" aria-label="Close" data-testid="ask-close" onClick={onClose}>
-          <XIcon />
-        </Button>
+        {docked ? null : (
+          <Button type="button" variant="ghost" size="icon" className="hidden min-h-11 min-w-11 min-[840px]:inline-flex" aria-label="Close" data-testid="ask-close" onClick={onClose}>
+            <XIcon />
+          </Button>
+        )}
       </header>
 
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-6" data-testid="ask-scroll">
@@ -267,7 +280,7 @@ export function AskPanel({
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask about snow, a resort, or a month"
-            aria-label="Ask SkiScope"
+            aria-label={`Ask ${BRAND.name}`}
             className="h-12 pl-4 text-base"
             autoComplete="off"
             enterKeyHint="send"

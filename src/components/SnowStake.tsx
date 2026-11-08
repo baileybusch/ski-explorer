@@ -9,10 +9,10 @@ export function SnowStake({
   max: number;
   kind: 'actual' | 'forecast';
   estimated?: boolean;
-  size?: 'row' | 'card' | 'featured' | 'hero';
+  size?: 'line' | 'row' | 'card' | 'featured' | 'hero';
 }) {
   const pct = max > 0 ? Math.min(100, Math.max(0, (cm / max) * 100)) : 0;
-  const h = size === 'hero' ? 8 : size === 'featured' ? 7 : size === 'row' ? 6 : 5;
+  const h = size === 'hero' ? 8 : size === 'featured' ? 7 : size === 'row' ? 6 : size === 'line' ? 3 : 5;
   return (
     <div
       className="relative w-full overflow-hidden rounded-[2px]"
