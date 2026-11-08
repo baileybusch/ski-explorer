@@ -106,7 +106,7 @@ export type AskTools = {
 };
 
 /** The home board's scope; Ask tools default to it (lib/boardRank.js). */
-export type BoardScope = { pass: 'ikon' | 'epic' | 'all'; regionId: string | null; observedOnly: boolean };
+export type BoardScope = { pass: 'ikon' | 'epic' | 'all'; regionId: string | null; observedOnly: boolean; sort?: 'actual72' | 'actual24' | 'forecast7d' | 'name' };
 
 export type AskMetadata = { mode?: 'llm' | 'fallback'; model?: string | null };
 

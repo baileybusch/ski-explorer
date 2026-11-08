@@ -551,7 +551,7 @@ export default function App() {
         }}
         onWorldwide={resetHome}
         pass={pass}
-        board={{ pass, regionId: facets.regionId || null, observedOnly }}
+        board={{ pass, regionId: facets.regionId || null, observedOnly, sort: boardSort }}
         setPass={p => { setPass(p as typeof PASSES[number]); setActiveIds(null); }}
         stormsOn={stormsOn}
         setStormsOn={on => { setStormsOn(on); setFacets(f => ({ ...f, storms: on })); if (on) setSearchOpen(false); }}

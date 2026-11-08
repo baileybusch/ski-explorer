@@ -24,9 +24,11 @@ async function openAsk(page: Page) {
 
 async function ask(page: Page, text: string) {
   const input = page.getByLabel('Ask SkiScope', { exact: true }).last();
+  const before = await page.getByTestId('ask-answer').count();
   await input.fill(text);
   await input.press('Enter');
-  const answer = page.getByTestId('ask-answer').last();
+  await expect(page.getByTestId('ask-answer')).toHaveCount(before + 1, { timeout: 20_000 });
+  const answer = page.getByTestId('ask-answer').nth(before);
   await expect(answer.getByTestId('ask-sources')).toBeVisible({ timeout: 20_000 });
   await expect(answer.getByTestId('ask-answer-text')).not.toBeEmpty();
   return answer;
@@ -105,6 +107,18 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   expect(scoped.length).toBeGreaterThanOrEqual(3);
   expect(scoped).toEqual(scopedBoard.slice(0, scoped.length));
   await expect(scopedAnswer.getByTestId('ask-ranked')).toContainText(/Ikon resorts in Utah, observed only/);
+
+  await page.keyboard.press('Escape');
+  await page.getByTestId('observed-only').click();
+  await page.getByTestId('board-region').selectOption('');
+  await page.getByTestId('board-sort').selectOption('forecast7d');
+  await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'forecast7d');
+  const forecastBoard = await settledBoardTop(page);
+  await page.getByTestId('search-trigger').click();
+  const forecastAnswer = await ask(page, 'Who is getting the most snow?');
+  const forecastChat = await askTop(forecastAnswer);
+  expect(forecastChat).toEqual(forecastBoard.slice(0, forecastChat.length));
+  await expect(forecastAnswer.getByTestId('ask-ranked')).toContainText(/ranked by forecast 7d/i);
 });
 
 test('Japan trip: Japan resorts plus a month-by-month historical profile', async ({ page }) => {

@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { readUIMessageStream, simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { loadCatalog, executeTool, TOOL_NAMES } from '../lib/skiscope-tools/index.js';
-import { answerChunks, deterministicStream, planAnswer, mentionedResorts } from '../lib/ask/answer.js';
+import { answerChunks, deterministicStream, planAnswer, mentionedResorts, runAskTool } from '../lib/ask/answer.js';
 import { askStream, answerUsage, isTierRejection, pickSubstitute, ASK_MODEL_SUBSTITUTES } from '../lib/ask/server.js';
 import { rankResorts, monthClimatology, getResort, compareResortsDetail } from '../lib/skiscope-tools/askTools.js';
 import { compareBoard, dumpParts } from '../lib/dumpScore.js';
@@ -110,7 +110,7 @@ export async function runAskEvals() {
   };
 
   const intents = [
-    ['which resort is getting the most snow?', 'rank', { tool: 'rankResorts', sort: 'actual72h' }],
+    ['which resort is getting the most snow?', 'rank', { tool: 'rankResorts', sort: undefined }],
     ['good resort for a Japan ski trip', 'trip', { tool: 'rankResorts', region: 'japan' }],
     ['California resorts with the most projected snow', 'rank', { tool: 'rankResorts', sort: 'forecast7d', region: 'california' }],
     ['best resorts to go to in January', 'month', { tool: 'monthClimatology', month: 1 }],
@@ -233,6 +233,13 @@ export async function runAskEvals() {
   } finally {
     console.warn = warn;
   }
+
+  const onBoard = sort => runAskTool('rankResorts', {}, { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, sort } });
+  const forecastBoard = onBoard('forecast7d');
+  check('rankResorts follows the board sort when the question names no window',
+    onBoard('actual72').sort === 'actual72h' && onBoard('actual24').sort === 'actual24h' && forecastBoard.sort === 'forecast7d' && onBoard('name').sort === 'actual72h'
+      && sameIds(forecastBoard.rows.map(r => r.id), rankBoard(cat.resorts, cat.snow, { pass: 'ikon', sort: 'forecast7d' }).slice(0, forecastBoard.rows.length).map(r => r.id)));
+  check('a named window overrides the board sort', runAskTool('rankResorts', { sort: 'actual24h' }, { ...cat, board: { pass: 'ikon', sort: 'forecast7d' } }).sort === 'actual24h');
 
   const usage = answerUsage([
     { usage: { inputTokens: { total: 900 }, outputTokens: { total: 40 } }, providerMetadata: { gateway: { cost: '0.00012' } } },
