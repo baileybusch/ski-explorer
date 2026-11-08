@@ -21,7 +21,8 @@ import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { BOARD_MORE, BOARD_PAGE, compareDump, dumpParts } from '@/lib/board';
+import { BOARD_MORE, BOARD_PAGE, compareBoard, dumpParts } from '@/lib/board';
+import { BOARD_LAYOUT, isBoardSort, type BoardSortId } from '@/lib/boardLayout';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
 import { HomeSignup } from '@/components/HomeSignup';
 import { ContextCta } from '@/components/ContextCta';
@@ -84,6 +85,11 @@ export default function App() {
   const [editRule, setEditRule] = useState<LocalRule | null>(null);
   const [facets, setFacets] = useState<SearchFacets>({});
   const [parsedIntent, setParsedIntent] = useState<any>(null);
+  const [boardSort, setBoardSort] = useState<BoardSortId>(() => {
+    const stored = localStorage.getItem('ss_board_sort');
+    return isBoardSort(stored) ? stored : 'actual72';
+  });
+  const [observedOnly, setObservedOnly] = useState(() => localStorage.getItem('ss_obs') === '1');
 
   const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId || q);
 
@@ -409,13 +415,22 @@ export default function App() {
     }));
     let out = rows;
     if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
-    out.sort((a, b) => compareDump(a, b, catalog.snow));
+    if (observedOnly) out = out.filter(x => !x.dump.estimated);
+    out.sort((a, b) => compareBoard(a, b, catalog.snow, boardSort));
     return out;
-  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById]);
+  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardSort, observedOnly]);
 
   useEffect(() => {
     setShown(BOARD_PAGE);
-  }, [pass, activeIds, stormsOn]);
+  }, [pass, activeIds, stormsOn, boardSort, observedOnly]);
+
+  useEffect(() => {
+    localStorage.setItem('ss_board_sort', boardSort);
+  }, [boardSort]);
+
+  useEffect(() => {
+    localStorage.setItem('ss_obs', observedOnly ? '1' : '0');
+  }, [observedOnly]);
 
   useEffect(() => {
     if (!nwsOn) return;
@@ -489,6 +504,11 @@ export default function App() {
 
       {catalog && win && view === 'board' ? (
         <div className="flex h-full min-h-dvh flex-col">
+          <div
+            className="mx-auto flex min-h-0 w-full flex-1 flex-col"
+            style={{ maxWidth: BOARD_LAYOUT.maxWidth }}
+            data-testid="board-shell"
+          >
           <BoardChrome
             q={q}
             onOpenSearch={() => setSearchOpen(true)}
@@ -515,6 +535,22 @@ export default function App() {
             scrollerRef={boardScroll}
             restoreTop={restoreTop}
             tight={scoped}
+            sort={boardSort}
+            onSort={setBoardSort}
+            regionId={facets.regionId || ''}
+            regions={catalog.regions || []}
+            onRegion={id => {
+              if (!id) {
+                setActiveIds(null);
+                setFacets(f => ({ ...f, regionId: null, regionName: null }));
+                writeURL({ region: null, ss: 'board' });
+                return;
+              }
+              const g = catalog.regions.find((x: any) => x.id === id);
+              if (g) applyRegion(g);
+            }}
+            observedOnly={observedOnly}
+            onObservedOnly={setObservedOnly}
             after={(
               <>
                 {scoped && parsedIntent ? (
@@ -550,6 +586,7 @@ export default function App() {
               </>
             )}
           />
+          </div>
         </div>
       ) : null}
 

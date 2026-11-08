@@ -1,4 +1,4 @@
-import { compareDump, dumpParts, dumpScoreIn, boardIsMonotonic } from '../lib/dumpScore.js';
+import { compareDump, compareBoard, dumpParts, dumpScoreIn, boardIsMonotonic } from '../lib/dumpScore.js';
 
 const snow = {
   today: 3,
@@ -104,6 +104,51 @@ const cases = [
       const ranked = [...rows].sort((x, y) => compareDump(x, y, tieSnow)).map(x => x.r.id);
       // all 1″ actual; b and c share 3″ forecast; a has 2″. Tie b/c → Bravo before Charlie.
       return ranked.join(',') === 'b,c,a' ? [] : [`tie ${ranked.join(',')} != b,c,a`];
+    },
+  },
+  {
+    id: 'sort-actual24',
+    run: () => {
+      const mixed = {
+        ...snow,
+        observed: {
+          quiet: { snow72hCm: 2.54, snow24hCm: 20.32, source: 'snotel:1:CO:SNTL', observedAt: '2026-12-03T12:00:00' },
+        },
+      };
+      const ranked = [
+        { r: { id: 'dump', name: 'Dump' } },
+        { r: { id: 'quiet', name: 'Quiet' } },
+        { r: { id: 'incoming', name: 'Incoming' } },
+      ].sort((a, b) => compareBoard(a, b, mixed, 'actual24')).map(x => x.r.id);
+      return ranked[0] === 'quiet' ? [] : [`actual24 ${ranked.join(',')} expected quiet first`];
+    },
+  },
+  {
+    id: 'sort-forecast-leads',
+    run: () => {
+      const rows = [
+        { r: { id: 'quiet', name: 'Quiet' } },
+        { r: { id: 'incoming', name: 'Incoming' } },
+        { r: { id: 'dump', name: 'Dump' } },
+        { r: { id: 'recent', name: 'Recent' } },
+      ];
+      const ranked = [...rows].sort((a, b) => compareBoard(a, b, snow, 'forecast7d')).map(x => x.r.id);
+      return ranked[0] === 'dump' && ranked[1] === 'incoming'
+        ? []
+        : [`forecast sort ${ranked.join(',')} expected dump then incoming`];
+    },
+  },
+  {
+    id: 'sort-name',
+    run: () => {
+      const rows = [
+        { r: { id: 'dump', name: 'Dump' } },
+        { r: { id: 'incoming', name: 'Incoming' } },
+        { r: { id: 'recent', name: 'Recent' } },
+        { r: { id: 'quiet', name: 'Quiet' } },
+      ];
+      const ranked = [...rows].sort((a, b) => compareBoard(a, b, snow, 'name')).map(x => x.r.name);
+      return ranked.join(',') === 'Dump,Incoming,Quiet,Recent' ? [] : [`name ${ranked.join(',')}`];
     },
   },
   {

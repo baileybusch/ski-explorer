@@ -101,11 +101,11 @@ export function ResortProfile({
         onPointerUp={onPointerUp}
       >
         <section
-          className="relative flex h-[48dvh] flex-col justify-end px-4 pb-5 pt-[max(3.4rem,calc(env(safe-area-inset-top)+2.6rem))] text-white"
+          className="relative flex h-[min(42dvh,22rem)] flex-col justify-end px-4 pb-5 pt-[max(3.4rem,calc(env(safe-area-inset-top)+2.6rem))] text-white md:h-[min(36dvh,24rem)]"
           data-testid="profile-hero"
         >
           <div className="hero-scrim pointer-events-none absolute inset-0" />
-          <div className="relative z-10">
+          <div className="relative z-10 mx-auto w-full max-w-3xl md:max-w-5xl">
             <div className="flex items-center gap-2">
               {passName ? <Badge variant="secondary">{passName}</Badge> : null}
             </div>
@@ -113,23 +113,21 @@ export function ResortProfile({
             <p className="mt-1 text-sm text-white/70">
               {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
             </p>
-            <div className="mt-2 flex min-w-0 items-end justify-between gap-3">
-              <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}>
-                <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" estimated={dump.estimated} />
-              </div>
-              <div className="mb-2 text-right text-base text-white/80">
-                <div>{glyph} {tempLabel(cur.tempC, tempUnits)}</div>
-                <div className="text-sm text-white/65">
-                  H {tempLabel(hi, tempUnits)} / L {tempLabel(lo, tempUnits)}
-                  {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
-                </div>
-                {resort.base_depth ? <div className="text-sm text-white/65">Base {snowAmount(resort.base_depth, units)}</div> : null}
-              </div>
+            <div className="mt-3 min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}>
+              <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" estimated={dump.estimated} />
+            </div>
+            <div className="mt-2 text-sm text-white/80">
+              {glyph} {tempLabel(cur.tempC, tempUnits)}
+              <span className="text-white/65">
+                {' '}H {tempLabel(hi, tempUnits)} / L {tempLabel(lo, tempUnits)}
+                {cur.windKmh != null ? ` · ${windLabel(cur.windKmh, units)}` : ''}
+                {resort.base_depth ? ` · Base ${snowAmount(resort.base_depth, units)}` : ''}
+              </span>
             </div>
           </div>
         </section>
 
-        <div className="relative z-20 -mt-3 flex flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+        <div className="relative z-20 -mt-3 mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-t-[1.6rem] bg-background px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 md:max-w-5xl md:px-6">
           <Card data-testid="tile-storm-status">
             <CardHeader>
               <CardTitle>Storm status</CardTitle>
@@ -147,6 +145,7 @@ export function ResortProfile({
             </CardContent>
           </Card>
 
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
           <Card data-testid="weather-panel">
             <CardHeader>
               <CardTitle>7-day forecast</CardTitle>
@@ -215,6 +214,7 @@ export function ResortProfile({
             </CardContent>
           </Card>
 
+          </div>
           <SeeYouOutThere resort={resort} social={social} />
         </div>
       </div>

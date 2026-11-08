@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { forecastDays } from '../../lib/snowWindow.js';
-import { dumpParts, cardTone, gridCols, packCells, relativeUpdated, rowHeight, targetRows } from '@/lib/board';
-import { snowAmount, tempLabel, type SnowUnits, type TempUnits } from '@/lib/format';
-import { parseISO } from '../../lib/util.js';
-import { RadarThumb } from '@/components/RadarThumb';
+import { dumpParts, cardTone, packCells, relativeUpdated, gridCols, layoutGap, layoutCardH, layoutPadX } from '@/lib/board';
+import type { BoardSortId } from '@/lib/boardLayout';
+import type { SnowUnits, TempUnits } from '@/lib/format';
 import { dumpAria, SnowSplit } from '@/components/SnowSplit';
+import { BoardToolbar } from '@/components/BoardToolbar';
 
 export function BlockBoard({
-  rows, units, tempUnits = 'F', snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, after, tight,
+  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, after, tight,
+  sort, onSort, regionId, regions, onRegion, observedOnly, onObservedOnly,
 }: {
   rows: { r: any; m: any; storm?: any; wx?: any; dump?: ReturnType<typeof dumpParts> }[];
   units: SnowUnits;
@@ -21,6 +21,13 @@ export function BlockBoard({
   onMore?: () => void;
   after?: ReactNode;
   tight?: boolean;
+  sort: BoardSortId;
+  onSort: (s: BoardSortId) => void;
+  regionId: string;
+  regions: { id: string; name: string }[];
+  onRegion: (id: string) => void;
+  observedOnly: boolean;
+  onObservedOnly: (on: boolean) => void;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 390, h: 560 });
@@ -43,20 +50,26 @@ export function BlockBoard({
     if (wrap.current && restoreTop != null) wrap.current.scrollTop = restoreTop;
   }, [restoreTop]);
 
-  const gap = 8;
+  const gap = layoutGap(box.w);
+  const padX = layoutPadX(box.w);
   const cols = gridCols(box.w);
-  const minRow = box.w < 400 ? 104 : box.w < 720 ? 112 : 124;
   const packed = packCells(rows.length, cols);
-  const first = targetRows(box.h, gap, minRow);
-  const fillRows = packed.rows > 0 && packed.rows <= first ? packed.rows : first;
-  const rowPx = rowHeight(fillRows, box.h, gap);
+  const featured = rows.length >= 3;
+  const featuredH = layoutCardH(box.w, true);
+  const cardH = layoutCardH(box.w, false);
+  const templateRows = featured
+    ? `${featuredH}px repeat(${Math.max(0, packed.rows - 1)}, ${cardH}px)`
+    : `repeat(${packed.rows}, ${cardH}px)`;
 
   return (
     <div
       ref={wrap}
-      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${tight ? 'pt-1' : 'pt-5'}`}
+      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${tight ? 'pt-1' : 'pt-3'}`}
+      style={{ paddingLeft: padX, paddingRight: padX }}
       data-testid="board-b"
       data-mode="dump"
+      data-sort={sort}
+      data-cols={cols}
     >
       {rows.length === 0 ? (
         <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
@@ -64,19 +77,21 @@ export function BlockBoard({
         </div>
       ) : (
         <>
-          <p className="px-1 pb-1 text-[11px] text-muted-foreground" data-testid="board-rank-hint">
-            Ranked by last 72h observed
-          </p>
-          {updated ? (
-            <p className="px-1 pb-2 text-[11px] text-muted-foreground" data-testid="board-updated">
-              {updated}
-            </p>
-          ) : null}
+          <BoardToolbar
+            sort={sort}
+            onSort={onSort}
+            regionId={regionId}
+            regions={regions}
+            onRegion={onRegion}
+            observedOnly={observedOnly}
+            onObservedOnly={onObservedOnly}
+            updated={updated}
+          />
           <div
             className="grid w-full min-w-0"
             style={{
               gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-              gridAutoRows: `${rowPx}px`,
+              gridTemplateRows: templateRows,
               gap,
             }}
           >
@@ -85,8 +100,7 @@ export function BlockBoard({
               const dump = row.dump || dumpParts(row.r, snow);
               const tone = cardTone(cell.i + 1, dump.past72Cm, max);
               const fg = tone.ink ? '#08090b' : '#f2f3f5';
-              const featured = cell.i === 0 && rows.length >= 3;
-              const days = featured ? forecastDays(row.r, snow, { days: 5 }) : [];
+              const isFeatured = cell.i === 0 && featured;
               return (
                 <button
                   key={row.r.id}
@@ -95,8 +109,10 @@ export function BlockBoard({
                   data-resort={row.r.id}
                   data-rank={cell.i + 1}
                   data-snow72={String(dump.past72In)}
+                  data-snow24={String(dump.past24In)}
                   data-next7={String(dump.next7In)}
                   data-source={dump.source}
+                  data-estimated={dump.estimated ? '1' : '0'}
                   aria-label={dumpAria(row.r.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}
                   className="flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] p-3 text-left"
                   style={{
@@ -107,23 +123,18 @@ export function BlockBoard({
                   }}
                   onClick={() => onOpen(row.r.id)}
                 >
-                  <div className="min-w-0">
-                    <div className={`truncate font-semibold leading-tight ${featured ? 'text-2xl' : 'text-sm'}`}>
-                      {row.r.name}
-                    </div>
+                  <div className={`truncate font-semibold leading-tight ${isFeatured ? 'text-lg md:text-xl' : 'text-sm'}`}>
+                    {row.r.name}
                   </div>
-                  <div className={`flex min-h-0 min-w-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
-                    <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size={featured ? 'featured' : 'card'} estimated={dump.estimated} />
-                    {featured ? (
-                      <RadarThumb
-                        lon={row.r.center[0]}
-                        lat={row.r.center[1]}
-                        enabled
-                        className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-black/15"
-                      />
-                    ) : null}
+                  <div className={isFeatured ? 'max-w-md' : 'w-full'}>
+                    <SnowSplit
+                      pastCm={dump.past72Cm}
+                      nextCm={dump.next7Cm}
+                      units={units}
+                      size={isFeatured ? 'featured' : 'card'}
+                      estimated={dump.estimated}
+                    />
                   </div>
-                  {featured ? <ForecastStrip days={days} units={units} tempUnits={tempUnits} /> : null}
                 </button>
               );
             })}
@@ -138,27 +149,6 @@ export function BlockBoard({
         </>
       )}
       {after}
-    </div>
-  );
-}
-
-function ForecastStrip({ days, units, tempUnits }: { days: any[]; units: SnowUnits; tempUnits: TempUnits }) {
-  if (!days.length) return null;
-  return (
-    <div className="flex min-w-0 gap-1" data-testid="forecast-strip">
-      {days.map(d => (
-        <div key={d.date} className="min-w-0 flex-1 text-center">
-          <div className="text-[10px] opacity-60">
-            {parseISO(d.date).toLocaleDateString('en-US', { weekday: 'narrow' })}
-          </div>
-          <div className="text-xs font-semibold leading-none">
-            {snowAmount(d.snowCm, units)}
-          </div>
-          {d.tmax != null ? (
-            <div className="text-[10px] opacity-55">{tempLabel(d.tmax, tempUnits)}</div>
-          ) : null}
-        </div>
-      ))}
     </div>
   );
 }

@@ -70,7 +70,7 @@ Open-Meteo `snowfall_sum` is a model snowfall field. MET Norway snow here is pre
 
 ## Observed snow vs forecast (pass 4)
 
-The big number on the board is **last 72h observed**. The chip is **+X coming** from the model. They are never mixed into one fallen-snow total.
+Cards show **Last 72h** (observed, or `est.` from the model) and **Next 7 days** (forecast) as equal two-stat columns. They are never mixed into one fallen-snow total. Default sort is last 72h; the board can also sort by 24h, forecast, or name.
 
 | Region | Observed source | `source` field | License |
 |---|---|---|---|

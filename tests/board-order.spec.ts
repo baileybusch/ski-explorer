@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('home board is monotonic by 72h observed, featured is #1', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('board-rank-hint')).toHaveText(/Ranked by last 72h observed/i);
+  await expect(page.getByTestId('board-rank-hint')).toHaveText(/Ranked by last 72h/i);
   await expect(page.getByTestId('board-updated')).toBeVisible();
 
   const cards = page.getByTestId('block');

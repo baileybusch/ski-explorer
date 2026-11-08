@@ -25,7 +25,7 @@ export function BoardChrome({
 
   return (
     <header
-      className="mx-auto flex w-full max-w-xl flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+      className="mx-auto flex w-full flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:px-4"
       data-testid="board-chrome"
     >
       <div className="flex items-center justify-between gap-2">
@@ -52,7 +52,7 @@ export function BoardChrome({
       </div>
       <button
         type="button"
-        className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-sm ring-1 ring-foreground/12"
+        className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-sm ring-1 ring-foreground/12 md:min-h-14"
         onClick={onOpenSearch}
         data-testid="search-trigger"
       >
