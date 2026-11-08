@@ -2,6 +2,9 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { BRAND } from '@/lib/brand';
 import { SiteFooter } from '@/components/SiteFooter';
 import { withAlerts } from '@/lib/alertsUi';
+import { CONSENT_TEXT, CONSENT_VERSION } from '../../lib/consentText.js';
+
+type Block = string | { h: string };
 
 const COPY = {
   about: {
@@ -15,15 +18,30 @@ const COPY = {
     ],
   },
   privacy: {
-    title: 'Privacy',
+    title: 'Privacy Policy',
     draft: true,
     body: [
-      `This is a draft for lawyer review. It describes how ${BRAND.name} intends to handle the email address you give us. It is not a finished privacy policy.`,
-      'There are no accounts or passwords. You enter an email, we email a confirmation link, and only after you click is the subscriber active. Later, Manage account emails a sign-in link. Every alert and recap also has a one-click unsubscribe link.',
-      'If you sign up, we use your email to send storm alerts and optional weekly recaps you asked for, and to send a sign-in link so you can manage those alerts. Recaps and alerts may include clearly labeled sponsored or partner content if you leave that preference on. You can turn sponsor content off on the manage page. Signup copy and this page share consent text version ss-consent-1: “By subscribing you agree to get storm alerts and recaps, which may include sponsored content. Unsubscribe anytime.”',
-      'We store your email, the resorts you follow, your email preferences, and a consent record (timestamp, source page, consent-text version, hashed IP) so a future sponsor use of the list is backed by consent. We keep a private subscriber record so you can unsubscribe or delete your data. Manage and unsubscribe links sit in every email.',
-      'Snow data on the board comes from Open-Meteo and other public map sources listed in About. That is weather data, not your personal data.',
-      'The manage page is where you turn storm alerts, recaps, and sponsor content on or off, unsubscribe, or ask us to delete the record. Contact us if those controls are not enough.',
+      `Draft pending lawyer review, not a finished privacy policy. It describes what ${BRAND.name} collects today, how it is linked to your email, and how you opt out. Last updated November 8, 2026.`,
+      { h: 'Your email is your account' },
+      'There are no passwords. You enter an email, we send a confirmation link, and you become an active subscriber only after you click it. To manage alerts later we email a one-time sign-in link. Every email has a one-click unsubscribe link.',
+      { h: 'What we collect' },
+      'Subscription details: your email, the resorts, regions, passes, and trips you ask us to watch, your email preferences (storm alerts, recaps, sensitivity, quiet hours, sponsor content, Do Not Sell), and a consent record (time, the page you signed up on, the consent-text version, and a hashed IP address).',
+      `Ask ${BRAND.name} questions: the text of every question you type into Ask, the resorts, regions, and months we infer from it, the time, and whether an AI model or our built-in answers replied. Questions are processed by AI models through Vercel AI Gateway.`,
+      'Browsing interests: which category pages (for example /region/california), resort pages, and signup prompts you use, including when an alert offer in Ask is shown, accepted, or dismissed.',
+      'An anonymous browser id: a random id stored on your device, sent with your questions and these events. It is not your name or email.',
+      { h: 'How it is linked to your email' },
+      'Before you sign up, questions and interests are tied only to the anonymous browser id. When you sign up or sign in from that browser, we link the id to your email, including questions you asked from it before signing up. From then on, your questions, browsing interests, and watched mountains form one interest profile tied to your email.',
+      { h: 'How we use it' },
+      `To send the alerts, recaps, and welcome emails you asked for, and to personalize them (which mountains to watch, what to put in a recap). To understand what skiers want so we can improve the product. We do not sell or share your email, your Ask questions, or your individual interest profile with sponsors or anyone else. Sponsorships, when they exist, are a labeled slot inside an email we already send you, driven by a JSON file we control — not a transfer of your data. We may show a sponsor aggregate counts only (for example, “how many people watch Utah”), never a list of people.`,
+      { h: 'Do Not Sell or Share My Personal Information' },
+      'California residents (and anyone else who asks) can record an opt-out even though we do not sell or share individual data today. Use the Do Not Sell or Share My Personal Information link in the footer, or the switch on My alerts. Opting out flags your account and this browser. We keep using your data only to run your own alerts.',
+      { h: 'Your other choices' },
+      'My alerts and Preferences let you change what we watch, turn emails off, unsubscribe from everything, or delete your subscriber record. To request a copy of your data or deletion of your question history, write to baileybusch@gmail.com.',
+      { h: 'Retention and service providers' },
+      'We keep subscriber records while you are subscribed and delete them on request. Question and interest events are kept for up to 24 months. Data is stored in private Vercel Blob storage; Vercel hosts the site and routes AI requests; Resend delivers email.',
+      { h: 'Consent' },
+      `Signup copy is the short line (version ${CONSENT_VERSION}): “${CONSENT_TEXT}” plus links to Privacy and Do Not Sell. The rest of this page is the full disclosure.`,
+      'Snow data on the board comes from Open-Meteo and other public sources listed in About. That is weather data, not your personal data.',
     ],
   },
   terms: {
@@ -66,11 +84,13 @@ export function StaticPage({ kind }: { kind: keyof typeof COPY }) {
       </header>
       <main className="mx-auto w-full max-w-xl px-3 py-8">
         {'draft' in page && page.draft ? (
-          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Draft — review with a lawyer before launch</p>
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground" data-testid="draft-flag">Draft pending lawyer review</p>
         ) : null}
         <h1 className="font-display text-5xl tracking-wide">{page.title}</h1>
         <div className="mt-5 flex flex-col gap-4 text-base leading-relaxed text-muted-foreground">
-          {page.body.map(p => <p key={p.slice(0, 24)}>{p}</p>)}
+          {(page.body as readonly Block[]).map((p, i) => (typeof p === 'string'
+            ? <p key={i}>{p}</p>
+            : <h2 key={i} className="mt-3 text-lg font-semibold text-foreground">{p.h}</h2>))}
           {kind === 'about' || kind === 'privacy' ? (
             <p data-testid="open-meteo-credit">
               Weather data by <a href="https://open-meteo.com/" className="underline-offset-4 hover:underline">Open-Meteo.com</a>

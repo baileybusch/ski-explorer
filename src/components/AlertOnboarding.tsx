@@ -6,10 +6,13 @@ import { ChoiceTile, FlowShell, useAutoAdvance } from '@/components/FlowShell';
 import { type AlertsUiMode } from '@/lib/alertsUi';
 import { sensitivityOf } from '../../lib/alertDefaults.js';
 import { loadPrefs } from '@/lib/session';
-import {
-  type LocalRule, accountEmail, addLocalRule, setAccountEmail, updateLocalRule,
-} from '@/lib/alertRules';
-import { CONSENT_TEXT } from '../../lib/consentText.js';
+import { type LocalRule, accountEmail } from '@/lib/alertRules';
+import { type CaptureSource, subscribeRule, validEmail } from '@/lib/subscribe';
+import { ConsentNote } from '@/components/ConsentNote';
+import { doNotSell } from '@/lib/visitor';
+import { sharePage, withRef } from '@/lib/share';
+import { categoryPath } from '../../lib/categoryPages.js';
+import { toast } from 'sonner';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -24,7 +27,7 @@ export type AlertContext = {
   kids?: number;
   pass?: string;
   email?: string | null;
-  source?: 'incoming' | 'resort' | 'menu' | 'edit' | 'signup' | 'home' | 'search' | 'trip';
+  source?: CaptureSource;
 };
 
 const STEPS = ['scope', 'resorts', 'confirm', 'success'] as const;
@@ -32,10 +35,6 @@ type Step = typeof STEPS[number];
 
 function namesOf(ids: string[], resorts: { id: string; name: string }[]) {
   return ids.map(id => resorts.find(r => r.id === id)?.name || id);
-}
-
-function validEmail(addr: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.trim());
 }
 
 export function AlertOnboarding({
@@ -142,7 +141,7 @@ export function AlertOnboarding({
       id: editRule?.id,
       email: next,
       type: kind,
-      watch: kind === 'region' ? 'region' : 'resort',
+      watch: kind === 'region' ? (ctx.region ? 'region' : 'pass') : 'resort',
       pass: ctx.pass || 'both',
       resorts: kind === 'region' && scope === 'all' ? [] : ids,
       region: kind === 'region' ? (ctx.region || null) : null,
@@ -155,27 +154,15 @@ export function AlertOnboarding({
       recap: recapOn,
     };
     try {
-      setAccountEmail(next);
-      if (mode !== 'live') {
-        if (editRule?.id) updateLocalRule(editRule.id, payload);
-        else addLocalRule(payload);
-        onSaved?.();
-        setStep('success');
-        return;
-      }
-      const r = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          source: ctx.source || 'signup',
-          adults: ctx.adults,
-          kids: ctx.kids,
-        }),
+      const r = await subscribeRule({
+        payload: { ...payload, email: next },
+        mode,
+        source: ctx.source || 'signup',
+        editId: editRule?.id,
+        extra: { adults: ctx.adults, kids: ctx.kids, doNotSell: doNotSell() },
       });
-      const j = await r.json().catch(() => ({ error: 'Could not save' }));
-      if (j.error) {
-        setMsg(j.error);
+      if ('error' in r) {
+        setMsg(r.error);
         setStep('confirm');
         return;
       }
@@ -313,9 +300,7 @@ export function AlertOnboarding({
             <span>Weekly recap</span>
             <Switch checked={recapOn} onCheckedChange={setRecapOn} data-testid="alert-recap-toggle" />
           </label>
-          <p className="text-sm text-muted-foreground" data-testid="alert-consent">
-            {CONSENT_TEXT}
-          </p>
+          <ConsentNote testId="alert-consent" />
           {msg ? <p className="text-sm text-destructive" data-testid="alert-msg">{msg}</p> : null}
         </div>
       ) : null}
@@ -328,6 +313,28 @@ export function AlertOnboarding({
           <p className="text-sm text-muted-foreground" data-testid="alert-check-email">
             {mode === 'live' ? 'Check your email and tap the confirmation link. Alerts start only after you confirm.' : 'Saved on this device. Nothing was emailed.'}
           </p>
+          <div className="rounded-2xl p-4 ring-1 ring-foreground/12" data-testid="alert-share">
+            <p className="text-sm">Know a skier who&apos;d want this too?</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 min-h-12 w-full text-base"
+              data-testid="alert-share-btn"
+              onClick={async () => {
+                const path = ctx.region ? categoryPath('region', ctx.region)
+                  : ctx.source === 'pass' && ctx.pass ? categoryPath('pass', ctx.pass)
+                    : selected[0] ? categoryPath('resort', selected[0])
+                      : '/';
+                const result = await sharePage(path, `Snow alerts for ${where}`);
+                if (result === 'copied') toast('Invite link copied');
+              }}
+            >
+              Share this board
+            </Button>
+            <p className="mt-2 break-all text-xs text-muted-foreground" data-testid="alert-share-url">
+              {withRef(ctx.region ? categoryPath('region', ctx.region) : selected[0] ? categoryPath('resort', selected[0]) : '/')}
+            </p>
+          </div>
         </div>
       ) : null}
     </FlowShell>

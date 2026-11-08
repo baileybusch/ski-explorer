@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { DEFAULT_BRAND } from './lib/brand.js';
+import { devApi } from './scripts/vite-dev-api.js';
 
 /** Serve MapLibre's ES worker at a stable same-origin URL (dev + dist). */
 function maplibreWorker() {
@@ -38,8 +39,32 @@ function brandHtml() {
   };
 }
 
+/** Static HTML + OG card per category page (scripts/og.js). Build only; dev renders cards on demand. */
+function categoryPages() {
+  let outDir = 'dist';
+  return {
+    name: 'category-pages',
+    apply: 'build',
+    configResolved(config) { outDir = config.build.outDir; },
+    async closeBundle() {
+      const { ogPages, renderOgPng, categoryHtml, ogImagePath, sitemapXml } = await import('./scripts/og.js');
+      const { SITE } = await import('./lib/site.js');
+      const index = readFileSync(`${outDir}/index.html`, 'utf8');
+      mkdirSync(`${outDir}/og`, { recursive: true });
+      for (const kind of ['region', 'pass', 'resort']) mkdirSync(`${outDir}/${kind}`, { recursive: true });
+      const pages = ogPages();
+      for (const page of pages) {
+        writeFileSync(`${outDir}/${page.kind}/${page.id}.html`, categoryHtml(index, page, SITE));
+        writeFileSync(`${outDir}${ogImagePath(page.kind, page.id)}`, await renderOgPng(page));
+      }
+      writeFileSync(`${outDir}/sitemap.xml`, sitemapXml(pages, SITE));
+      console.log(`category pages: ${pages.length} html + og cards + sitemap`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), maplibreWorker(), brandHtml()],
+  plugins: [react(), tailwindcss(), maplibreWorker(), brandHtml(), devApi(), categoryPages()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -47,7 +47,7 @@ export function SettingsSheet({
               variant="ghost"
               className="min-h-12 w-full justify-start text-base"
               data-testid="menu-alerts"
-              onClick={() => { onOpenChange(false); location.assign(withAlerts('/manage#alerts')); }}
+              onClick={() => { onOpenChange(false); location.assign(withAlerts('/my-alerts')); }}
             >
               My alerts
             </Button>

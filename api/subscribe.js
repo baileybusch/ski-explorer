@@ -4,6 +4,7 @@ import { normalizeRule } from '../lib/evaluateAlerts.js';
 import { authRateLimit, clientIp } from '../lib/authLimit.js';
 import { consentRecord, NEUTRAL_SIGNUP } from '../lib/consent.js';
 import { csrfOk } from '../lib/authToken.js';
+import { recordEvents } from '../lib/insightsStore.js';
 
 function previewEnv() {
   return process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'development';
@@ -76,9 +77,20 @@ export default async function handler(req, res) {
     await saveSub(sub);
   }
 
+  if (b.doNotSell === true && !sub.prefs?.doNotSell) {
+    sub.prefs = { ...(sub.prefs || {}), doNotSell: true };
+    await saveSub(sub);
+  }
+
   if (sub.status !== 'active') {
     await sendEmail({ to: sub.email, subject: 'Confirm your SkiScope snow alerts', html: confirmEmail(sub) });
   }
+
+  await recordEvents([
+    { type: 'signup', email, sid: b.sid, source: b.source || 'signup', kind: rule.type, resorts: ids, region: rule.region, consentVersion: consent.version, ref: b.ref },
+    { type: 'link', email, sid: b.sid },
+    ...(b.doNotSell === true ? [{ type: 'dns', email, sid: b.sid, optOut: true }] : []),
+  ], { durable: true }).catch(err => console.warn('[subscribe] insights', err?.message || err));
 
   void emailConfigured;
   return json(res, 200, { ...NEUTRAL_SIGNUP, sent: true });

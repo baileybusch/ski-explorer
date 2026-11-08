@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-const REQUIRED = ['/manage', '/about', '/privacy', '/terms', '/disclosure', '/contact'];
+const REQUIRED = ['/manage', '/my-alerts', '/do-not-sell', '/admin', '/about', '/privacy', '/terms', '/disclosure', '/contact'];
 
 export function runSpaRouteEvals() {
   const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));

@@ -1,5 +1,5 @@
 /**
- * Pulse job: evaluate dump alerts + Sunday-evening recap.
+ * Pulse job: evaluate dump alerts, welcome series W2/W3 (W1 goes out at confirm), Sunday recap.
  * Sending stays behind EMAIL_ALERTS_ENABLED. Wired in vercel.json; this
  * handler is a no-op while the flag is false.
  */
@@ -12,6 +12,8 @@ import { evaluateAlerts, shouldSendRecap, rankRecap, consolidateAlerts } from '.
 import { situationEmail, combinedEmail, recapEmail } from '../../lib/emails.js';
 import { writeReadout } from '../../lib/readout.js';
 import { loadCatalog } from '../../lib/skiscope-tools/index.js';
+import { sendDueWelcome } from '../../lib/welcomeSend.js';
+import { emailSponsor, readSponsorSlot } from '../../lib/sponsor.js';
 
 export const config = { maxDuration: 300 };
 
@@ -54,6 +56,7 @@ export default async function handler(req, res) {
 
   const { alerts, queued } = evaluateAlerts(rules, snow, now);
   const packs = consolidateAlerts(alerts);
+  const slot = readSponsorSlot(now.getTime());
   let sent = 0, failed = 0;
   for (const pack of packs) {
     const first = pack.events[0];
@@ -66,11 +69,11 @@ export default async function handler(req, res) {
     const mail = pack.events.length === 1
       ? situationEmail({
         alert: pack.events[0], readout: readouts[0], token: sub?.token, email: pack.email,
-        sponsor: { on: sub?.prefs?.sponsor === true },
+        sponsor: emailSponsor(sub?.prefs, slot),
       })
       : combinedEmail({
         pack, readouts, token: sub?.token, email: pack.email,
-        sponsor: { on: sub?.prefs?.sponsor === true },
+        sponsor: emailSponsor(sub?.prefs, slot),
       });
     const r = await sendEmail({ to: pack.email, ...mail });
     if (r.status && r.status < 300) {
@@ -100,6 +103,17 @@ export default async function handler(req, res) {
     await new Promise(r => setTimeout(r, 600));
   }
 
+  let welcomeSent = 0;
+  const welcomeSnow = { ...snow, index, regions };
+  for (const s of subs) {
+    if (allow.length && !allow.includes(s.email)) continue;
+    const w = await sendDueWelcome(s, { now: now.getTime(), snowJson: welcomeSnow });
+    if (!w) continue;
+    if (w.result.status && w.result.status < 300) welcomeSent++;
+    else failed++;
+    await new Promise(r => setTimeout(r, 600));
+  }
+
   let recapSent = 0;
   if (shouldSendRecap(now)) {
     const ranked = rankRecap(snow, { limit: 5 });
@@ -108,7 +122,7 @@ export default async function handler(req, res) {
       if (s.prefs?.recap === false) continue;
       const mail = recapEmail({
         recent: ranked.recent, incoming: ranked.incoming, token: s.token, kind: 'weekly', email: s.email,
-        sponsor: { on: s.prefs?.sponsor === true },
+        sponsor: emailSponsor(s.prefs, slot),
       });
       const r = await sendEmail({ to: s.email, ...mail });
       if (r.status && r.status < 300) recapSent++;
@@ -123,6 +137,7 @@ export default async function handler(req, res) {
     alerts: alerts.length,
     queued: queued.length,
     sent,
+    welcomeSent,
     recapSent,
     failed,
   });

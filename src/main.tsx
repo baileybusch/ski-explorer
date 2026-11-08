@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
@@ -6,11 +6,15 @@ import '@/lib/maplibreSetup';
 import App from './App';
 import { StaticPage } from '@/pages/StaticPage';
 import { ManagePage } from '@/pages/ManagePage';
+import { DoNotSellPage } from '@/pages/DoNotSellPage';
+const AdminPage = lazy(() => import('@/pages/AdminPage').then(m => ({ default: m.AdminPage })));
 import { applyBrandToDocument } from '@/lib/brand';
+import { captureRef } from '@/lib/share';
 import './index.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 applyBrandToDocument();
+captureRef();
 
 const path = location.pathname.replace(/\/$/, '') || '/';
 const page = path === '/privacy' ? <StaticPage kind="privacy" />
@@ -19,6 +23,9 @@ const page = path === '/privacy' ? <StaticPage kind="privacy" />
       : path === '/about' ? <StaticPage kind="about" />
         : path === '/contact' ? <StaticPage kind="contact" />
           : path === '/manage' ? <ManagePage />
+            : path === '/my-alerts' ? <ManagePage focus="alerts" />
+              : path === '/do-not-sell' ? <DoNotSellPage />
+                : path === '/admin' ? <Suspense fallback={null}><AdminPage /></Suspense>
             : <App />;
 
 createRoot(document.getElementById('root')!).render(

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { AskTransport } from '@/lib/askTransport';
 import { BRAND } from '@/lib/brand';
-import type { AskUIMessage, BoardScope, RankOutput } from '@/lib/askTypes';
+import type { AskUIMessage, BoardScope, OfferTarget, RankOutput } from '@/lib/askTypes';
+import { AlertOffer } from '@/components/ask/AskOffer';
 import type { SnowUnits } from '@/lib/format';
 import { REGION_CHIPS } from '@/lib/design';
 import {
@@ -29,12 +30,13 @@ const PENDING: Record<string, string> = {
 };
 
 function Thread({
-  messages, units, onOpen, onShowBoard, waiting,
+  messages, units, onOpen, onShowBoard, onAlertSignup, waiting,
 }: {
   messages: AskUIMessage[];
   units: SnowUnits;
   onOpen: (id: string) => void;
   onShowBoard: (out: RankOutput) => void;
+  onAlertSignup?: (target: OfferTarget | null) => void;
   waiting: boolean;
 }) {
   return (
@@ -50,6 +52,11 @@ function Thread({
         }
         const text = m.parts.filter(p => p.type === 'text').map(p => (p as { text: string }).text).join('\n\n').trim();
         const outputs: any[] = [];
+        const offers = m.parts.map((part, i) => (
+          part.type === 'tool-offerAlertSignup' && part.state === 'output-available'
+            ? <AlertOffer key={i} out={part.output} onPick={onAlertSignup} />
+            : null
+        )).filter(Boolean);
         const tools = m.parts.map((part, i) => {
           switch (part.type) {
             case 'tool-rankResorts':
@@ -79,6 +86,7 @@ function Thread({
             ) : null}
             {tools}
             <SourcesNote outputs={outputs} mode={m.metadata?.mode} />
+            {offers}
           </li>
         );
       })}
@@ -92,7 +100,7 @@ function Thread({
 }
 
 export function AskPanel({
-  open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard,
+  open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard, onAlertSignup,
   regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn, board, docked = false, focusTick = 0,
 }: {
   open: boolean;
@@ -110,6 +118,8 @@ export function AskPanel({
   onAsked?: (text: string) => void;
   onOpenResort: (id: string) => void;
   onShowBoard: (out: RankOutput) => void;
+  /** Ask's signup card without a specific target opens the full alert flow. */
+  onAlertSignup?: (target: OfferTarget | null) => void;
   regions: { id: string; name: string }[];
   onRegion: (id: string) => void;
   onWorldwide: () => void;
@@ -205,7 +215,7 @@ export function AskPanel({
 
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-6" data-testid="ask-scroll">
         {messages.length ? (
-          <Thread messages={messages} units={units} onOpen={onOpenResort} onShowBoard={onShowBoard} waiting={waiting} />
+          <Thread messages={messages} units={units} onOpen={onOpenResort} onShowBoard={onShowBoard} onAlertSignup={onAlertSignup} waiting={waiting} />
         ) : (
           <div className="flex flex-col gap-7 pt-2" data-testid="ask-empty">
             <div>
