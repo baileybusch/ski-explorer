@@ -9,10 +9,12 @@ import { ManagePage } from '@/pages/ManagePage';
 import { DoNotSellPage } from '@/pages/DoNotSellPage';
 const AdminPage = lazy(() => import('@/pages/AdminPage').then(m => ({ default: m.AdminPage })));
 import { applyBrandToDocument } from '@/lib/brand';
+import { captureRef } from '@/lib/share';
 import './index.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 applyBrandToDocument();
+captureRef();
 
 const path = location.pathname.replace(/\/$/, '') || '/';
 const page = path === '/privacy' ? <StaticPage kind="privacy" />

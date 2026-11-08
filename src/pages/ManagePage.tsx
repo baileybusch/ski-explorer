@@ -340,7 +340,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
                 <Switch checked={prefs.doNotSell} onCheckedChange={v => patchPrefs({ doNotSell: v })} data-testid="pref-dns" />
               </label>
               <p className="text-xs text-muted-foreground">
-                On: we keep using your questions and watched mountains for your own alerts, but never share or sell them to sponsors or partners. <a className="underline underline-offset-2" href={withAlerts('/privacy')}>Privacy Policy</a>
+                We do not sell or share your email or questions. This CCPA switch records an opt-out on your account. <a className="underline underline-offset-2" href={withAlerts('/privacy')}>Privacy Policy</a>
               </p>
             </section>
 

@@ -8,7 +8,7 @@ import { loadPrefs, savePrefs, sessionEmail } from '@/lib/session';
 import { doNotSell, setDoNotSell, visitorId } from '@/lib/visitor';
 import { DNS_LINK_TEXT } from '../../lib/consentText.js';
 
-/** CCPA opt-out. Flags this browser (and the signed-in account in live mode); partner exports honor it. */
+/** CCPA opt-out. We do not sell individual data; this records the choice on the browser and account. */
 export function DoNotSellPage() {
   const [on, setOn] = useState(() => doNotSell() || loadPrefs().doNotSell);
   const email = sessionEmail();
@@ -25,7 +25,7 @@ export function DoNotSellPage() {
         body: JSON.stringify({ prefs: { ...loadPrefs(), doNotSell: next }, sid: visitorId() }),
       }).catch(() => null);
     }
-    toast.success(next ? 'Opted out of sale and sharing.' : 'Opt-out removed.');
+    toast.success(next ? 'Opt-out recorded.' : 'Opt-out removed.');
   }
 
   return (
@@ -39,7 +39,7 @@ export function DoNotSellPage() {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Draft pending lawyer review</p>
         <h1 className="font-display text-5xl leading-none tracking-wide">{DNS_LINK_TEXT}</h1>
         <p className="text-muted-foreground">
-          We may share or sell interest data (the mountains you watch, the questions you ask in Ask, and your email) with sponsors and partners. You can opt out at any time. Opting out does not stop your alerts; we keep using your data only to run them.
+          We do not sell or share your email, Ask questions, or individual interest profile. Sponsorships are a labeled slot in emails we already send, not a list of people. This page records a CCPA opt-out on this browser (and your account if you are signed in). Opting out does not stop your alerts.
         </p>
         <div className="rounded-2xl p-4 ring-1 ring-foreground/12" data-testid="dns-status">
           <p className="font-medium">{on ? 'You are opted out.' : 'You are not opted out.'}</p>

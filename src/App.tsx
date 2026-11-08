@@ -59,7 +59,7 @@ const ASK_TO_BOARD_SORT: Record<RankOutput['sort'], BoardSortId> = {
   forecast7d: 'forecast7d',
 };
 
-type Landing = { kind: 'region' | 'pass'; id: string } | null;
+type Landing = { kind: 'region' | 'pass' | 'resort'; id: string } | null;
 
 function initialPass() {
   const qs = new URLSearchParams(location.search);
@@ -147,14 +147,17 @@ export default function App() {
       setTrip(nextTrip);
       saveTrip(nextTrip);
       setWin(nextWin);
-      if (deep.resort) {
-        setSelectedId(deep.resort);
-        setView('profile');
-        setTimeout(() => {
-          const r = c.resorts.find((x: any) => x.id === deep.resort);
-          if (r) globe.current?.flyResort(r);
-          if (deep.mode === 'plan' && r) openPlan([r], nextWin, nextTrip, c);
-        }, 400);
+      if (deep.resort || landing?.kind === 'resort') {
+        const rid = deep.resort || landing?.id;
+        const r = c.resorts.find((x: any) => x.id === rid);
+        if (r) {
+          setSelectedId(r.id);
+          setView('profile');
+          setTimeout(() => {
+            globe.current?.flyResort(r);
+            if (deep.mode === 'plan') openPlan([r], nextWin, nextTrip, c);
+          }, 400);
+        } else if (landing?.kind === 'resort') setLanding(null);
       } else if (landing?.kind === 'region') {
         const g = c.regions.find((x: any) => x.id === landing.id);
         if (g) applyRegion(g, c, pass, { push: false });
@@ -197,10 +200,11 @@ export default function App() {
   }
 
   /** Category pages keep a clean shareable path while the board's region / pass match them. */
-  function boardPath(region: string | null | undefined, p = pass) {
+  function boardPath(region: string | null | undefined, p = pass, resort = selectedId) {
     if (landing?.kind === 'region') return region ? categoryPath('region', region) : '/';
     if (landing?.kind === 'pass') return p === landing.id && !region ? categoryPath('pass', p) : '/';
-    return location.pathname;
+    if (landing?.kind === 'resort' || (resort && !region)) return resort ? categoryPath('resort', resort) : '/';
+    return location.pathname.startsWith('/region/') || location.pathname.startsWith('/pass/') || location.pathname.startsWith('/resort/') ? '/' : location.pathname;
   }
 
   function writeURL(extra: any = {}) {
@@ -210,14 +214,16 @@ export default function App() {
     const kind = extra.ss
       || (extra.resort ?? selectedId ? 'profile' : (extra.region || activeIds ? 'filter' : 'board'));
     const region = 'region' in extra ? extra.region : facets.regionId;
-    const path = boardPath(region);
+    const resort = extra.resort ?? selectedId;
+    const path = boardPath(region, pass, resort);
     const onCategory = path.startsWith('/region/') || path.startsWith('/pass/');
+    const onResort = path.startsWith('/resort/');
     history.replaceState({ ...(history.state || {}), ss: kind, top: savedBoardTop.current }, '', path + shareSearch({
-      resort: extra.resort ?? selectedId,
+      resort: onResort || onCategory ? undefined : resort,
       from: start, to: end, adults, kids, home: trip.home,
       mode: extra.mode,
       pass: path.startsWith('/pass/') ? undefined : pass,
-      region: onCategory ? undefined : extra.region ?? facets.regionId,
+      region: onCategory || onResort ? undefined : extra.region ?? facets.regionId,
       alerts: alertsUi.mode === 'preview' ? '1' : undefined,
       ...Object.fromEntries(brandParams()),
     }));
@@ -235,7 +241,7 @@ export default function App() {
     }
   }, [landing, catalog, facets.regionId, pass]);
 
-  const landingName = catalog && landing ? categoryName(landing, catalog.regions) : null;
+  const landingName = catalog && landing ? categoryName(landing, catalog.regions, catalog.resorts) : null;
   const landingMeta = landing && landingName ? categoryMeta(landing, { name: landingName, brand: BRAND.name }) : null;
   useEffect(() => {
     document.title = landingMeta && view === 'board' ? landingMeta.title : BRAND.title;
@@ -437,9 +443,9 @@ export default function App() {
     const [cm, label] = boardSort === 'forecast7d' ? [d.next7Cm, 'next 7d'] : boardSort === 'actual24' ? [d.past24Cm, 'last 24h'] : [d.past72Cm, 'last 72h'];
     return `${leaderRow.r.name} ${snowAmount(cm, units)} ${label}`;
   })() : null;
-  const categoryHeader = landing && landingName && landingMeta ? (
+  const categoryHeader = landing && landing.kind !== 'resort' && landingName && landingMeta ? (
     <CategoryHeader
-      page={{ ...landing, name: landingName }}
+      page={{ kind: landing.kind as 'region' | 'pass', id: landing.id, name: landingName }}
       heading={landingMeta.heading}
       count={rowsAll.length}
       leader={leaderLabel}
@@ -551,7 +557,7 @@ export default function App() {
             before={categoryHeader}
             after={(
               <>
-                {landing && landingName ? (
+                {landing && landing.kind !== 'resort' && landingName ? (
                   <CategoryFooterCta
                     name={landing.kind === 'pass' ? PASS_PAGES[landing.id as keyof typeof PASS_PAGES]?.short || landingName : landingName}
                     cta={categoryCta(landing, landingName)}

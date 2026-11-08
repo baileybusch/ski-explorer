@@ -47,17 +47,18 @@ function categoryPages() {
     apply: 'build',
     configResolved(config) { outDir = config.build.outDir; },
     async closeBundle() {
-      const { ogPages, renderOgPng, categoryHtml, ogImagePath } = await import('./scripts/og.js');
+      const { ogPages, renderOgPng, categoryHtml, ogImagePath, sitemapXml } = await import('./scripts/og.js');
       const { SITE } = await import('./lib/site.js');
       const index = readFileSync(`${outDir}/index.html`, 'utf8');
       mkdirSync(`${outDir}/og`, { recursive: true });
-      for (const kind of ['region', 'pass']) mkdirSync(`${outDir}/${kind}`, { recursive: true });
+      for (const kind of ['region', 'pass', 'resort']) mkdirSync(`${outDir}/${kind}`, { recursive: true });
       const pages = ogPages();
       for (const page of pages) {
         writeFileSync(`${outDir}/${page.kind}/${page.id}.html`, categoryHtml(index, page, SITE));
         writeFileSync(`${outDir}${ogImagePath(page.kind, page.id)}`, await renderOgPng(page));
       }
-      console.log(`category pages: ${pages.length} html + og cards`);
+      writeFileSync(`${outDir}/sitemap.xml`, sitemapXml(pages, SITE));
+      console.log(`category pages: ${pages.length} html + og cards + sitemap`);
     },
   };
 }

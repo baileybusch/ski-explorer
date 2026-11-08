@@ -2,7 +2,7 @@ import { saveSub, findByEmail, confirmEmail, digestEmail, loadData, allActive } 
 import { ADMIN_COOKIE, adminCookieHeader, passwordOk, signAdminSession, verifyAdminSession } from '../../lib/adminAuth.js';
 import { readCookie, csrfOk } from '../../lib/authToken.js';
 import { clientIp, rateLimit } from '../../lib/agent/rateLimit.js';
-import { buildDashboard, chatsCsv, demoEvents, subscribersCsv } from '../../lib/insights.js';
+import { aggregatesCsv, buildDashboard, chatsCsv, demoEvents, subscribersCsv } from '../../lib/insights.js';
 import { insightsEnv, readEvents } from '../../lib/insightsStore.js';
 import { loadCatalog } from '../../lib/skiscope-tools/index.js';
 
@@ -11,7 +11,8 @@ import { loadCatalog } from '../../lib/skiscope-tools/index.js';
  *   /api/admin/render?email=…   Bearer CRON_SECRET; renders confirm + digest for an allowlisted subscriber.
  *   /api/admin?action=…         (rewritten here with surface=dashboard) the /admin insights dashboard:
  *     POST login {password} → HttpOnly cookie · POST logout · GET dashboard[&demo=1][&days=N]
- *     GET export&kind=subscribers|chats&audience=internal|partners[&demo=1] → CSV
+ *     GET export&kind=aggregates|subscribers|chats[&demo=1] → CSV
+ *     kind=aggregates (and any audience=partners) is counts only — never emails or questions.
  * Demo data is seeded fake events (demo+N@example.com), never mixed with real ones.
  */
 async function legacyRender(req, res) {
@@ -90,14 +91,12 @@ async function dashboard(req, res) {
   if (action === 'export') {
     const { demo, events, dash } = await dashboardData(req);
     const partners = req.query.audience === 'partners';
-    const kind = req.query.kind === 'chats' ? 'chats' : 'subscribers';
-    const optedOut = new Set([
-      ...dash.subscribers.filter(s => s.doNotSell).map(s => s.email),
-      ...events.filter(e => e.type === 'dns' && e.optOut && e.sid).map(e => e.sid),
-    ]);
-    for (const e of events) if (e.sid && e.email && optedOut.has(e.email)) optedOut.add(e.sid);
-    const csv = kind === 'chats' ? chatsCsv(events, { partners, optedOut }) : subscribersCsv(dash, { partners });
-    const name = `${demo ? 'demo-' : ''}${kind}-${partners ? 'partners' : 'internal'}-${dash.generatedAt.slice(0, 10)}.csv`;
+    const kind = partners || req.query.kind === 'aggregates' ? 'aggregates'
+      : req.query.kind === 'chats' ? 'chats' : 'subscribers';
+    const csv = kind === 'aggregates' ? aggregatesCsv(dash)
+      : kind === 'chats' ? chatsCsv(events)
+        : subscribersCsv(dash);
+    const name = `${demo ? 'demo-' : ''}${kind}-${dash.generatedAt.slice(0, 10)}.csv`;
     res.setHeader('content-type', 'text/csv; charset=utf-8');
     res.setHeader('content-disposition', `attachment; filename="${name}"`);
     return res.status(200).send(csv);

@@ -2,11 +2,7 @@
 
 There are **no user accounts and no passwords**. Everything is controlled by an email address plus a signed link.
 
-Signup copy and Privacy copy share one consent string (`ss-consent-1` in `lib/consent.js`):
-
-> By subscribing you agree to get storm alerts and recaps, which may include sponsored content. Unsubscribe anytime.
-
-Do not add “we don’t sell your data” (or any selling-data language). Unsubscribe anytime is enough.
+Signup copy and Privacy copy share one consent string (`ss-consent-3` in `lib/consentText.js`). We do not sell or share individual emails or questions; consent copy discloses Ask/browsing linkage, labeled sponsored content, and that only aggregated counts may inform sponsorships. The Privacy Policy (draft) states the no-individual-sale rule in full. Do not put the word "sell" in the signup consent line.
 
 ## Live vs preview
 
@@ -58,7 +54,7 @@ Stored on the subscriber:
 {
   "at": "2026-10-26T12:00:00.000Z",
   "source": "signup",
-  "version": "ss-consent-1",
+  "version": "ss-consent-3",
   "ipHash": "hex-16-bytes"
 }
 ```

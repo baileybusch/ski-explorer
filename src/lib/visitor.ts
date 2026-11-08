@@ -28,7 +28,7 @@ export function visitorId(): string {
 export type FunnelEvent =
   | { type: 'offer'; action: 'shown' | 'accepted' | 'dismissed'; target?: { type: string; id: string | null } | null }
   | { type: 'dns'; optOut: boolean }
-  | { type: 'signup'; email: string; source: string; kind: string; resorts: string[]; region: string | null; consentVersion: string };
+  | { type: 'signup'; email: string; source: string; kind: string; resorts: string[]; region: string | null; consentVersion: string; ref?: string };
 
 /** Fire-and-forget; the dev server and Vercel both serve /api/events. */
 export function track(events: FunnelEvent | FunnelEvent[]) {

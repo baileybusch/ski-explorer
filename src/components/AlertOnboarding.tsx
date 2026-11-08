@@ -10,6 +10,9 @@ import { type LocalRule, accountEmail } from '@/lib/alertRules';
 import { type CaptureSource, subscribeRule, validEmail } from '@/lib/subscribe';
 import { ConsentNote } from '@/components/ConsentNote';
 import { doNotSell } from '@/lib/visitor';
+import { sharePage, withRef } from '@/lib/share';
+import { categoryPath } from '../../lib/categoryPages.js';
+import { toast } from 'sonner';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -310,6 +313,28 @@ export function AlertOnboarding({
           <p className="text-sm text-muted-foreground" data-testid="alert-check-email">
             {mode === 'live' ? 'Check your email and tap the confirmation link. Alerts start only after you confirm.' : 'Saved on this device. Nothing was emailed.'}
           </p>
+          <div className="rounded-2xl p-4 ring-1 ring-foreground/12" data-testid="alert-share">
+            <p className="text-sm">Know a skier who&apos;d want this too?</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 min-h-12 w-full text-base"
+              data-testid="alert-share-btn"
+              onClick={async () => {
+                const path = ctx.region ? categoryPath('region', ctx.region)
+                  : ctx.source === 'pass' && ctx.pass ? categoryPath('pass', ctx.pass)
+                    : selected[0] ? categoryPath('resort', selected[0])
+                      : '/';
+                const result = await sharePage(path, `Snow alerts for ${where}`);
+                if (result === 'copied') toast('Invite link copied');
+              }}
+            >
+              Share this board
+            </Button>
+            <p className="mt-2 break-all text-xs text-muted-foreground" data-testid="alert-share-url">
+              {withRef(ctx.region ? categoryPath('region', ctx.region) : selected[0] ? categoryPath('resort', selected[0]) : '/')}
+            </p>
+          </div>
         </div>
       ) : null}
     </FlowShell>

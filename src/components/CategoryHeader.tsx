@@ -2,6 +2,7 @@ import { BellIcon, Share2Icon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConsentNote } from '@/components/ConsentNote';
+import { sharePage } from '@/lib/share';
 
 export type CategoryPage = { kind: 'region' | 'pass'; id: string; name: string };
 
@@ -17,14 +18,8 @@ export function CategoryHeader({
   onAlert: () => void;
 }) {
   async function share() {
-    const url = location.href;
-    try {
-      if (navigator.share) await navigator.share({ title: document.title, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast('Link copied');
-      }
-    } catch { /* dismissed */ }
+    const result = await sharePage(location.href, document.title);
+    if (result === 'copied') toast('Link copied — friends who sign up are credited to you');
   }
 
   return (

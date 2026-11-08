@@ -98,7 +98,8 @@ export default async function handler(req, res) {
   const catalog = { ...snow, index, regions };
   const ranked = rankRecap(catalog, { limit: 5 });
 
-  const sponsor = { on: true, example: true };
+  const { emailSponsor, readSponsorSlot } = await import('../../lib/sponsor.js');
+  const sponsor = emailSponsor({ sponsor: true }, readSponsorSlot(), { preview: true });
   let payload;
   const welcome = type.match(/^welcome-([123])$/);
   if (welcome) {

@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
-import { PASS_PAGES, categoryMeta, ogImagePath } from '../lib/categoryPages.js';
+import { PASS_PAGES, categoryMeta, categoryPath, ogImagePath } from '../lib/categoryPages.js';
 import { DEFAULT_BRAND } from '../lib/brand.js';
 
 const INK = '#08090b';
@@ -26,9 +26,11 @@ const logo = () => `data:image/svg+xml;base64,${readFileSync(new URL(`../public$
 
 export function ogPages() {
   const gaz = JSON.parse(readFileSync(new URL('../public/data/gazetteer.json', import.meta.url), 'utf8'));
+  const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
   return [
     ...(gaz.regions || []).map(g => ({ kind: 'region', id: g.id, name: g.name, slug: `region-${g.id}` })),
     ...Object.values(PASS_PAGES).map(p => ({ kind: 'pass', id: p.id, name: p.name, slug: `pass-${p.id}` })),
+    ...(resorts || []).filter(r => r?.id && r?.name).map(r => ({ kind: 'resort', id: r.id, name: r.name, slug: `resort-${r.id}` })),
   ];
 }
 
@@ -36,6 +38,7 @@ const h = (type, style, children) => ({ type, props: { style, children } });
 
 export async function renderOgPng(page) {
   const where = page.kind === 'pass' ? `${page.name.replace(/ Pass$/, '')} resorts` : page.name;
+  const kicker = page.kind === 'pass' ? 'PASS · LIVE SNOW BOARD' : page.kind === 'resort' ? 'RESORT · LIVE SNOW' : 'REGION · LIVE SNOW BOARD';
   const title = `${page.name} snow`;
   const titleSize = Math.min(140, Math.floor(1056 / (title.length * 0.5)));
   const tree = h('div', {
@@ -47,7 +50,7 @@ export async function renderOgPng(page) {
       h('div', { fontSize: 40, fontWeight: 800, letterSpacing: 2 }, DEFAULT_BRAND.wordmark?.caps || DEFAULT_BRAND.name.toUpperCase()),
     ]),
     h('div', { display: 'flex', flexDirection: 'column' }, [
-      h('div', { fontSize: 30, fontWeight: 700, letterSpacing: 5, color: GRAPHITE }, `${page.kind === 'pass' ? 'PASS' : 'REGION'} · LIVE SNOW BOARD`),
+      h('div', { fontSize: 30, fontWeight: 700, letterSpacing: 5, color: GRAPHITE }, kicker),
       h('div', { fontSize: titleSize, fontWeight: 800, lineHeight: 1, marginTop: 6, letterSpacing: -1 }, title),
       h('div', { fontSize: 40, fontWeight: 500, color: FOG, marginTop: 14 }, `Who's getting dumped on: new snow + 7-day forecast for ${where}`),
     ]),
@@ -80,11 +83,30 @@ export function categoryHtml(indexHtml, page, site) {
     `<meta name="twitter:title" content="${esc(meta.title)}" />`,
     `<meta name="twitter:description" content="${esc(meta.description)}" />`,
     `<meta name="twitter:image" content="${esc(meta.image)}" />`,
+    `<script type="application/ld+json">${JSON.stringify(jsonLd(page, meta, DEFAULT_BRAND.name))}</script>`,
   ].join('\n    ');
   return indexHtml
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(meta.title)}</title>`)
     .replace(/\s*<meta name="description"[^>]*>/, '')
     .replace('</head>', `    ${tags}\n  </head>`);
+}
+
+function jsonLd(page, meta, brand) {
+  const site = { '@type': 'WebSite', name: brand, url: meta.url.replace(/\/(region|pass|resort)\/[^/]+$/, '') || meta.url };
+  if (page.kind === 'resort') {
+    return { '@context': 'https://schema.org', '@type': 'SkiResort', name: page.name, url: meta.url, description: meta.description, isPartOf: site };
+  }
+  return { '@context': 'https://schema.org', '@type': 'CollectionPage', name: meta.title, url: meta.url, description: meta.description, isPartOf: site };
+}
+
+export function sitemapXml(pages, site) {
+  const staticPaths = ['/', '/about', '/privacy', '/terms', '/disclosure', '/contact', '/my-alerts'];
+  const urls = [
+    ...staticPaths.map(p => `${site}${p === '/' ? '/' : p}`),
+    ...pages.map(p => `${site}${categoryPath(p.kind, p.id)}`),
+  ];
+  const body = urls.map(u => `  <url><loc>${esc(u)}</loc></url>`).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
 }
 
 export { ogImagePath };

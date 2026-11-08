@@ -3,11 +3,12 @@
  * scheduling, admin session cookies, region/pass pages, and Do Not Sell in exports.
  */
 import { loadCatalog } from '../lib/skiscope-tools/index.js';
-import { cleanEvent, inferInterests, buildDashboard, subscribersCsv, chatsCsv, demoEvents, sourceBucket, toCsv } from '../lib/insights.js';
+import { cleanEvent, inferInterests, buildDashboard, subscribersCsv, chatsCsv, aggregatesCsv, demoEvents, sourceBucket, toCsv } from '../lib/insights.js';
+import { readSponsorSlot, emailSponsor } from '../lib/sponsor.js';
 import { recordEvents, readEvents, resetMemoryStore } from '../lib/insightsStore.js';
 import { decideOffer, offerChunks, wantsAlerts } from '../lib/ask/offer.js';
 import { welcomeDue, markWelcome, welcomeRows, watchLabel } from '../lib/welcome.js';
-import { welcomeEmail } from '../lib/emails.js';
+import { welcomeEmail, sponsorSlot } from '../lib/emails.js';
 import { passwordOk, signAdminSession, verifyAdminSession, adminCookieHeader } from '../lib/adminAuth.js';
 import { parseCategoryPath, categoryMeta, categoryName, ctaLabel } from '../lib/categoryPages.js';
 import { CONSENT_TEXT, CONSENT_VERSION } from '../lib/consentText.js';
@@ -54,11 +55,10 @@ export async function runFunnelEvals() {
   check('dash-top-region-named', dash.topSubscribed.regions[0]?.name === 'Japan');
   check('dash-by-day-len', dash.signupsByDay.length === 14 && dash.signupsByDay.at(-1).date === '2026-11-08');
   check('dash-dns-via-session', dash.subscribers.find(s => s.email === 'two@example.com')?.doNotSell === true && dash.totals.doNotSell === 1);
-  const partners = subscribersCsv(dash, { partners: true });
-  check('csv-partners-excludes-dns', partners.includes('skier@example.com') && !partners.includes('two@example.com') && !partners.split('\n')[0].includes('doNotSell'), partners.slice(0, 200));
-  check('csv-internal-has-all', subscribersCsv(dash).includes('two@example.com'));
-  const chats = chatsCsv(evs, { partners: true });
-  check('csv-chats-partners-no-email', !chats.includes('@'), chats.slice(0, 200));
+  check('csv-internal-has-all', subscribersCsv(dash).includes('two@example.com') && subscribersCsv(dash).includes('skier@example.com'));
+  const agg = aggregatesCsv(dash);
+  check('csv-aggregates-no-email', !agg.includes('@') && /signup_source/.test(agg) && /subscribed_resort/.test(agg), agg.slice(0, 200));
+  check('csv-chats-internal', chatsCsv(evs).includes('Alta'));
   check('csv-formula-escaped', toCsv([{ a: '=HYPERLINK("x")' }], ['a']).includes(`"'=HYPERLINK(""x"")"`));
 
   const demo = demoEvents({ now });
@@ -126,7 +126,7 @@ export async function runFunnelEvals() {
   check('admin-cookie-flags', /HttpOnly/.test(adminCookieHeader(tok)) && /SameSite=Strict/.test(adminCookieHeader(tok)) && /Path=\/api/.test(adminCookieHeader(tok)));
 
   // region / pass pages
-  check('category-parse', parseCategoryPath('/region/california')?.id === 'california' && parseCategoryPath('/pass/ikon/')?.kind === 'pass');
+  check('category-parse', parseCategoryPath('/region/california')?.id === 'california' && parseCategoryPath('/pass/ikon/')?.kind === 'pass' && parseCategoryPath('/resort/alta')?.kind === 'resort');
   check('category-parse-rejects', parseCategoryPath('/pass/nope') === null && parseCategoryPath('/region/../x') === null && parseCategoryPath('/regions/utah') === null);
   const ca = { kind: 'region', id: 'california' };
   const caName = categoryName(ca, cat.regions);
@@ -135,7 +135,19 @@ export async function runFunnelEvals() {
   check('category-cta', ctaLabel(ca, caName) === 'Get alerts for California' && ctaLabel({ kind: 'pass', id: 'ikon' }, 'Ikon Pass') === 'Get alerts for Ikon resorts');
 
   // consent + account rules
-  check('consent-discloses', CONSENT_VERSION === 'ss-consent-2' && /Ask questions/.test(CONSENT_TEXT) && /sponsors and partners/.test(CONSENT_TEXT) && /Opt out/.test(CONSENT_TEXT));
+  check('consent-discloses', CONSENT_VERSION === 'ss-consent-3' && /Ask questions/.test(CONSENT_TEXT) && /Aggregated counts/.test(CONSENT_TEXT) && /Unsubscribe/.test(CONSENT_TEXT) && !/sell/i.test(CONSENT_TEXT));
+  const slot = readSponsorSlot();
+  check('sponsor-json-off', slot.on === false && slot.name.length > 0);
+  const previewSlot = emailSponsor({ sponsor: true }, slot, { preview: true });
+  check('sponsor-preview-example', previewSlot.on && previewSlot.example === true);
+  const liveOff = emailSponsor({ sponsor: true }, slot);
+  check('sponsor-live-respects-json', liveOff.on === false);
+  const html = sponsorSlot({ on: true, name: 'Test Co', line: 'Hello powder', href: 'https://example.com' }).html;
+  check('sponsor-slot-json', html.includes('Test Co') && html.includes('Hello powder') && html.includes('https://example.com') && html.includes('Sponsored'));
+  const w3 = welcomeEmail({ step: 'w3', shareRegion: 'utah' });
+  check('welcome-w3-ref', w3.html.includes('?ref=w3'));
+  const alta = categoryMeta({ kind: 'resort', id: 'alta' }, { name: 'Alta', site: 'https://x.test' });
+  check('resort-seo-meta', alta.title.includes('Alta snow') && alta.url === 'https://x.test/resort/alta' && alta.image.endsWith('/og/resort-alta.png'), JSON.stringify(alta));
   const prior = [{ id: 'rul_keep1', type: 'resort', resorts: ['alta'], lastFired: '2026-11-01', lastKeys: { alta: 'k' } }];
   const cleaned = cleanRules([
     { id: 'rul_keep1', type: 'resort', resorts: ['alta', 'BAD id!'], lastFired: 'forged' },

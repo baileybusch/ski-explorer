@@ -15,7 +15,7 @@ type Subscriber = {
 };
 type Dash = {
   generatedAt: string; days: number; demo: boolean; env: string; store: string;
-  totals: { subscribers: number; signups: number; chats: number; sessions: number; linkedSessions: number; doNotSell: number; offers: { shown: number; accepted: number; dismissed: number } };
+  totals: { subscribers: number; signups: number; chats: number; sessions: number; linkedSessions: number; doNotSell: number; referred: number; offers: { shown: number; accepted: number; dismissed: number } };
   signupsByDay: ({ date: string } & Record<string, number>)[];
   signupsBySource: Record<string, number>;
   topSubscribed: { resorts: Count[]; regions: Count[] };
@@ -222,8 +222,8 @@ export function AdminPage() {
           <Kpi label="Ask questions" value={d.totals.chats} />
           <Kpi label="Visitors" value={d.totals.sessions} hint={`${d.totals.linkedSessions} linked to an email`} />
           <Kpi label="Chat offer accept" value={offerRate == null ? '—' : `${offerRate}%`} hint={`${d.totals.offers.accepted} of ${d.totals.offers.shown + d.totals.offers.accepted + d.totals.offers.dismissed}`} />
-          <Kpi label="Do Not Sell" value={d.totals.doNotSell} hint="excluded from partner exports" />
-          <Kpi label="From chat" value={d.signupsBySource.chat || 0} hint="signups via Ask" />
+          <Kpi label="Do Not Sell" value={d.totals.doNotSell} hint="CCPA opt-out recorded" />
+          <Kpi label="From a share" value={d.totals.referred || 0} hint="signups with ?ref=" />
         </div>
 
         <div className="mt-3 grid gap-3 min-[900px]:grid-cols-3">
@@ -249,17 +249,20 @@ export function AdminPage() {
           <Card title="Top Ask questions" className="min-[900px]:col-span-2" testId="admin-top-questions">
             <Bars rows={d.topQuestions.map(q => ({ label: q.q, count: q.count }))} empty="No questions yet" />
           </Card>
-          <Card title="Export CSV" testId="admin-export">
+          <Card title="Export" testId="admin-export">
             <div className="flex flex-col gap-2">
-              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('subscribers', 'internal')} data-testid="admin-export-internal"><DownloadIcon className="size-4" />Subscribers · internal (all)</a></Button>
-              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('subscribers', 'partners')} data-testid="admin-export-partners"><DownloadIcon className="size-4" />Subscribers · partners (no Do Not Sell)</a></Button>
-              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('chats', 'partners')}><DownloadIcon className="size-4" />Questions · partners (no emails)</a></Button>
+              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('aggregates', 'partners')} data-testid="admin-export-aggregates"><DownloadIcon className="size-4" />Aggregates (counts only — what a sponsor would see)</a></Button>
+              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('subscribers', 'internal')} data-testid="admin-export-internal"><DownloadIcon className="size-4" />Subscribers · internal only</a></Button>
+              <Button asChild variant="outline" className="min-h-11 justify-start gap-2"><a href={exportHref('chats', 'internal')} data-testid="admin-export-chats"><DownloadIcon className="size-4" />Questions · internal only</a></Button>
               <Button asChild variant="ghost" className="min-h-11 justify-start gap-2"><a href="/api/email/preview?type=index" target="_blank" rel="noreferrer" data-testid="admin-templates"><MailIcon className="size-4" />Email template previews</a></Button>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">Individual emails and questions are never exported for sponsors. Aggregates are counts of mountains and sources.</p>
           </Card>
         </div>
 
-        <Card title={`Subscriber interest profiles (${subs.length})`} className="mt-3" testId="admin-subscribers">
+        <details className="mt-3" open={d.demo}>
+        <summary className="cursor-pointer text-sm text-muted-foreground">Internal profiles ({subs.length}) — emails stay in this dashboard. Not shared with sponsors.</summary>
+        <Card title={`Subscriber interest profiles (${subs.length})`} className="mt-2" testId="admin-subscribers">
           <Input className="mb-3 min-h-10 max-w-sm" placeholder="Filter by email, resort, region, question" value={filter} onChange={e => setFilter(e.target.value)} />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
@@ -271,7 +274,7 @@ export function AdminPage() {
                   <th className="py-2 pr-3 font-medium">Watching</th>
                   <th className="py-2 pr-3 font-medium">Asked about</th>
                   <th className="py-2 pr-3 text-right font-medium">Questions</th>
-                  <th className="py-2 font-medium">Sharing</th>
+                  <th className="py-2 font-medium">Opt-out</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,15 +289,16 @@ export function AdminPage() {
                       {s.lastQuestion ? <div className="mt-0.5 truncate text-xs italic max-w-[22rem]">“{s.lastQuestion}”</div> : null}
                     </td>
                     <td className="py-2 pr-3 text-right tabular">{s.questions}</td>
-                    <td className="py-2">{s.doNotSell ? <span className="whitespace-nowrap rounded-full bg-foreground/10 px-2 py-0.5 text-xs" data-testid="admin-dns-badge">Do Not Sell</span> : <span className="text-xs text-muted-foreground">allowed</span>}</td>
+                    <td className="py-2">{s.doNotSell ? <span className="whitespace-nowrap rounded-full bg-foreground/10 px-2 py-0.5 text-xs" data-testid="admin-dns-badge">Do Not Sell</span> : <span className="text-xs text-muted-foreground">—</span>}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </Card>
+        </details>
         <p className="mt-4 text-xs text-muted-foreground">
-          Stored in private Vercel Blob under insights/{d.env}/ (batched writes, compacted daily). Partner exports drop anyone who opted out of sale/sharing.
+          Stored in private Vercel Blob under insights/{d.env}/ (batched writes, compacted daily). Sponsors never receive emails or questions — only aggregate counts.
         </p>
       </div>
     </div>

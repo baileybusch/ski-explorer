@@ -132,10 +132,10 @@ const cases = [
     id: 'consent-version-lockstep',
     run: () => {
       const miss = [];
-      if (CONSENT_VERSION !== 'ss-consent-2') miss.push(`version ${CONSENT_VERSION}`);
+      if (CONSENT_VERSION !== 'ss-consent-3') miss.push(`version ${CONSENT_VERSION}`);
       if (!CONSENT_TEXT.includes('sponsored content')) miss.push('missing sponsor mention');
       if (!/Ask questions/.test(CONSENT_TEXT) || !/browse/.test(CONSENT_TEXT)) miss.push('missing chat/browsing disclosure');
-      if (!/partners/.test(CONSENT_TEXT) || !/Privacy Policy/.test(CONSENT_TEXT)) miss.push('missing partners / policy reference');
+      if (!/Aggregated counts/.test(CONSENT_TEXT) || !/Privacy Policy/.test(CONSENT_TEXT)) miss.push('missing aggregate / policy reference');
       if (/sell/i.test(CONSENT_TEXT)) miss.push('selling-data language');
       const rec = consentRecord({ source: 'signup', ip: '203.0.113.9', salt: 'eval', now: 1_700_000_000_000 });
       if (rec.version !== CONSENT_VERSION) miss.push('record version');

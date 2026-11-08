@@ -87,7 +87,7 @@ export default async function handler(req, res) {
   }
 
   await recordEvents([
-    { type: 'signup', email, sid: b.sid, source: b.source || 'signup', kind: rule.type, resorts: ids, region: rule.region, consentVersion: consent.version },
+    { type: 'signup', email, sid: b.sid, source: b.source || 'signup', kind: rule.type, resorts: ids, region: rule.region, consentVersion: consent.version, ref: b.ref },
     { type: 'link', email, sid: b.sid },
     ...(b.doNotSell === true ? [{ type: 'dns', email, sid: b.sid, optOut: true }] : []),
   ], { durable: true }).catch(err => console.warn('[subscribe] insights', err?.message || err));

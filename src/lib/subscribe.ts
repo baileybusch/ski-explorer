@@ -6,6 +6,7 @@
 import { type AlertsUiMode } from '@/lib/alertsUi';
 import { type LocalRule, addLocalRule, setAccountEmail, updateLocalRule } from '@/lib/alertRules';
 import { track, visitorId } from '@/lib/visitor';
+import { referralId } from '@/lib/share';
 import { CONSENT_VERSION } from '../../lib/consentText.js';
 
 export type CaptureSource = 'home' | 'resort' | 'region' | 'pass' | 'chat' | 'search' | 'trip' | 'menu' | 'signup' | 'incoming' | 'edit';
@@ -33,6 +34,7 @@ export async function subscribeRule({
       track({
         type: 'signup', email, source, kind: payload.type || 'resort',
         resorts: payload.resorts || [], region: payload.region || null, consentVersion: CONSENT_VERSION,
+        ref: referralId() || undefined,
       });
     }
     return { ok: true };
@@ -41,7 +43,7 @@ export async function subscribeRule({
     const r = await fetch('/api/subscribe', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...payload, ...extra, source, sid: visitorId() }),
+      body: JSON.stringify({ ...payload, ...extra, source, sid: visitorId(), ref: referralId() || undefined }),
     });
     const j = await r.json().catch(() => ({ error: 'Could not save' }));
     return j.error ? { error: String(j.error) } : { ok: true };
