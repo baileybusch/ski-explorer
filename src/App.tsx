@@ -29,6 +29,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { intentChip, ctaKind } from '../lib/intent.js';
 import { type LocalRule } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
+import { brandParams } from '@/lib/brand';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
@@ -193,6 +194,7 @@ export default function App() {
       from: start, to: end, adults, kids, home: trip.home,
       mode: extra.mode, pass, region: extra.region ?? facets.regionId,
       alerts: alertsUi.mode === 'preview' ? '1' : undefined,
+      ...Object.fromEntries(brandParams()),
     }));
   }
 

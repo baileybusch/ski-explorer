@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
+import { DEFAULT_BRAND } from './lib/brand.js';
 
 /** Serve MapLibre's ES worker at a stable same-origin URL (dev + dist). */
 function maplibreWorker() {
@@ -27,8 +28,18 @@ function maplibreWorker() {
   };
 }
 
+/** index.html ships the default brand; ?brand= mockups swap title + favicon at runtime (src/lib/brand.ts). */
+function brandHtml() {
+  return {
+    name: 'brand-html',
+    transformIndexHtml: html => html
+      .replaceAll('%BRAND_TITLE%', DEFAULT_BRAND.title)
+      .replaceAll('%BRAND_FAVICON%', DEFAULT_BRAND.favicon),
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), maplibreWorker()],
+  plugins: [react(), tailwindcss(), maplibreWorker(), brandHtml()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

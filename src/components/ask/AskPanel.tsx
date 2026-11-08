@@ -4,6 +4,7 @@ import { ArrowUpIcon, ChevronLeftIcon, SquareIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { AskTransport } from '@/lib/askTransport';
+import { BRAND } from '@/lib/brand';
 import type { AskUIMessage, BoardScope, RankOutput } from '@/lib/askTypes';
 import type { SnowUnits } from '@/lib/format';
 import { REGION_CHIPS } from '@/lib/design';
@@ -183,13 +184,13 @@ export function AskPanel({
       data-docked={docked ? '1' : '0'}
       role={docked ? 'complementary' : 'dialog'}
       aria-modal={docked ? undefined : false}
-      aria-label="Ask SkiScope"
+      aria-label={`Ask ${BRAND.name}`}
     >
       <header className="relative flex items-center gap-1 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 min-[840px]:px-3 min-[840px]:pt-3">
         <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2 text-[15px] min-[840px]:hidden" data-testid="search-cancel" onClick={onClose}>
           <ChevronLeftIcon className="size-5" /> Board
         </Button>
-        <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask SkiScope</h2>
+        <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask {BRAND.name}</h2>
         {messages.length ? (
           <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm max-[839px]:absolute max-[839px]:right-2" data-testid="ask-new" onClick={() => { stop(); setMessages([]); }}>
             New
@@ -279,7 +280,7 @@ export function AskPanel({
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask about snow, a resort, or a month"
-            aria-label="Ask SkiScope"
+            aria-label={`Ask ${BRAND.name}`}
             className="h-12 pl-4 text-base"
             autoComplete="off"
             enterKeyHint="send"

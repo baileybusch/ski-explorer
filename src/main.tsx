@@ -6,8 +6,11 @@ import '@/lib/maplibreSetup';
 import App from './App';
 import { StaticPage } from '@/pages/StaticPage';
 import { ManagePage } from '@/pages/ManagePage';
+import { applyBrandToDocument } from '@/lib/brand';
 import './index.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+applyBrandToDocument();
 
 const path = location.pathname.replace(/\/$/, '') || '/';
 const page = path === '/privacy' ? <StaticPage kind="privacy" />

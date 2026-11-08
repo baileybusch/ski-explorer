@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LogoMark } from '@/components/LogoMark';
+import { BrandLogo } from '@/components/BrandLogo';
+import { BRAND } from '@/lib/brand';
 import { GHOSTS } from '@/lib/ghosts';
 
 export function BoardChrome({
@@ -32,12 +33,11 @@ export function BoardChrome({
         <button
           type="button"
           className="col-start-1 row-start-1 flex min-h-11 min-w-0 items-center gap-2 justify-self-start rounded-full px-1 text-left"
-          aria-label="SkiScope home"
+          aria-label={`${BRAND.name} home`}
           data-testid="logo-home"
           onClick={onHome}
         >
-          <LogoMark className="size-8 shrink-0" />
-          <span className="truncate font-display text-xl tracking-wide">SKISCOPE</span>
+          <BrandLogo size="header" />
         </button>
         <button
           type="button"

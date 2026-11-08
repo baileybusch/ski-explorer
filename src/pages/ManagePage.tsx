@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { LogoMark } from '@/components/LogoMark';
+import { BrandLogo } from '@/components/BrandLogo';
 import { SiteFooter } from '@/components/SiteFooter';
 import { AlertsList } from '@/components/AlertsList';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
@@ -157,8 +157,7 @@ export function ManagePage() {
     <div className="min-h-dvh bg-background text-foreground" data-testid="manage-page" data-signed-in={screen === 'in' ? '1' : '0'} data-screen={screen}>
       <header className="mx-auto flex w-full max-w-lg items-center justify-between px-3 pt-[max(0.55rem,env(safe-area-inset-top))]">
         <a href={withAlerts('/')} className="flex min-h-11 items-center gap-2">
-          <LogoMark className="size-7" />
-          <span className="font-display text-xl tracking-wide">SKISCOPE</span>
+          <BrandLogo size="page" />
         </a>
       </header>
 
