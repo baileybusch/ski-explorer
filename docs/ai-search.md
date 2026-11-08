@@ -27,7 +27,7 @@ Gateway down → same parser + same tools. Fast. Logged.
 | `ranking` | top snow in Colorado | `get_leaderboard` (`metric` from the phrase) |
 | `compare` | Alta vs Snowbird | `compare_resorts` |
 
-`metric`: `past72` / `next7` / `dump` / `std` / `vsavg`. Board rank can still use dump score; the **headline number is last 72h actual**.
+`metric`: `past72` / `next7` / `dump` / `std` / `vsavg`. Board rank is **last 72h observed** (`past72`); the **headline number is that same 72h**. Forecast is the chip only.
 
 ## API
 

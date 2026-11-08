@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('board cards show actual last 72h, not the dump sum', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('board-rank-hint')).toHaveText(/Ranked by last 72h \+ next 7 days/);
+  await expect(page.getByTestId('board-rank-hint')).toHaveText(/Ranked by last 72h observed/);
   const card = page.getByTestId('block').first();
   await expect(card.getByTestId('snow-actual')).toBeVisible();
   await expect(card.getByTestId('snow-actual-label')).toHaveText(/last 72h/i);

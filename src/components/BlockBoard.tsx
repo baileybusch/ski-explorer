@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { forecastDays } from '../../lib/snowWindow.js';
-import { dumpParts, cardTone, gridCols, packCells, rowHeight, targetRows } from '@/lib/board';
+import { dumpParts, cardTone, gridCols, packCells, relativeUpdated, rowHeight, targetRows } from '@/lib/board';
 import { snowAmount, tempLabel, type SnowUnits, type TempUnits } from '@/lib/format';
 import { parseISO } from '../../lib/util.js';
 import { RadarThumb } from '@/components/RadarThumb';
@@ -24,7 +24,8 @@ export function BlockBoard({
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 390, h: 560 });
-  const max = Math.max(0, ...rows.map(row => (row.dump || dumpParts(row.r, snow)).dumpCm));
+  const max = Math.max(0, ...rows.map(row => (row.dump || dumpParts(row.r, snow)).past72Cm));
+  const updated = relativeUpdated(snow?.observedFetched || snow?.generated);
 
   useEffect(() => {
     const el = wrap.current;
@@ -63,9 +64,14 @@ export function BlockBoard({
         </div>
       ) : (
         <>
-          <p className="px-1 pb-2 text-[11px] text-muted-foreground" data-testid="board-rank-hint">
-            Ranked by last 72h + next 7 days
+          <p className="px-1 pb-1 text-[11px] text-muted-foreground" data-testid="board-rank-hint">
+            Ranked by last 72h observed
           </p>
+          {updated ? (
+            <p className="px-1 pb-2 text-[11px] text-muted-foreground" data-testid="board-updated">
+              {updated}
+            </p>
+          ) : null}
           <div
             className="grid w-full min-w-0"
             style={{
@@ -77,9 +83,9 @@ export function BlockBoard({
             {packed.cells.map(cell => {
               const row = rows[cell.i];
               const dump = row.dump || dumpParts(row.r, snow);
-              const tone = cardTone(cell.i + 1, dump.dumpCm, max);
+              const tone = cardTone(cell.i + 1, dump.past72Cm, max);
               const fg = tone.ink ? '#08090b' : '#f2f3f5';
-              const featured = cell.colSpan >= 2 && cell.rowSpan >= 2;
+              const featured = cell.i === 0 && rows.length >= 3;
               const days = featured ? forecastDays(row.r, snow, { days: 5 }) : [];
               return (
                 <button
@@ -87,7 +93,11 @@ export function BlockBoard({
                   type="button"
                   data-testid="block"
                   data-resort={row.r.id}
-                  aria-label={dumpAria(row.r.name, dump.past72Cm, dump.next7Cm, units)}
+                  data-rank={cell.i + 1}
+                  data-snow72={String(dump.past72In)}
+                  data-next7={String(dump.next7In)}
+                  data-source={dump.source}
+                  aria-label={dumpAria(row.r.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}
                   className="flex h-full min-h-0 min-w-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] p-3 text-left"
                   style={{
                     gridColumn: `${cell.col + 1} / span ${cell.colSpan}`,
@@ -103,7 +113,7 @@ export function BlockBoard({
                     </div>
                   </div>
                   <div className={`flex min-h-0 min-w-0 items-end justify-between gap-2 ${featured ? '' : 'flex-col items-stretch'}`}>
-                    <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size={featured ? 'featured' : 'card'} />
+                    <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size={featured ? 'featured' : 'card'} estimated={dump.estimated} />
                     {featured ? (
                       <RadarThumb
                         lon={row.r.center[0]}

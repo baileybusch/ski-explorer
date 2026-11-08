@@ -17,8 +17,23 @@ export function attachSnow(resorts: any[], snow: any) {
   return resorts;
 }
 
+async function loadObserved() {
+  try {
+    const live = await fetch('/api/observed');
+    if (live.ok) {
+      const json = await live.json();
+      if (json?.resorts) return json;
+    }
+  } catch { /* vite has no /api/observed — fall through */ }
+  try {
+    const file = await fetch('/data/observed.json');
+    if (file.ok) return file.json();
+  } catch { /* */ }
+  return { resorts: {}, fetched: null };
+}
+
 export async function loadCatalog() {
-  const [resorts, snow, gaz, typical, fire, history, social] = await Promise.all([
+  const [resorts, snow, gaz, typical, fire, history, social, observed] = await Promise.all([
     fetch('/data/resorts-index.json').then(r => r.json()),
     fetch('/data/snow.json').then(r => r.json()),
     fetch('/data/gazetteer.json').then(r => r.ok ? r.json() : { regions: [] }),
@@ -26,11 +41,16 @@ export async function loadCatalog() {
     fetch('/data/cottonwood-fire.json').then(r => r.ok ? r.json() : null).catch(() => null),
     fetch('/data/history.json').then(r => r.ok ? r.json() : { resorts: {} }).catch(() => ({ resorts: {} })),
     fetch('/data/social.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    loadObserved(),
   ]);
+  snow.observed = observed.resorts || {};
+  snow.observedFetched = observed.fetched || null;
+  snow.observedSource = observed.source || null;
   attachSnow(resorts, snow);
   return {
     resorts,
     snow,
+    observed,
     typical,
     history,
     social,

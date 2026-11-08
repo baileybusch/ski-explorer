@@ -1,0 +1,29 @@
+name: Refresh observed snow
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly — Hobby cron is once/day, so GH Actions is the free near-real-time path
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Observed (NRCS SNOTEL + model-est)
+        run: node scripts/fetch_observed.mjs
+      - name: Forecast chip (Open-Meteo, 1 point/resort)
+        run: python scripts/fetch_snow.py
+      - name: Commit if changed
+        run: |
+          git config user.name "snow-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/observed.json public/data/snotel-map.json public/data/snow.json
+          git diff --cached --quiet || git commit -m "data: refresh observed snow $(date -u +%FT%H:%MZ)"
+          git push

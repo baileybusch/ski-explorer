@@ -10,28 +10,23 @@ import { snowAmount, passLabel, tempLabel, windLabel, type SnowUnits, type TempU
 import { dumpAria, SnowSplit } from '@/components/SnowSplit';
 import { weatherGlyph, forecastDays } from '../../lib/snowWindow.js';
 import { fetchResortWeather, snapshotWeather } from '../../lib/weather.js';
-import { interestingBlurb, peopleLabel, tripDates } from '../../lib/trip.js';
+import { interestingBlurb } from '../../lib/trip.js';
 import { outboundRel, resortSite } from '../../lib/links.js';
-import { fmtFt, fmtShort, parseISO } from '../../lib/util.js';
+import { fmtFt, parseISO } from '../../lib/util.js';
 import { stormStatus } from '../../lib/stormStatus.js';
 import { dumpParts } from '@/lib/board';
 
 export function ResortProfile({
-  row, onBack, onPlan, onScroll, snow, typical, units, tempUnits = 'F', trip, win, onShowMap, onAlert, onEditTrip, history, social,
+  row, onBack, onScroll, snow, units, tempUnits = 'F', onShowMap, onAlert, history, social,
 }: {
   row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
-  onPlan: (r: any) => void;
   onScroll?: (y: number) => void;
   snow: any;
-  typical: any;
   units: SnowUnits;
   tempUnits?: TempUnits;
-  trip: any;
-  win: any;
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
-  onEditTrip?: () => void;
   history?: any;
   social?: { instagram?: string; featuredPosts?: string[] } | null;
 }) {
@@ -53,7 +48,6 @@ export function ResortProfile({
   const liveByDate = Object.fromEntries((wx?.daily || []).map((d: any) => [d.date, d]));
   const daily = snapDays.map(d => ({ ...d, ...(liveByDate[d.date] || {}) }));
   const maxSnow = Math.max(0.1, ...daily.map((d: any) => d.snowCm || 0));
-  const { start: from, end: to } = tripDates(trip, win);
   const site = resortSite(resort);
   const passName = passLabel(resort);
   const dump = dumpParts(resort, snow);
@@ -120,8 +114,8 @@ export function ResortProfile({
               {resort.town ? `${resort.town}, ` : ''}{resort.region || resort.state}
             </p>
             <div className="mt-2 flex min-w-0 items-end justify-between gap-3">
-              <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units)}>
-                <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" />
+              <div className="min-w-0" aria-label={dumpAria(resort.name, dump.past72Cm, dump.next7Cm, units, dump.estimated)}>
+                <SnowSplit pastCm={dump.past72Cm} nextCm={dump.next7Cm} units={units} size="hero" estimated={dump.estimated} />
               </div>
               <div className="mb-2 text-right text-base text-white/80">
                 <div>{glyph} {tempLabel(cur.tempC, tempUnits)}</div>
@@ -142,7 +136,9 @@ export function ResortProfile({
             </CardHeader>
             <CardContent>
               <p className="text-base leading-relaxed" data-testid="storm-status-text">{status.text}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground">Modeled forecast.</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {dump.estimated ? 'Last 72h estimated from the model. ' : 'Last 72h from SNOTEL. '}Forecast is modeled.
+              </p>
               {onAlert ? (
                 <Button type="button" className="mt-4 min-h-12 w-full text-base" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>
                   Alert me
@@ -200,24 +196,9 @@ export function ResortProfile({
             </CardContent>
           </Card>
 
-          <Card data-testid="tile-trip">
-            <CardHeader>
-              <CardTitle>Plan a trip</CardTitle>
-              <CardDescription>
-                {fmtShort(from)}–{fmtShort(to)} · {peopleLabel(trip)}
-                {resort.iata ? ` · ${trip.home} → ${resort.iata}` : ''}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button type="button" variant="outline" className="min-h-12 w-full text-base" data-testid="plan-trip" onClick={onEditTrip || (() => onPlan(resort))}>
-                Plan a trip
-              </Button>
-            </CardContent>
-          </Card>
-
           <Card data-testid="tile-facts">
             <CardHeader>
-              <CardTitle>Facts</CardTitle>
+              <CardTitle>Mountain Facts</CardTitle>
               <CardDescription>OpenSkiMap stats.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2 text-base">

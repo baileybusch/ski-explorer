@@ -431,7 +431,7 @@ export default function App() {
 
   const visibleRows = rowsAll.slice(0, shown);
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
-  const maxDump = Math.max(0, ...rowsAll.map(x => x.dump.dumpCm));
+  const maxDump = Math.max(0, ...rowsAll.map(x => x.dump.past72Cm));
   const zeroHint = maxDump === 0;
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
 
@@ -501,7 +501,7 @@ export default function App() {
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet across the board. Modeled, not resort-reported.
+              Quiet across the board. US numbers are SNOTEL; elsewhere modeled (est.).
             </p>
           ) : null}
           <BlockBoard
@@ -557,17 +557,12 @@ export default function App() {
         <ResortProfile
           row={visibleRows.find(x => x.r.id === selectedId) || { r: selected, m: windowMetrics(selected, catalog.snow, win, catalog.typical), storm: stormForResort(selected, catalog.snow), wx: wxById[selected.id] }}
           onBack={backToBoard}
-          onPlan={r => { writeURL({ resort: r.id, mode: 'plan' }); openPlan([r]); }}
           onScroll={setHeroParallax}
           snow={catalog.snow}
-          typical={catalog.typical}
           units={units}
           tempUnits={tempUnits}
-          trip={trip}
-          win={win}
           onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
           onAlert={r => { setEditRule(null); setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
-          onEditTrip={() => setTripOpen(true)}
           history={catalog.history}
           social={catalog.social?.[selectedId] || null}
         />
@@ -636,6 +631,7 @@ export default function App() {
         tempUnits={tempUnits}
         setTempUnits={setTempUnits}
         mode={alertsUi.mode}
+        onPlanTrip={() => { setMenuOpen(false); setTripOpen(true); }}
       />
 
       <AlertOnboarding

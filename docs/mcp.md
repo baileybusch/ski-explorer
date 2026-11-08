@@ -12,7 +12,7 @@ Cursor / other clients: transport `http`, URL `https://skiscope.vercel.app/api/m
 
 `GET /api/mcp` returns server info + the tool list (for humans and install checks).
 
-Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, and `/api/data` rewrite to one function (`api/headless.js`). The public URLs stay the same.
+Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, `/api/data`, and `/api/observed` rewrite to one function (`api/headless.js`). The public URLs stay the same.
 
 ## Tools
 
@@ -20,8 +20,8 @@ Hobby is capped at 12 serverless functions. `/api/mcp`, `/api/search`, and `/api
 |---|---|---|
 | `search_resorts` | `query`, `country`, `region`, `state`, `pass`, `limit`, `units` | Fuzzy + gazetteer |
 | `list_regions` | — | Japan, California, Alps, Rockies, Tahoe, PNW, Canada, … |
-| `get_leaderboard` | `region` / `country` / `state` / `pass`, `metric`, `limit`, `units` | `metric`: `past72` `next7` `dump` `std` `vsavg` |
-| `get_resort_snow` | `resort`, `units` | Headline is last-72h **actual**. Forecast is separate. |
+| `get_leaderboard` | `region` / `country` / `state` / `pass`, `metric`, `limit`, `units` | Default `metric` is `past72` (observed). Also `next7` `dump` `std` `vsavg` |
+| `get_resort_snow` | `resort`, `units` | Headline is last-72h **observed** (`source` `snotel:<id>` or `model-est`). Forecast is separate. |
 | `get_resort_forecast` | `resort`, `days`, `units` | Daily snapshot |
 | `get_storm_status` | `resort`, `units` | Quiet → Winding down |
 | `get_snow_history` | `resort`, `units` | 24h / 72h / storm / season vs last-five same date |

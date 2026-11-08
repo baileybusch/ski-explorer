@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 async function openTrip(page) {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('block').first().click();
-  await expect(page.getByTestId('plan-trip')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('menu-button').click();
+  await expect(page.getByTestId('settings-sheet')).toBeVisible({ timeout: 10_000 });
   await page.getByTestId('plan-trip').click();
   await expect(page.getByTestId('trip-onboarding')).toBeVisible();
 }

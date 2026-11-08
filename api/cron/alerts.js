@@ -34,11 +34,10 @@ export default async function handler(req, res) {
   const now = new Date();
   const allow = (process.env.DIGEST_ALLOWLIST || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const [data, subs] = await Promise.all([loadData(), allActive()]);
-  let snow = { dates: [], today: 0, resorts: {} };
-  try { snow = readJSON('../../public/data/snow.json'); } catch { /* attach from loadData below */ }
-  const index = data.resorts || [];
-  let regions = [];
-  try { regions = readJSON('../../public/data/gazetteer.json').regions || []; } catch { /* optional */ }
+  const catalog = loadCatalog();
+  let snow = catalog.snow || { dates: [], today: 0, resorts: {} };
+  const index = data.resorts || catalog.resorts || [];
+  const regions = catalog.regions || [];
   snow = attachCatalog(snow, index, regions);
 
   const rules = [];
@@ -54,7 +53,6 @@ export default async function handler(req, res) {
   }
 
   const { alerts, queued } = evaluateAlerts(rules, snow, now);
-  const catalog = loadCatalog();
   const packs = consolidateAlerts(alerts);
   let sent = 0, failed = 0;
   for (const pack of packs) {

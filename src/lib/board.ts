@@ -1,5 +1,5 @@
 /** Shared board ranking, tone, and gap-free pack layout. */
-export { compareDump, dumpParts, dumpScoreIn } from '../../lib/dumpScore.js';
+export { compareDump, dumpParts, dumpScoreIn, relativeUpdated, boardIsMonotonic } from '../../lib/dumpScore.js';
 
 export const BOARD_PAGE = 11;
 export const BOARD_MORE = 10;
@@ -41,8 +41,8 @@ export type PackedCell = {
 
 /**
  * Pack n blocks into `cols` so the last row is never half-empty.
- * n=1 full cell; n=2 stacked full-width; n=4 + 2-col = equal 2×2;
- * otherwise the leader is 2×2 and leftovers stretch to finish the row.
+ * Featured (#1 by observed snow) is always full-width on top; every card
+ * below is left-to-right then down in array order (strict stack rank).
  */
 export function packCells(n: number, cols: number): { cells: PackedCell[]; rows: number } {
   const cells: PackedCell[] = [];
@@ -62,25 +62,13 @@ export function packCells(n: number, cols: number): { cells: PackedCell[]; rows:
     };
   }
 
-  const featured = !(n === 4 && cols === 2);
   let i = 0;
   let row = 0;
-
+  const featured = n >= 3;
   if (featured) {
-    const leadCols = Math.min(2, cols);
-    const leadRows = 2;
-    cells.push({ i: 0, col: 0, row: 0, colSpan: leadCols, rowSpan: leadRows });
+    cells.push({ i: 0, col: 0, row: 0, colSpan: cols, rowSpan: 2 });
     i = 1;
-    const sideCols = cols - leadCols;
-    if (sideCols > 0) {
-      for (let r = 0; r < leadRows && i < n; r++) {
-        for (let c = 0; c < sideCols && i < n; c++) {
-          cells.push({ i, col: leadCols + c, row: r, colSpan: 1, rowSpan: 1 });
-          i += 1;
-        }
-      }
-    }
-    row = leadRows;
+    row = 2;
   }
 
   while (i < n) {

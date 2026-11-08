@@ -9,11 +9,13 @@
 import mcp from './_mcp.js';
 import search from './_search.js';
 import data from './_data.js';
+import observed from './_observed.js';
 
 export default async function handler(req, res) {
   const surface = String(req.query?.surface || '').toLowerCase();
   const path = String(req.url || '');
   if (surface === 'mcp' || path.startsWith('/api/mcp')) return mcp(req, res);
   if (surface === 'search' || path.startsWith('/api/search')) return search(req, res);
+  if (surface === 'observed' || path.startsWith('/api/observed')) return observed(req, res);
   return data(req, res);
 }

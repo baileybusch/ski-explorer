@@ -34,7 +34,7 @@ Below the hero, rounded tiles that scroll vertically and swipe horizontally wher
 - Weather (hourly + 7-day carousel)
 - Storm timeline
 - Trip (people/dates, Google Flights first, lodging, affiliate wrap)
-- Facts
+- Mountain Facts
 - Lodging-map toggle
 - Persistent **Plan trip**
 

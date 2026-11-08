@@ -18,6 +18,7 @@ import { runMcpEvals } from './mcp.mjs';
 import { runSubscriptionEvals } from './subscriptions.mjs';
 import { runReadoutEvals } from './readout.mjs';
 import { runWeatherEvals } from './weather.mjs';
+import { runObservedEvals } from './observed.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -134,5 +135,10 @@ console.log('\nweather\n');
 for (const line of wx.lines) console.log(line);
 console.log(`\n${wx.total - wx.fail}/${wx.total} weather evals passed`);
 
+const observed = runObservedEvals();
+console.log('\nobserved snow\n');
+for (const line of observed.lines) console.log(line);
+console.log(`\n${observed.total - observed.fail}/${observed.total} observed evals passed`);
+
 process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
-  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail ? 1 : 0);
+  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail ? 1 : 0);
