@@ -4,7 +4,7 @@ import { ArrowUpIcon, ChevronLeftIcon, SquareIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { AskTransport } from '@/lib/askTransport';
-import type { AskUIMessage, RankOutput } from '@/lib/askTypes';
+import type { AskUIMessage, BoardScope, RankOutput } from '@/lib/askTypes';
 import type { SnowUnits } from '@/lib/format';
 import { REGION_CHIPS } from '@/lib/design';
 import {
@@ -92,12 +92,14 @@ function Thread({
 
 export function AskPanel({
   open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard,
-  regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn,
+  regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn, board,
 }: {
   open: boolean;
   onClose: () => void;
   units: SnowUnits;
   catalog: any;
+  /** The board's current scope; answers rank within it unless the question names another. */
+  board: BoardScope;
   /** A question to send as soon as the panel is open (deep link or prompt from elsewhere). */
   request?: { text: string; n: number } | null;
   onAsked?: (text: string) => void;
@@ -111,8 +113,8 @@ export function AskPanel({
   stormsOn: boolean;
   setStormsOn: (on: boolean) => void;
 }) {
-  const ctxRef = useRef({ units, catalog });
-  ctxRef.current = { units, catalog };
+  const ctxRef = useRef({ units, catalog, board });
+  ctxRef.current = { units, catalog, board };
   const transport = useMemo(() => new AskTransport(() => ctxRef.current), []);
   const { messages, sendMessage, status, stop, setMessages } = useChat<AskUIMessage>({ id: 'ask-skiscope', transport });
   const [input, setInput] = useState('');

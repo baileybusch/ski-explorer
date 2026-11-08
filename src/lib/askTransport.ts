@@ -1,8 +1,9 @@
 import { DefaultChatTransport, type ChatTransport, type UIMessageChunk } from 'ai';
 import { deterministicStream, lastUserText } from '../../lib/ask/answer.js';
-import type { AskUIMessage } from '@/lib/askTypes';
+import { observedSnapshot } from '../../lib/boardRank.js';
+import type { AskUIMessage, BoardScope } from '@/lib/askTypes';
 
-type Ctx = { units: 'in' | 'cm'; catalog: any };
+type Ctx = { units: 'in' | 'cm'; catalog: any; board: BoardScope };
 
 let climatology: Promise<any> | null = null;
 function loadClimatology() {
@@ -13,8 +14,8 @@ function loadClimatology() {
 }
 
 async function localAnswer(messages: AskUIMessage[], ctx: Ctx): Promise<ReadableStream<UIMessageChunk>> {
-  const { catalog, units } = ctx;
-  const cat = { resorts: catalog.resorts, snow: catalog.snow, regions: catalog.regions, climatology: await loadClimatology() };
+  const { catalog, units, board } = ctx;
+  const cat = { resorts: catalog.resorts, snow: catalog.snow, regions: catalog.regions, climatology: await loadClimatology(), board };
   return deterministicStream(lastUserText(messages), cat, { units, today: catalog.today }) as ReadableStream<UIMessageChunk>;
 }
 
@@ -59,7 +60,11 @@ export class AskTransport implements ChatTransport<AskUIMessage> {
   constructor(private ctx: () => Ctx) {
     this.http = new DefaultChatTransport<AskUIMessage>({
       api: '/api/ask',
-      body: () => ({ units: this.ctx().units }),
+      // The board's scope and observed snapshot, so server answers rank exactly what the board shows.
+      body: () => {
+        const { units, board, catalog } = this.ctx();
+        return { units, board, snapshot: observedSnapshot(catalog?.snow) };
+      },
     });
   }
 

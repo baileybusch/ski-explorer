@@ -45,7 +45,8 @@ export type RankOutput = SourceMeta & {
   sortLabel: string;
   where: string;
   regionId: string | null;
-  pass: string | null;
+  pass: 'ikon' | 'epic' | 'all';
+  observedOnly: boolean;
   total: number;
   rows: SnowRow[];
   actualLeader: Leader;
@@ -68,6 +69,7 @@ type ClimateBase = SourceMeta & {
   label: string;
   where: string;
   regionId: string | null;
+  pass: 'ikon' | 'epic' | 'all';
   seasons: string | null;
   source: string;
   note: string;
@@ -94,7 +96,7 @@ export type ClimateOutput =
     best: { month: number; monthName: string; avgCm: number; avgIn: number } | null;
   });
 
-type Scope = { region?: string; country?: string; state?: string; pass?: 'ikon' | 'epic' };
+type Scope = { region?: string; country?: string; state?: string; pass?: 'ikon' | 'epic' | 'all' };
 
 export type AskTools = {
   rankResorts: { input: Scope & { sort?: AskSort; observedOnly?: boolean; limit?: number }; output: RankOutput };
@@ -102,6 +104,9 @@ export type AskTools = {
   compareResorts: { input: { ids: string[] }; output: CompareOutput };
   monthClimatology: { input: Scope & { month?: number; limit?: number }; output: ClimateOutput };
 };
+
+/** The home board's scope; Ask tools default to it (lib/boardRank.js). */
+export type BoardScope = { pass: 'ikon' | 'epic' | 'all'; regionId: string | null; observedOnly: boolean };
 
 export type AskMetadata = { mode?: 'llm' | 'fallback'; model?: string | null };
 

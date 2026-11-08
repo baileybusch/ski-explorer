@@ -11,7 +11,9 @@ import { loadCatalog, executeTool, TOOL_NAMES } from '../lib/skiscope-tools/inde
 import { answerChunks, deterministicStream, planAnswer, mentionedResorts } from '../lib/ask/answer.js';
 import { askStream } from '../lib/ask/server.js';
 import { rankResorts, monthClimatology, getResort, compareResortsDetail } from '../lib/skiscope-tools/askTools.js';
-import { compareBoard } from '../lib/dumpScore.js';
+import { compareBoard, dumpParts } from '../lib/dumpScore.js';
+import { rankBoard, regionResortIds, observedSnapshot, withObservedSnapshot } from '../lib/boardRank.js';
+import { regionMatchesResort } from '../lib/search.js';
 
 const usage = { inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 5, text: 5, reasoning: undefined } };
 
@@ -58,7 +60,7 @@ function streamErrorModel() {
   });
 }
 
-async function viaHttp(cat) {
+async function viaHttp(cat, extra = {}, text = 'best in March') {
   const { default: handler } = await import('../api/_ask.js');
   const server = createServer(async (req, res) => {
     let raw = '';
@@ -74,7 +76,7 @@ async function viaHttp(cat) {
     const resp = await fetch(`http://127.0.0.1:${port}/api/ask`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ messages: userMsg('best in March'), units: 'in' }),
+      body: JSON.stringify({ messages: userMsg(text), units: 'in', ...extra }),
     });
     const body = await resp.text();
     return { status: resp.status, type: resp.headers.get('content-type') || '', body };
@@ -82,6 +84,19 @@ async function viaHttp(cat) {
     server.close();
   }
 }
+
+/** The home board as App renders it, written out longhand so rankBoard is checked too. */
+function boardOrderReference(cat, { pass = 'all', regionId = null, observedOnly = false, sort = 'actual72' } = {}) {
+  const g = regionId ? cat.regions.find(x => x.id === regionId) : null;
+  return cat.resorts
+    .filter(r => pass === 'all' || (r.passes || []).includes(pass))
+    .filter(r => !g || regionMatchesResort(g, r))
+    .filter(r => !observedOnly || !dumpParts(r, cat.snow).estimated)
+    .sort((a, b) => compareBoard(a, b, cat.snow, sort))
+    .map(r => r.id);
+}
+
+const sameIds = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 export async function runAskEvals() {
   const cat = loadCatalog();
@@ -124,6 +139,39 @@ export async function runAskEvals() {
     for (let i = 1; i < out.rows.length; i++) if (compareBoard(byId.get(out.rows[i - 1].id), byId.get(out.rows[i].id), cat.snow, board) > 0) mono = false;
     check(`rankResorts ${sort} matches board order`, mono && out.rows.length === 12);
   }
+  // Chat ↔ board parity: for every board scope, the Ask answer's ranked rows are the board's top N.
+  const ASK_SORT_TEXT = { actual72: 'most snow right now', actual24: 'most snow in the last 24 hours', forecast7d: 'most projected snow' };
+  let parity = 0;
+  const parityFails = [];
+  for (const pass of ['all', 'ikon', 'epic']) {
+    for (const regionId of [null, 'utah', 'alps']) {
+      for (const observedOnly of [false, true]) {
+        for (const sort of ['actual72', 'actual24', 'forecast7d']) {
+          const board = { pass, regionId, observedOnly };
+          const ref = boardOrderReference(cat, { ...board, sort });
+          const shared = rankBoard(cat.resorts, cat.snow, { pass, ids: regionResortIds(cat.resorts, regionId && cat.regions.find(g => g.id === regionId), pass), observedOnly, sort }).map(r => r.id);
+          const { outputs } = answerChunks(ASK_SORT_TEXT[sort], { ...cat, board });
+          const out = outputs.find(o => o.tool === 'rankResorts')?.output;
+          const ask = (out?.rows || []).map(r => r.id);
+          const estOk = (out?.rows || []).every(r => r.estimated === dumpParts(cat.resorts.find(x => x.id === r.id), cat.snow).estimated);
+          const ok = sameIds(shared, ref) && sameIds(ask, ref.slice(0, ask.length)) && out.total === ref.length && estOk;
+          parity++;
+          if (!ok) parityFails.push(`${pass}/${regionId || 'world'}/${observedOnly ? 'obs' : 'all'}/${sort}: ask ${ask.slice(0, 3)} board ${ref.slice(0, 3)}`);
+        }
+      }
+    }
+  }
+  check(`rankResorts top-N == board order across ${parity} board scopes`, parityFails.length === 0, parityFails.slice(0, 3).join(' | '));
+
+  const ikonBoard = boardOrderReference(cat, { pass: 'ikon' });
+  const ikonAsk = answerChunks('which resort is getting the most snow right now?', { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false } });
+  const ikonRows = ikonAsk.outputs[0].output.rows;
+  check('default Ikon board: chat #1 is board #1 (no Epic-only leader)', ikonRows[0].id === ikonBoard[0] && ikonRows.every(r => cat.resorts.find(x => x.id === r.id).passes.includes('ikon')) && /among Ikon resorts/.test(ikonAsk.reply), ikonRows[0]?.id);
+  const world = answerChunks('most snow anywhere in the world', { ...cat, board: { pass: 'all', regionId: 'utah', observedOnly: false } }).outputs[0].output;
+  check('"anywhere in the world" drops the board region', world.regionId === null && world.rows[0].id === boardOrderReference(cat)[0]);
+  const both = answerChunks('most snow on either pass, both passes', { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false } }).outputs[0].output;
+  check('"both passes" overrides the board pass', both.pass === 'all');
+
   const ut = rankResorts({ region: 'utah' }, cat);
   check('rankResorts region filter', ut.rows.length > 0 && ut.rows.every(r => /Utah/.test(r.where || '')));
   const fl = rankResorts({}, cat).forecastLeader;
@@ -168,8 +216,20 @@ export async function runAskEvals() {
     const err = await collect(askStream({ messages: userMsg('most snow right now'), cat, useModel: true, model: streamErrorModel() }));
     check('server, model stream error → silent fallback', err.metadata?.mode === 'fallback' && err.parts.some(p => p.type === 'tool-rankResorts'));
 
-    const http = await viaHttp(cat);
+    const http = await viaHttp(cat, { snapshot: observedSnapshot(cat.snow) });
     check('POST /api/ask streams SSE with tool output', http.status === 200 && /text\/event-stream/.test(http.type) && http.body.includes('"tool-output-available"') && http.body.includes('[DONE]') && !http.body.includes('"type":"error"'), `${http.status} ${http.type}`);
+
+    // A client snapshot that differs from this instance's file: the server must rank the client's.
+    const snap = observedSnapshot(cat.snow);
+    const tail = boardOrderReference(cat, { pass: 'ikon' }).slice(-1)[0];
+    snap.observed[tail] = { snow72hCm: 999, snow24hCm: 10, source: 'snotel:test' };
+    snap.observed['not-a-resort'] = { snow72hCm: 1500, source: 'snotel:x' };
+    const clientCat = withObservedSnapshot(cat, { ...snap, observed: Object.fromEntries(Object.entries(snap.observed).filter(([k]) => k !== 'not-a-resort')) });
+    const want = boardOrderReference(clientCat, { pass: 'ikon' }).slice(0, 6);
+    const viaSnap = await viaHttp(cat, { board: { pass: 'ikon' }, snapshot: snap }, 'most snow right now');
+    const outLine = viaSnap.body.split('\n').find(l => l.includes('"tool-output-available"'));
+    const got = outLine ? JSON.parse(outLine.replace(/^data: /, '')).output.rows.map(r => r.id) : [];
+    check('POST /api/ask ranks the client board snapshot (same observed + est.)', want[0] === tail && sameIds(got, want), `got ${got.slice(0, 3)} want ${want.slice(0, 3)}`);
   } finally {
     console.warn = warn;
   }

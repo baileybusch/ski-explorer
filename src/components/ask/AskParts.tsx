@@ -45,6 +45,16 @@ export function PartPending({ label }: { label: string }) {
 
 const COLS = 'grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,4.75rem)_minmax(0,4.75rem)] min-[480px]:grid-cols-[1.6rem_minmax(0,1fr)_minmax(0,6.25rem)_minmax(0,6.25rem)]';
 
+const PASS_LABEL: Record<string, string | undefined> = { ikon: 'Ikon', epic: 'Epic' };
+
+/** "Ikon resorts in Japan", "All resorts", "Epic resorts, observed only". */
+function scopeCaption(out: RankOutput) {
+  const p = PASS_LABEL[out.pass];
+  const base = p ? `${p} resorts` : 'All resorts';
+  const where = out.where === 'Worldwide' ? '' : ` in ${out.where}`;
+  return `${base}${where}${out.observedOnly ? ', observed only' : ''}`;
+}
+
 export function RankedAnswer({
   out, units, onOpen, onShowBoard,
 }: {
@@ -56,11 +66,10 @@ export function RankedAnswer({
   const day = out.sort === 'actual24h';
   const actualOf = (r: SnowRow) => (day ? r.actual24Cm : r.actual72Cm);
   const max = stakeMax(out.rows.flatMap(r => [actualOf(r), r.next7Cm]));
-  const where = out.where === 'Worldwide' ? 'All resorts' : out.where;
   return (
     <Frame
       testid="ask-ranked"
-      caption={<>{where}, ranked by {out.sortLabel.toLowerCase()}</>}
+      caption={<>{scopeCaption(out)}, ranked by {out.sortLabel.toLowerCase()}</>}
       footer={(
         <Button type="button" variant="ghost" size="sm" className="min-h-10 w-full justify-start px-2 text-[13px]" data-testid="ask-show-board" onClick={() => onShowBoard(out)}>
           {out.total > out.rows.length ? `See all ${out.total} on the board` : 'Show these on the board'}
@@ -84,6 +93,7 @@ export function RankedAnswer({
               data-resort={r.id}
               data-actual={actualOf(r)}
               data-next7={r.next7Cm}
+              data-estimated={r.estimated ? '1' : '0'}
               aria-label={`${r.name}, ${snowAmount(actualOf(r), units)}${r.estimated ? ' estimated' : ''} ${day ? 'last 24 hours' : 'last 72 hours'}, ${snowAmount(r.next7Cm, units)} forecast next 7 days`}
             >
               <span className="font-display tabular text-lg leading-none text-muted-foreground">{i + 1}</span>
@@ -225,7 +235,8 @@ export function CompareAnswer({ out, units, onOpen }: { out: CompareOutput; unit
 }
 
 export function ClimateAnswer({ out, units, onOpen }: { out: ClimateOutput; units: SnowUnits; onOpen: (id: string) => void }) {
-  const where = out.where === 'Worldwide' ? '' : `, ${out.where}`;
+  const p = PASS_LABEL[out.pass];
+  const where = [p ? `${p} resorts` : null, out.where === 'Worldwide' ? null : out.where].filter(Boolean).map(x => `, ${x}`).join('');
   if (out.kind === 'month') {
     if (out.outOfArchive || !out.rows.length) {
       return (

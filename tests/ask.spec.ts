@@ -56,6 +56,43 @@ test('most snow right now: ranked list in actual-72h order with forecast beside 
   await expect(answer).toHaveAttribute('data-mode', /fallback|llm/);
 });
 
+async function boardTop(page: Page) {
+  return page.getByTestId('block').evaluateAll(els => els.map(e => ({
+    id: e.getAttribute('data-resort'), est: e.getAttribute('data-estimated'),
+  })));
+}
+
+async function askTop(answer: ReturnType<Page['getByTestId']>) {
+  return answer.getByTestId('ask-row').evaluateAll(els => els.map(e => ({
+    id: e.getAttribute('data-resort'), est: e.getAttribute('data-estimated'),
+  })));
+}
+
+test('chat ranking is the board ranking: same snapshot, scope, order, and est.', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
+  const board = await boardTop(page);
+  await page.getByTestId('search-trigger').click();
+  const answer = await ask(page, 'Which resort is getting the most snow right now?');
+  const chat = await askTop(answer);
+  expect(chat.length).toBeGreaterThanOrEqual(5);
+  expect(chat).toEqual(board.slice(0, chat.length));
+  await expect(answer.getByTestId('ask-ranked')).toContainText(/Ikon resorts, ranked by actual 72h/);
+
+  await page.keyboard.press('Escape');
+  await page.getByTestId('board-sort').selectOption('actual24');
+  await page.getByTestId('board-region').selectOption('utah');
+  await page.getByTestId('observed-only').click();
+  await expect(page.getByTestId('block').first()).toHaveAttribute('data-estimated', '0');
+  const scopedBoard = await boardTop(page);
+  await page.getByTestId('search-trigger').click();
+  const scopedAnswer = await ask(page, 'Most snow in the last 24 hours');
+  const scoped = await askTop(scopedAnswer);
+  expect(scoped.length).toBeGreaterThanOrEqual(3);
+  expect(scoped).toEqual(scopedBoard.slice(0, scoped.length));
+  await expect(scopedAnswer.getByTestId('ask-ranked')).toContainText(/Ikon resorts in Utah, observed only/);
+});
+
 test('Japan trip: Japan resorts plus a month-by-month historical profile', async ({ page }) => {
   await openAsk(page);
   const answer = await ask(page, 'Good resort for a Japan ski trip');

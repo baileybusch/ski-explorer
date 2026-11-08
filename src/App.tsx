@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
-import { BOARD_MORE, BOARD_PAGE, compareBoard, dumpParts } from '@/lib/board';
+import { BOARD_MORE, BOARD_PAGE, dumpParts, rankBoard, regionResortIds } from '@/lib/board';
 import { BOARD_LAYOUT, isBoardSort, type BoardSortId } from '@/lib/boardLayout';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
 import { HomeSignup } from '@/components/HomeSignup';
@@ -208,9 +208,7 @@ export default function App() {
   function applyRegion(g: any, cat = catalog, p = pass, opts: { push?: boolean } = {}) {
     if (!g || !cat) return;
     if (opts.push !== false) pushScope('filter');
-    const passOK = (r: any) => p === 'all' || (r.passes || []).includes(p);
-    const ids = cat.resorts.filter((r: any) => passOK(r) && matchRegion(g, r)).map((r: any) => r.id);
-    setActiveIds(ids);
+    setActiveIds(regionResortIds(cat.resorts, g, p));
     setSelectedId(null);
     setSearchOpen(false);
     setMenuOpen(false);
@@ -277,6 +275,7 @@ export default function App() {
     const nextPass = (out.pass as typeof PASSES[number]) || 'all';
     if (nextPass !== pass) setPass(nextPass);
     setBoardSort(ASK_TO_BOARD_SORT[out.sort] || 'actual72');
+    setObservedOnly(!!out.observedOnly);
     setStormsOn(false);
     const g = out.regionId ? catalog.regions.find((x: any) => x.id === out.regionId) : null;
     if (g) {
@@ -326,9 +325,7 @@ export default function App() {
   const rowsAll = useMemo(() => {
     if (!catalog) return [];
     void watchTick;
-    const passOK = (r: any) => pass === 'all' || (r.passes || []).includes(pass);
-    let list = catalog.resorts.filter(passOK);
-    if (activeIds) list = list.filter((r: any) => activeIds.includes(r.id));
+    const list = rankBoard(catalog.resorts, catalog.snow, { pass, ids: activeIds, observedOnly, sort: boardSort });
     const w = win || defaultWindow(catalog.snow);
     const rows = list.map((r: any) => ({
       r,
@@ -337,11 +334,7 @@ export default function App() {
       wx: wxById[r.id],
       dump: dumpParts(r, catalog.snow),
     }));
-    let out = rows;
-    if (stormsOn) out = out.filter(x => x.storm.tier >= stormMin);
-    if (observedOnly) out = out.filter(x => !x.dump.estimated);
-    out.sort((a, b) => compareBoard(a, b, catalog.snow, boardSort));
-    return out;
+    return stormsOn ? rows.filter(x => x.storm.tier >= stormMin) : rows;
   }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardSort, observedOnly]);
 
   useEffect(() => {
@@ -546,6 +539,7 @@ export default function App() {
         }}
         onWorldwide={resetHome}
         pass={pass}
+        board={{ pass, regionId: facets.regionId || null, observedOnly }}
         setPass={p => { setPass(p as typeof PASSES[number]); setActiveIds(null); }}
         stormsOn={stormsOn}
         setStormsOn={on => { setStormsOn(on); setFacets(f => ({ ...f, storms: on })); if (on) setSearchOpen(false); }}
@@ -603,12 +597,4 @@ export default function App() {
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} text={planText} links={planLinks} />
     </div>
   );
-}
-
-function matchRegion(region: any, r: any) {
-  const m = region.match || {};
-  if (m.country && m.country.includes(r.country)) return true;
-  if (m.region && m.region.includes(r.region)) return true;
-  if (m.subregion && m.subregion.includes(r.subregion)) return true;
-  return false;
 }

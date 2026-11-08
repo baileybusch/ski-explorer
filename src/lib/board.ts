@@ -1,5 +1,6 @@
 /** Shared board ranking, tone, and gap-free pack layout. */
 export { compareDump, compareBoard, dumpParts, dumpScoreIn, relativeUpdated, boardIsMonotonic } from '../../lib/dumpScore.js';
+export { rankBoard, regionResortIds } from '../../lib/boardRank.js';
 export { gridCols, BOARD_LAYOUT, layoutGap, layoutCardH, layoutPadX } from './boardLayout';
 export type { BoardSortId } from './boardLayout';
 
