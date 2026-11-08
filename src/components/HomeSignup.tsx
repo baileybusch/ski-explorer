@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { CONSENT_TEXT } from '../../lib/consentText.js';
+import { ConsentNote } from '@/components/ConsentNote';
 
 export function HomeSignup({ onStart }: { onStart: () => void }) {
   return (
@@ -11,7 +11,7 @@ export function HomeSignup({ onStart }: { onStart: () => void }) {
       <Button type="button" className="mt-4 min-h-12 w-full px-5 text-base" data-testid="home-signup-submit" onClick={onStart}>
         Monitor your home resort
       </Button>
-      <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid="signup-consent">{CONSENT_TEXT}</p>
+      <ConsentNote compact className="mt-2 text-xs" testId="signup-consent" />
     </section>
   );
 }

@@ -2,8 +2,11 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { BRAND } from '@/lib/brand';
 import { withAlerts } from '@/lib/alertsUi';
 import { affiliateConfigured } from '../../public/config.js';
+import { DNS_LINK_TEXT } from '../../lib/consentText.js';
+import { CATEGORY_LINKS } from '../../lib/categoryPages.js';
 
 const LINKS = [
+  { href: '/my-alerts', label: 'My alerts' },
   { href: '/about', label: 'About' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
@@ -28,6 +31,16 @@ export function SiteFooter() {
           </a>
         ) : null}
       </nav>
+      <nav className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label="Snow by region" data-testid="footer-categories">
+        {CATEGORY_LINKS.map(l => (
+          <a key={l.path} href={withAlerts(l.path)} className="underline-offset-4 hover:underline">{l.label}</a>
+        ))}
+      </nav>
+      <p className="mt-3 text-xs">
+        <a href={withAlerts('/do-not-sell')} className="text-muted-foreground underline underline-offset-4 hover:text-foreground" data-testid="footer-dns">
+          {DNS_LINK_TEXT}
+        </a>
+      </p>
       <p className="mt-3 text-xs text-muted-foreground" data-testid="footer-mcp">
         Agents: <a href="https://skiscope.vercel.app/api/mcp" className="underline-offset-4 hover:underline">MCP</a>
         {' · '}

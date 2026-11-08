@@ -6,10 +6,9 @@ import { ChoiceTile, FlowShell, useAutoAdvance } from '@/components/FlowShell';
 import { type AlertsUiMode } from '@/lib/alertsUi';
 import { sensitivityOf } from '../../lib/alertDefaults.js';
 import { loadPrefs } from '@/lib/session';
-import {
-  type LocalRule, accountEmail, addLocalRule, setAccountEmail, updateLocalRule,
-} from '@/lib/alertRules';
-import { CONSENT_TEXT } from '../../lib/consentText.js';
+import { type LocalRule, accountEmail } from '@/lib/alertRules';
+import { type CaptureSource, subscribeRule, validEmail } from '@/lib/subscribe';
+import { ConsentNote } from '@/components/ConsentNote';
 
 export type AlertContext = {
   resortId?: string | null;
@@ -24,7 +23,7 @@ export type AlertContext = {
   kids?: number;
   pass?: string;
   email?: string | null;
-  source?: 'incoming' | 'resort' | 'menu' | 'edit' | 'signup' | 'home' | 'search' | 'trip';
+  source?: CaptureSource;
 };
 
 const STEPS = ['scope', 'resorts', 'confirm', 'success'] as const;
@@ -32,10 +31,6 @@ type Step = typeof STEPS[number];
 
 function namesOf(ids: string[], resorts: { id: string; name: string }[]) {
   return ids.map(id => resorts.find(r => r.id === id)?.name || id);
-}
-
-function validEmail(addr: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.trim());
 }
 
 export function AlertOnboarding({
@@ -142,7 +137,7 @@ export function AlertOnboarding({
       id: editRule?.id,
       email: next,
       type: kind,
-      watch: kind === 'region' ? 'region' : 'resort',
+      watch: kind === 'region' ? (ctx.region ? 'region' : 'pass') : 'resort',
       pass: ctx.pass || 'both',
       resorts: kind === 'region' && scope === 'all' ? [] : ids,
       region: kind === 'region' ? (ctx.region || null) : null,
@@ -155,27 +150,15 @@ export function AlertOnboarding({
       recap: recapOn,
     };
     try {
-      setAccountEmail(next);
-      if (mode !== 'live') {
-        if (editRule?.id) updateLocalRule(editRule.id, payload);
-        else addLocalRule(payload);
-        onSaved?.();
-        setStep('success');
-        return;
-      }
-      const r = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          source: ctx.source || 'signup',
-          adults: ctx.adults,
-          kids: ctx.kids,
-        }),
+      const r = await subscribeRule({
+        payload: { ...payload, email: next },
+        mode,
+        source: ctx.source || 'signup',
+        editId: editRule?.id,
+        extra: { adults: ctx.adults, kids: ctx.kids },
       });
-      const j = await r.json().catch(() => ({ error: 'Could not save' }));
-      if (j.error) {
-        setMsg(j.error);
+      if ('error' in r) {
+        setMsg(r.error);
         setStep('confirm');
         return;
       }
@@ -313,9 +296,7 @@ export function AlertOnboarding({
             <span>Weekly recap</span>
             <Switch checked={recapOn} onCheckedChange={setRecapOn} data-testid="alert-recap-toggle" />
           </label>
-          <p className="text-sm text-muted-foreground" data-testid="alert-consent">
-            {CONSENT_TEXT}
-          </p>
+          <ConsentNote className="text-sm" testId="alert-consent" />
           {msg ? <p className="text-sm text-destructive" data-testid="alert-msg">{msg}</p> : null}
         </div>
       ) : null}

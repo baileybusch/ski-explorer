@@ -11,7 +11,7 @@ type Row = { r: any; m: any; storm?: any; wx?: any; dump?: ReturnType<typeof dum
 type Parts = ReturnType<typeof dumpParts>;
 
 export function BlockBoard({
-  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, after, tight,
+  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, before, after, tight,
   sort, onSort, regionId, regions, onRegion, observedOnly, onObservedOnly,
 }: {
   rows: Row[];
@@ -23,6 +23,7 @@ export function BlockBoard({
   restoreTop?: number;
   hasMore?: boolean;
   onMore?: () => void;
+  before?: ReactNode;
   after?: ReactNode;
   tight?: boolean;
   sort: BoardSortId;
@@ -69,6 +70,7 @@ export function BlockBoard({
       data-density={density}
       data-sort={sort}
     >
+      {before}
       <div className={tight ? 'pt-1' : 'pt-2'}>
         <BoardToolbar
           sort={sort}

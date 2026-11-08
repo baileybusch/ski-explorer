@@ -15,7 +15,8 @@
     "api/headless.js": { "includeFiles": "public/data/**", "maxDuration": 60 },
     "api/agent.js": { "includeFiles": "public/data/**" },
     "api/cron/alerts.js": { "includeFiles": "public/data/**" },
-    "api/email/preview.js": { "includeFiles": "public/data/**" }
+    "api/email/preview.js": { "includeFiles": "public/data/**" },
+    "api/admin/render.js": { "includeFiles": "public/data/**" }
   },
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "0 3 * * *" }
@@ -31,6 +32,9 @@
     { "source": "/api/observed/", "destination": "/api/headless?surface=observed" },
     { "source": "/api/ask", "destination": "/api/headless?surface=ask" },
     { "source": "/api/ask/", "destination": "/api/headless?surface=ask" },
+    { "source": "/api/events", "destination": "/api/headless?surface=events" },
+    { "source": "/api/admin", "destination": "/api/admin/render?surface=dashboard" },
+    { "source": "/api/admin/", "destination": "/api/admin/render?surface=dashboard" },
     { "source": "/manage", "destination": "/" },
     { "source": "/manage/", "destination": "/" },
     { "source": "/about", "destination": "/" },
@@ -42,6 +46,14 @@
     { "source": "/disclosure", "destination": "/" },
     { "source": "/disclosure/", "destination": "/" },
     { "source": "/contact", "destination": "/" },
-    { "source": "/contact/", "destination": "/" }
+    { "source": "/contact/", "destination": "/" },
+    { "source": "/my-alerts", "destination": "/" },
+    { "source": "/my-alerts/", "destination": "/" },
+    { "source": "/do-not-sell", "destination": "/" },
+    { "source": "/do-not-sell/", "destination": "/" },
+    { "source": "/admin", "destination": "/" },
+    { "source": "/admin/", "destination": "/" },
+    { "source": "/region/:id", "destination": "/" },
+    { "source": "/pass/:id", "destination": "/" }
   ]
 }
