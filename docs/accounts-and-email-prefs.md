@@ -2,7 +2,7 @@
 
 There are **no user accounts and no passwords**. Everything is controlled by an email address plus a signed link.
 
-Signup copy and Privacy copy share one consent string (`ss-consent-3` in `lib/consentText.js`). We do not sell or share individual emails or questions; consent copy discloses Ask/browsing linkage, labeled sponsored content, and that only aggregated counts may inform sponsorships. The Privacy Policy (draft) states the no-individual-sale rule in full. Do not put the word "sell" in the signup consent line.
+Signup copy is one short line (`ss-consent-4` in `lib/consentText.js`): storm alerts + recaps, may include labeled sponsors, we don't sell your info, unsubscribe anytime, plus Privacy and Do Not Sell links. The Privacy Policy (draft) holds the full disclosure (Ask/browsing linkage, no sale of individual data, aggregates only for sponsors).
 
 ## Live vs preview
 
@@ -54,7 +54,7 @@ Stored on the subscriber:
 {
   "at": "2026-10-26T12:00:00.000Z",
   "source": "signup",
-  "version": "ss-consent-3",
+  "version": "ss-consent-4",
   "ipHash": "hex-16-bytes"
 }
 ```

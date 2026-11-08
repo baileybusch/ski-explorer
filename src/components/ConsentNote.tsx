@@ -1,17 +1,17 @@
-import { CONSENT_TEXT, DNS_LINK_TEXT } from '../../lib/consentText.js';
+import { CONSENT_TEXT } from '../../lib/consentText.js';
 import { withAlerts } from '@/lib/alertsUi';
 
 /**
- * Signup consent copy (versioned in lib/consentText.js) with the policy and CCPA opt-out links.
- * `compact` is for buttons that open the signup sheet; the full text shows wherever the email is entered.
+ * One short signup line (ss-consent-4). Privacy and Do Not Sell are links; the Privacy Policy
+ * page holds the full disclosure. `compact` is ignored — every capture point uses this line.
  */
-export function ConsentNote({ className = '', testId = 'consent-note', compact = false }: { className?: string; testId?: string; compact?: boolean }) {
+export function ConsentNote({ className = '', testId = 'consent-note' }: { className?: string; testId?: string; compact?: boolean }) {
   return (
-    <p className={`leading-relaxed text-muted-foreground ${className}`} data-testid={testId}>
-      {compact ? 'Free. Unsubscribe anytime. Signing up links your questions and browsing to your email.' : CONSENT_TEXT}{' '}
-      <a className="underline underline-offset-2 hover:text-foreground" href={withAlerts('/privacy')} target="_blank" rel="noreferrer">Privacy Policy</a>
+    <p className={`text-xs leading-snug text-muted-foreground ${className}`} data-testid={testId}>
+      {CONSENT_TEXT}{' '}
+      <a className="underline underline-offset-2 hover:text-foreground" href={withAlerts('/privacy')} target="_blank" rel="noreferrer">Privacy</a>
       {' · '}
-      <a className="underline underline-offset-2 hover:text-foreground" href={withAlerts('/do-not-sell')} target="_blank" rel="noreferrer" data-testid="consent-dns-link">{DNS_LINK_TEXT}</a>
+      <a className="underline underline-offset-2 hover:text-foreground" href={withAlerts('/do-not-sell')} target="_blank" rel="noreferrer" data-testid="consent-dns-link">Do Not Sell</a>
     </p>
   );
 }

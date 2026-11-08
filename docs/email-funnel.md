@@ -27,7 +27,7 @@ Audit of what already existed, what this pass added, and the Hobby budget. Sendi
 
 ## Amendment (this pass)
 
-- **No selling individual data.** Consent `ss-consent-3`. Partner CSV of emails is gone. Aggregates CSV is counts only.
+- **No selling individual data.** Consent `ss-consent-4` is one short signup line; the Privacy Policy holds the full disclosure. Partner CSV of emails is gone. Aggregates CSV is counts only.
 - **Aggregate-first admin.** Charts and tops are the default view. Individual profiles sit under an "internal only" disclosure. Demo data is labeled.
 - **JSON sponsor slot.** `public/data/sponsor.json` drives the labeled Sponsored block on automated alerts and recaps (`lib/sponsor.js`). Off until `on: true` and the subscriber left sponsor content on.
 - **Share / referral.** `?ref=` on board URLs (visitor id, never an email). Signup events record `ref`. W3 and post-signup share use it. Admin KPI "From a share".

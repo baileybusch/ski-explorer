@@ -13,7 +13,7 @@ async function finishOnboarding(page: Page, email: string) {
     else await page.waitForTimeout(300);
   }
   await expect(page.getByTestId('alert-email')).toBeVisible({ timeout: 8_000 });
-  await expect(page.getByTestId('alert-consent')).toContainText('Privacy Policy');
+  await expect(page.getByTestId('alert-consent')).toContainText("don't sell your info");
   await page.getByTestId('alert-email').fill(email);
   await page.getByTestId('alert-submit').click();
   await expect(page.getByTestId('alert-success')).toBeVisible({ timeout: 8_000 });
@@ -26,7 +26,7 @@ test('region page is its own board with a region alert CTA', async ({ page }) =>
   await expect(page.getByTestId('category-title')).toHaveText(/California/);
   await expect(page).toHaveTitle(/California snow/);
   await expect(page.getByTestId('category-cta')).toHaveText('Get alerts for California');
-  await expect(page.getByTestId('category-consent')).toContainText('links your questions and browsing');
+  await expect(page.getByTestId('category-consent')).toContainText("don't sell your info");
   await expect(page.getByTestId('category-consent').getByTestId('consent-dns-link')).toHaveAttribute('href', /do-not-sell/);
   await expect(page.getByTestId('category-share')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();

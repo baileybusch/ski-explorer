@@ -300,7 +300,7 @@ export function AlertOnboarding({
             <span>Weekly recap</span>
             <Switch checked={recapOn} onCheckedChange={setRecapOn} data-testid="alert-recap-toggle" />
           </label>
-          <ConsentNote className="text-sm" testId="alert-consent" />
+          <ConsentNote testId="alert-consent" />
           {msg ? <p className="text-sm text-destructive" data-testid="alert-msg">{msg}</p> : null}
         </div>
       ) : null}

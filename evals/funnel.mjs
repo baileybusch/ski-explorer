@@ -135,7 +135,7 @@ export async function runFunnelEvals() {
   check('category-cta', ctaLabel(ca, caName) === 'Get alerts for California' && ctaLabel({ kind: 'pass', id: 'ikon' }, 'Ikon Pass') === 'Get alerts for Ikon resorts');
 
   // consent + account rules
-  check('consent-discloses', CONSENT_VERSION === 'ss-consent-3' && /Ask questions/.test(CONSENT_TEXT) && /Aggregated counts/.test(CONSENT_TEXT) && /Unsubscribe/.test(CONSENT_TEXT) && !/sell/i.test(CONSENT_TEXT));
+  check('consent-discloses', CONSENT_VERSION === 'ss-consent-4' && /labeled sponsors/.test(CONSENT_TEXT) && /don't sell your info/i.test(CONSENT_TEXT) && /Unsubscribe anytime/.test(CONSENT_TEXT) && CONSENT_TEXT.length < 160);
   const slot = readSponsorSlot();
   check('sponsor-json-off', slot.on === false && slot.name.length > 0);
   const previewSlot = emailSponsor({ sponsor: true }, slot, { preview: true });

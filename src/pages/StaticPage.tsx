@@ -40,7 +40,7 @@ const COPY = {
       { h: 'Retention and service providers' },
       'We keep subscriber records while you are subscribed and delete them on request. Question and interest events are kept for up to 24 months. Data is stored in private Vercel Blob storage; Vercel hosts the site and routes AI requests; Resend delivers email.',
       { h: 'Consent' },
-      `Signup copy and this page share consent-text version ${CONSENT_VERSION}: “${CONSENT_TEXT}”`,
+      `Signup copy is the short line (version ${CONSENT_VERSION}): “${CONSENT_TEXT}” plus links to Privacy and Do Not Sell. The rest of this page is the full disclosure.`,
       'Snow data on the board comes from Open-Meteo and other public sources listed in About. That is weather data, not your personal data.',
     ],
   },
