@@ -19,8 +19,11 @@ import { runSubscriptionEvals } from './subscriptions.mjs';
 import { runReadoutEvals } from './readout.mjs';
 import { runWeatherEvals } from './weather.mjs';
 import { runObservedEvals } from './observed.mjs';
+import { runSourceEvals } from './sources.mjs';
+import { runObservationEvals } from './observation.mjs';
 import { runAskEvals } from './ask.mjs';
 import { runFunnelEvals } from './funnel.mjs';
+import { runRainviewerEvals } from './rainviewer.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -142,6 +145,16 @@ console.log('\nobserved snow\n');
 for (const line of observed.lines) console.log(line);
 console.log(`\n${observed.total - observed.fail}/${observed.total} observed evals passed`);
 
+const sources = runSourceEvals();
+console.log('\nsource registry\n');
+for (const line of sources.lines) console.log(line);
+console.log(`\n${sources.total - sources.fail}/${sources.total} source-registry evals passed`);
+
+const observations = runObservationEvals();
+console.log('\nobservation contract\n');
+for (const line of observations.lines) console.log(line);
+console.log(`\n${observations.total - observations.fail}/${observations.total} observation evals passed`);
+
 const askEv = await runAskEvals();
 console.log('\nask skiscope\n');
 for (const line of askEv.lines) console.log(line);
@@ -152,5 +165,11 @@ console.log('\nemail funnel\n');
 for (const line of funnel.lines) console.log(line);
 console.log(`\n${funnel.total - funnel.fail}/${funnel.total} funnel evals passed`);
 
+const radarEv = runRainviewerEvals();
+console.log('\nrainviewer\n');
+for (const line of radarEv.lines) console.log(line);
+console.log(`\n${radarEv.total - radarEv.fail}/${radarEv.total} rainviewer evals passed`);
+
 process.exit(fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
-  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || askEv.fail || funnel.fail ? 1 : 0);
+  || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || sources.fail
+  || observations.fail || askEv.fail || funnel.fail || radarEv.fail ? 1 : 0);

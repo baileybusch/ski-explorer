@@ -8,7 +8,6 @@ import { BRAND } from '@/lib/brand';
 import type { AskUIMessage, BoardScope, OfferTarget, RankOutput } from '@/lib/askTypes';
 import { AlertOffer } from '@/components/ask/AskOffer';
 import type { SnowUnits } from '@/lib/format';
-import { REGION_CHIPS } from '@/lib/design';
 import {
   ClimateAnswer, CompareAnswer, PartPending, RankedAnswer, ResortAnswer, SourcesNote,
 } from '@/components/ask/AskParts';
@@ -16,11 +15,16 @@ import {
 export const ASK_SUGGESTIONS = [
   "Who's getting the most snow right now?",
   'Good resort for a Japan ski trip',
-  'California resorts with the most projected snow',
-  'Best resorts to go to in January',
-  'Best resorts to go to in March',
   'Alta vs Snowbird',
 ];
+
+function resortPrompts(name: string) {
+  return [
+    `How's the snow at ${name} this week?`,
+    `What's the 7-day forecast for ${name}?`,
+    `${name} vs a nearby mountain`,
+  ];
+}
 
 const PENDING: Record<string, string> = {
   rankResorts: 'Ranking resorts',
@@ -101,7 +105,7 @@ function Thread({
 
 export function AskPanel({
   open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard, onAlertSignup,
-  regions, onRegion, onWorldwide, pass, setPass, stormsOn, setStormsOn, board, docked = false, focusTick = 0,
+  board, docked = false, focusTick = 0,
 }: {
   open: boolean;
   /** Desktop: a persistent side panel beside the board (no close, no Escape, no autofocus on load). */
@@ -120,18 +124,14 @@ export function AskPanel({
   onShowBoard: (out: RankOutput) => void;
   /** Ask's signup card without a specific target opens the full alert flow. */
   onAlertSignup?: (target: OfferTarget | null) => void;
-  regions: { id: string; name: string }[];
-  onRegion: (id: string) => void;
-  onWorldwide: () => void;
-  pass: string;
-  setPass: (p: string) => void;
-  stormsOn: boolean;
-  setStormsOn: (on: boolean) => void;
 }) {
   const ctxRef = useRef({ units, catalog, board });
   ctxRef.current = { units, catalog, board };
   const transport = useMemo(() => new AskTransport(() => ctxRef.current), []);
-  const { messages, sendMessage, status, stop, setMessages } = useChat<AskUIMessage>({ id: 'ask-skiscope', transport });
+  const { messages, sendMessage, status, stop, setMessages } = useChat<AskUIMessage>({
+    id: board.focusResortId ? `ask-${board.focusResortId}` : 'ask-skiscope',
+    transport,
+  });
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -180,7 +180,6 @@ export function AskPanel({
   }, [lastUserId]);
 
   const waiting = status === 'submitted' || (busy && messages[messages.length - 1]?.role === 'user');
-  const chips = REGION_CHIPS.map(id => regions.find(r => r.id === id)).filter(Boolean) as { id: string; name: string }[];
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -217,64 +216,12 @@ export function AskPanel({
         {messages.length ? (
           <Thread messages={messages} units={units} onOpen={onOpenResort} onShowBoard={onShowBoard} onAlertSignup={onAlertSignup} waiting={waiting} />
         ) : (
-          <div className="flex flex-col gap-7 pt-2" data-testid="ask-empty">
-            <div>
-              <p className="max-w-[40ch] text-[15px] leading-relaxed text-muted-foreground">
-                Ask who&apos;s getting the most snow, where to go in a given month, or how two resorts compare. Answers come from observed snow, the 7-day forecast, and past seasons.
-              </p>
-              <ul className="mt-4 flex flex-col" data-testid="ask-suggestions">
-                {ASK_SUGGESTIONS.map(s => (
-                  <li key={s}>
-                    <button
-                      type="button"
-                      className="flex min-h-12 w-full items-center border-b border-foreground/8 py-3 text-left text-[15px] outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                      data-testid="ask-suggestion"
-                      onClick={() => ask(s)}
-                    >
-                      {s}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div data-testid="search-chips">
-              <h3 className="mb-2 text-[13px] text-muted-foreground">Filter the board</h3>
-              <div className="flex flex-wrap gap-2">
-                {(['ikon', 'epic', 'all'] as const).map(p => (
-                  <Button
-                    key={p}
-                    type="button"
-                    variant="outline"
-                    aria-pressed={pass === p}
-                    className={`min-h-10 rounded-full px-3 text-sm ${pass === p ? 'bg-foreground/10 ring-1 ring-foreground/40' : ''}`}
-                    data-testid={`pass-${p}`}
-                    onClick={() => setPass(p)}
-                  >
-                    {p === 'all' ? 'All passes' : p[0].toUpperCase() + p.slice(1)}
-                  </Button>
-                ))}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button type="button" variant="outline" className="min-h-10 rounded-full px-3 text-sm" data-testid="chip-worldwide" onClick={onWorldwide}>
-                  Worldwide
-                </Button>
-                {chips.map(g => (
-                  <Button key={g.id} type="button" variant="outline" className="min-h-10 rounded-full px-3 text-sm" data-testid={`region-${g.id}`} onClick={() => onRegion(g.id)}>
-                    {g.name}
-                  </Button>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-pressed={stormsOn}
-                  className={`min-h-10 rounded-full px-3 text-sm ${stormsOn ? 'bg-foreground/10 ring-1 ring-foreground/40' : ''}`}
-                  data-testid="storms-chip"
-                  onClick={() => setStormsOn(!stormsOn)}
-                >
-                  Storms
-                </Button>
-              </div>
-            </div>
+          <div className="flex flex-col gap-3 pt-4" data-testid="ask-empty" data-focus-resort={board.focusResortId || ''}>
+            <p className="max-w-[36ch] text-[15px] leading-snug text-muted-foreground">
+              {board.focusResortName
+                ? `Ask about ${board.focusResortName}.`
+                : 'Ask who\'s getting snow, a month, or two mountains.'}
+            </p>
           </div>
         )}
       </div>
@@ -284,12 +231,27 @@ export function AskPanel({
         onSubmit={submit}
         data-testid="ask-composer"
       >
+        {messages.length === 0 ? (
+          <div className="mb-2 flex flex-wrap gap-1.5" data-testid="ask-suggestions">
+            {(board.focusResortName ? resortPrompts(board.focusResortName) : ASK_SUGGESTIONS).map(s => (
+              <button
+                key={s}
+                type="button"
+                className="min-h-10 rounded-full border border-foreground/15 px-3 text-left text-[13px] text-muted-foreground outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                data-testid="ask-suggestion"
+                onClick={() => ask(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <InputGroup className="h-12 rounded-full">
           <InputGroupInput
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask about snow, a resort, or a month"
+            placeholder={board.focusResortName ? `Ask about ${board.focusResortName}` : 'Ask about snow, a resort, or a month'}
             aria-label={`Ask ${BRAND.name}`}
             className="h-12 pl-4 text-base"
             autoComplete="off"

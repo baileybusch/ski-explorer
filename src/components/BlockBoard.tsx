@@ -12,7 +12,7 @@ type Parts = ReturnType<typeof dumpParts>;
 
 export function BlockBoard({
   rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, before, after, tight,
-  sort, onSort, regionId, regions, onRegion, observedOnly, onObservedOnly,
+  sort, onSort, regionId, regions, onRegion,
 }: {
   rows: Row[];
   units: SnowUnits;
@@ -31,8 +31,6 @@ export function BlockBoard({
   regionId: string;
   regions: { id: string; name: string }[];
   onRegion: (id: string) => void;
-  observedOnly: boolean;
-  onObservedOnly: (on: boolean) => void;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(390);
@@ -78,14 +76,12 @@ export function BlockBoard({
           regionId={regionId}
           regions={regions}
           onRegion={onRegion}
-          observedOnly={observedOnly}
-          onObservedOnly={onObservedOnly}
           updated={density === 'full' ? updated : null}
         />
       </div>
       {rows.length === 0 ? (
         <p className="px-1 py-16 text-center text-sm text-muted-foreground" data-testid="board-empty">
-          No resorts match this filter. Choose All regions or turn off Observed only.
+          No resorts match this filter. Choose All regions.
         </p>
       ) : (
         <BoardList rows={rows} parts={parts} units={units} scale={scale} sort={sort} onSort={onSort} onOpen={onOpen} density={density} updated={density === 'compact' ? updated : null} />
@@ -123,7 +119,7 @@ function rowAttrs(row: Row, d: Parts, rank: number, units: SnowUnits) {
 
 type StatCol = { key: 'actual24' | 'actual72' | 'forecast7d'; label: string; sort: BoardSortId; testid: string };
 
-/** Fixed stat columns per density. Compact folds 24h into the Actual column. */
+/** Fixed stat columns per density. Compact folds 24h into the Last 72h column. */
 function statCols(density: BoardDensity, sort: BoardSortId): StatCol[] {
   if (density === 'full') {
     return [
@@ -139,7 +135,7 @@ function statCols(density: BoardDensity, sort: BoardSortId): StatCol[] {
   ];
 }
 
-/** Compact has one Actual column: tapping it while it is active flips 72h ↔ 24h. */
+/** Compact has one Last 72h column: tapping it while it is active flips 72h ↔ 24h. */
 function headSort(c: StatCol, sort: BoardSortId, full: boolean): BoardSortId {
   if (full || c.key === 'forecast7d' || sort !== c.sort) return c.sort;
   return c.sort === 'actual72' ? 'actual24' : 'actual72';
@@ -153,19 +149,26 @@ function cmFor(d: Parts, key: StatCol['key']) {
 function useReorderMotion(order: string) {
   const els = useRef(new Map<string, HTMLElement>());
   const tops = useRef(new Map<string, number>());
+  const running = useRef(new Map<string, Animation>());
   useLayoutEffect(() => {
     const next = new Map<string, number>();
-    els.current.forEach((el, id) => next.set(id, el.offsetTop));
+    els.current.forEach((el, id) => next.set(id, el.getBoundingClientRect().top));
     const still = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!still && tops.current.size) {
       els.current.forEach((el, id) => {
         const before = tops.current.get(id);
         const after = next.get(id);
-        if (before == null || after == null || before === after) return;
-        el.animate(
-          [{ transform: `translateY(${before - after}px)` }, { transform: 'translateY(0)' }],
+        if (before == null || after == null) return;
+        const dy = before - after;
+        if (Math.abs(dy) < 1) return;
+        running.current.get(id)?.cancel();
+        const anim = el.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
           { duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
         );
+        running.current.set(id, anim);
+        el.dataset.flip = '1';
+        anim.finished.then(() => { if (el.dataset.flip === '1') delete el.dataset.flip; }).catch(() => {});
       });
     }
     tops.current = next;
@@ -225,7 +228,7 @@ function BoardList({
           const d = parts[i];
           const lead = i === 0;
           return (
-            <li key={row.r.id} ref={refFor(row.r.id)} className={lead ? 'py-1' : 'border-b border-foreground/8'}>
+            <li key={row.r.id} ref={refFor(row.r.id)} data-testid="board-row" className={lead ? '' : 'border-b border-foreground/8'}>
               <button
                 type="button"
                 {...rowAttrs(row, d, i + 1, units)}

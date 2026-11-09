@@ -63,6 +63,28 @@ const cases = [
     },
   },
   {
+    id: 'swe-slr-is-snotel-not-model-but-not-pillow-rise',
+    run: () => {
+      const mixed = {
+        ...snow,
+        observed: {
+          incoming: {
+            snow72hCm: 7.6, snow24hCm: 2.5, source: 'snotel:766:UT:SNTL',
+            method: 'swe-slr', observedAt: '2026-12-03T12:00:00',
+          },
+        },
+      };
+      const p = dumpParts({ id: 'incoming' }, mixed);
+      const miss = [];
+      if (p.estimated) miss.push('swe-slr stays SNOTEL-backed, not model-est');
+      if (p.method !== 'swe-slr') miss.push(`method ${p.method}`);
+      if (p.metric !== 'swe_slr') miss.push(`metric ${p.metric}`);
+      if (p.isRecordedSnowfall) miss.push('swe-slr is not recorded snowfall');
+      if (p.source !== 'snotel:766:UT:SNTL') miss.push(`source ${p.source}`);
+      return miss;
+    },
+  },
+  {
     id: 'observed-beats-model-est-on-same-id',
     run: () => {
       const mixed = {

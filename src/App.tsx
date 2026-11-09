@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ListIcon } from 'lucide-react';
+import { ChevronLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { BlockBoard } from '@/components/BlockBoard';
@@ -7,7 +7,7 @@ import type { RankOutput } from '@/lib/askTypes';
 import { TripOnboarding } from '@/components/TripOnboarding';
 import { SettingsSheet } from '@/components/SettingsSheet';
 import { PlanDialog } from '@/components/PlanDialog';
-import { MapLayers } from '@/components/MapLayers';
+import { MapLayers, type LayerStatus } from '@/components/MapLayers';
 import { ResortProfile } from '@/components/ResortProfile';
 import { GlobeMap, type GlobeHandle, type MapLayout } from '@/components/GlobeMap';
 import { loadCatalog } from '@/lib/catalog';
@@ -85,11 +85,14 @@ export default function App() {
   const [units, setUnits] = useState<SnowUnits>((localStorage.getItem('ss_units') as SnowUnits) || 'in');
   const [tempUnits, setTempUnits] = useState<TempUnits>((localStorage.getItem('ss_temp') as TempUnits) || 'F');
   const [lodgingOn, setLodgingOn] = useState(false);
-  const [radarOn, setRadarOn] = useState(false);
+  const [radarOn, setRadarOn] = useState(true);
   const [cloudsOn, setCloudsOn] = useState(false);
   const [stormsOn, setStormsOn] = useState(false);
-  const [stormsLayerOn, setStormsLayerOn] = useState(false);
+  const [stormsLayerOn, setStormsLayerOn] = useState(true);
   const [nwsOn, setNwsOn] = useState(false);
+  const [radarEpoch, setRadarEpoch] = useState(0);
+  const [layerStatus, setLayerStatus] = useState<LayerStatus>({ radar: 'loading', clouds: 'loading', nws: 'off', lodging: 'off', radarCover: 'unknown', stormRings: 0 });
+  const mapOrigin = useRef<'profile' | 'board'>('profile');
   const [stormMin, setStormMin] = useState(6);
   const [nwsGeo, setNwsGeo] = useState<any>(null);
   const [wxById, setWxById] = useState<Record<string, any>>({});
@@ -121,7 +124,7 @@ export default function App() {
     const stored = localStorage.getItem('ss_board_sort');
     return isBoardSort(stored) ? stored : 'actual72';
   });
-  const [observedOnly, setObservedOnly] = useState(() => localStorage.getItem('ss_obs') === '1');
+  const [focusResort, setFocusResort] = useState<{ id: string; name: string } | null>(null);
 
   const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId);
 
@@ -292,7 +295,10 @@ export default function App() {
     setView('profile');
     setSearchOpen(false);
     const r = catalog?.resorts.find((x: any) => x.id === id);
-    if (r) setTimeout(() => globe.current?.flyResort(r), 80);
+    if (r) {
+      setFocusResort({ id: r.id, name: r.name });
+      setTimeout(() => globe.current?.flyResort(r), 80);
+    }
     writeURL({ resort: id, mode, ss: 'profile' });
     if (mode === 'plan' && r) openPlan([r]);
   }
@@ -301,8 +307,18 @@ export default function App() {
     setView('board');
     setHeroParallax(0);
     setSelectedId(null);
+    setFocusResort(null);
     writeURL({ resort: null, ss: activeIds ? 'filter' : 'board' });
     setRestoreTop(savedBoardTop.current);
+  }
+
+  function backFromMap() {
+    if (mapOrigin.current === 'profile' && selectedId) {
+      setView('profile');
+      writeURL({ resort: selectedId, ss: 'profile' });
+      return;
+    }
+    backToBoard();
   }
 
   function resetHome() {
@@ -331,7 +347,6 @@ export default function App() {
     const nextPass = (out.pass as typeof PASSES[number]) || 'all';
     if (nextPass !== pass) setPass(nextPass);
     setBoardSort(ASK_TO_BOARD_SORT[out.sort] || 'actual72');
-    setObservedOnly(!!out.observedOnly);
     setStormsOn(false);
     const g = out.regionId ? catalog.regions.find((x: any) => x.id === out.regionId) : null;
     if (g) {
@@ -386,7 +401,7 @@ export default function App() {
   const rowsAll = useMemo(() => {
     if (!catalog) return [];
     void watchTick;
-    const list = rankBoard(catalog.resorts, catalog.snow, { pass, ids: activeIds, observedOnly, sort: boardSort });
+    const list = rankBoard(catalog.resorts, catalog.snow, { pass, ids: activeIds, sort: boardSort });
     const w = win || defaultWindow(catalog.snow);
     const rows = list.map((r: any) => ({
       r,
@@ -396,23 +411,31 @@ export default function App() {
       dump: dumpParts(r, catalog.snow),
     }));
     return stormsOn ? rows.filter(x => x.storm.tier >= stormMin) : rows;
-  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardSort, observedOnly]);
+  }, [catalog, pass, activeIds, win, watchTick, stormsOn, stormMin, wxById, boardSort]);
 
   useEffect(() => {
     setShown(BOARD_PAGE);
-  }, [pass, activeIds, stormsOn, boardSort, observedOnly]);
+  }, [pass, activeIds, stormsOn, boardSort]);
 
   useEffect(() => {
     localStorage.setItem('ss_board_sort', boardSort);
   }, [boardSort]);
 
   useEffect(() => {
-    localStorage.setItem('ss_obs', observedOnly ? '1' : '0');
-  }, [observedOnly]);
-
-  useEffect(() => {
-    if (!nwsOn) return;
-    fetchNwsWinterAlerts().then(setNwsGeo).catch(() => setNwsGeo(null));
+    if (!nwsOn) {
+      setLayerStatus(s => ({ ...s, nws: 'off' }));
+      return;
+    }
+    setLayerStatus(s => ({ ...s, nws: 'loading' }));
+    fetchNwsWinterAlerts()
+      .then(geo => {
+        setNwsGeo(geo);
+        setLayerStatus(s => ({ ...s, nws: geo?.features?.length ? 'ready' : 'empty' }));
+      })
+      .catch(() => {
+        setNwsGeo(null);
+        setLayerStatus(s => ({ ...s, nws: 'error' }));
+      });
   }, [nwsOn]);
 
   useEffect(() => {
@@ -424,6 +447,9 @@ export default function App() {
 
   const visibleRows = rowsAll.slice(0, shown);
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
+  const stormRingCount = catalog
+    ? catalog.resorts.filter((r: any) => stormForResort(r, catalog.snow).tier > 0).length
+    : 0;
   const maxDump = Math.max(0, ...rowsAll.map(x => x.dump.past72Cm));
   const zeroHint = maxDump === 0;
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
@@ -474,6 +500,9 @@ export default function App() {
           stormsLayerOn={stormsLayerOn}
           nwsOn={nwsOn}
           nwsGeo={nwsGeo}
+          radarEpoch={radarEpoch}
+          onLayerStatus={s => setLayerStatus(prev => ({ ...prev, ...s }))}
+          onLodgingStatus={s => setLayerStatus(prev => ({ ...prev, lodging: s }))}
           onSelect={id => openResort(id)}
         />
       ) : (
@@ -482,6 +511,18 @@ export default function App() {
 
       {catalog && win && view === 'map' ? (
         <div className="absolute inset-0 z-20 pointer-events-none" data-testid="map-mode">
+          <div className="pointer-events-auto absolute top-[max(0.55rem,env(safe-area-inset-top))] left-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11 min-w-11 rounded-full bg-background/70"
+              aria-label="Back"
+              data-testid="map-back"
+              onClick={backFromMap}
+            >
+              <ChevronLeftIcon />
+            </Button>
+          </div>
           <div className="pointer-events-auto absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3">
             <MapLayers
               radarOn={radarOn} setRadarOn={setRadarOn}
@@ -489,19 +530,34 @@ export default function App() {
               stormsLayerOn={stormsLayerOn} setStormsLayerOn={setStormsLayerOn}
               nwsOn={nwsOn} setNwsOn={setNwsOn}
               lodgingOn={lodgingOn} setLodgingOn={setLodgingOn}
+              status={{ ...layerStatus, stormRings: stormRingCount }}
+              onRetryRadar={() => setRadarEpoch(n => n + 1)}
             />
           </div>
-          <div className="pointer-events-auto absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="mx-auto flex max-w-xl items-center gap-2">
-              <Button type="button" variant="outline" className="min-h-12 flex-1 text-base" onClick={backToBoard} data-testid="list-button">
-                <ListIcon /> Cards
-              </Button>
-              {selected ? (
-                <Button type="button" variant="ghost" className="min-h-12 flex-1 truncate text-base" onClick={() => openResort(selected.id)}>
-                  {selected.name}
-                </Button>
-              ) : null}
-            </div>
+          <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-3 max-w-[22rem] space-y-1 text-[11px] leading-snug" data-testid="map-layer-readout">
+            {selected ? (
+              <p className="rounded-md bg-background/80 px-2 py-1 font-medium text-foreground" data-testid="map-focus">{selected.name}</p>
+            ) : null}
+            <p className="rounded-md bg-background/80 px-2 py-1 text-foreground" data-testid="map-radar-chip">
+              {!radarOn
+                ? 'Radar off'
+                : layerStatus.radar === 'error'
+                  ? 'Radar failed · RainViewer unreachable'
+                  : layerStatus.radar === 'empty'
+                    ? 'Radar mosaic unavailable (not a clear sky)'
+                    : layerStatus.radarCover === 'precip'
+                      ? 'Radar on · precipitation in this mosaic cell (RainViewer)'
+                      : layerStatus.radarCover === 'clear'
+                        ? 'Radar on · mosaic up, no echo here'
+                        : 'Radar on · RainViewer mosaic'}
+            </p>
+            <p className="rounded-md bg-background/80 px-2 py-1 text-foreground" data-testid="map-storm-chip">
+              {stormsLayerOn && stormRingCount > 0
+                ? `Storm rings on · ${stormRingCount} forecast 6″+ dumps (not radar)`
+                : stormsLayerOn
+                  ? 'Storm rings on · none in this snapshot'
+                  : 'Storm rings off'}
+            </p>
           </div>
         </div>
       ) : null}
@@ -524,7 +580,7 @@ export default function App() {
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet across the board. US numbers are SNOTEL; elsewhere modeled (est.).
+              Quiet across the board. US last 72h is SNOTEL snow-depth rise, not recorded snowfall; elsewhere modeled (est.).
             </p>
           ) : null}
           <BlockBoard
@@ -552,8 +608,6 @@ export default function App() {
               const g = catalog.regions.find((x: any) => x.id === id);
               if (g) applyRegion(g);
             }}
-            observedOnly={observedOnly}
-            onObservedOnly={setObservedOnly}
             before={categoryHeader}
             after={(
               <>
@@ -608,7 +662,18 @@ export default function App() {
           snow={catalog.snow}
           units={units}
           tempUnits={tempUnits}
-          onShowMap={r => { setSelectedId(r.id); setLodgingOn(true); setView('map'); setTimeout(() => globe.current?.flyResort(r), 80); }}
+          onShowMap={r => {
+            mapOrigin.current = 'profile';
+            setSelectedId(r.id);
+            setLodgingOn(false);
+            setView('map');
+            setTimeout(() => globe.current?.flyResort(r), 80);
+          }}
+          onAsk={r => {
+            setFocusResort({ id: r.id, name: r.name });
+            setSearchOpen(true);
+            setAskFocus(n => n + 1);
+          }}
           onAlert={r => { setEditRule(null); setAlertCtx({ source: 'resort', resortId: r.id, resortName: r.name, pass }); setAlertOpen(true); }}
           history={catalog.history}
           social={catalog.social?.[selectedId] || null}
@@ -633,17 +698,14 @@ export default function App() {
           setAlertCtx({ source: 'chat', type: 'resort', pass });
           setAlertOpen(true);
         }}
-        regions={catalog?.regions || []}
-        onRegion={id => {
-          const g = catalog?.regions.find((x: any) => x.id === id);
-          if (g) applyRegion(g);
+        board={{
+          pass,
+          regionId: facets.regionId || null,
+          observedOnly: false,
+          sort: boardSort,
+          focusResortId: focusResort?.id || null,
+          focusResortName: focusResort?.name || null,
         }}
-        onWorldwide={resetHome}
-        pass={pass}
-        board={{ pass, regionId: facets.regionId || null, observedOnly, sort: boardSort }}
-        setPass={p => { setPass(p as typeof PASSES[number]); setActiveIds(null); }}
-        stormsOn={stormsOn}
-        setStormsOn={on => { setStormsOn(on); setFacets(f => ({ ...f, storms: on })); if (on) setSearchOpen(false); }}
       />
       </Suspense>
       ) : null}

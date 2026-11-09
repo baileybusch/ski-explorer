@@ -328,7 +328,7 @@ export function SourcesNote({ outputs, mode }: { outputs: AnyOut[]; mode?: strin
   const clim = outputs.find(x => x.kind === 'month' || x.kind === 'profile');
   const lines: string[] = [];
   if (live) {
-    lines.push('Actual snow is NRCS SNOTEL where a station is mapped, otherwise modeled (est.).');
+    lines.push('Last 72h is NRCS SNOTEL snow-depth peak-rise where mapped (not recorded snowfall), otherwise modeled (est.).');
     lines.push(`Forecast from Open-Meteo${o.forecastEnd ? ` through ${fmtShort(o.forecastEnd)}` : ''}.`);
   }
   if (clim) lines.push(`Historical averages from ERA5 reanalysis via the Open-Meteo archive${clim.seasons ? `, ${clim.seasons}` : ''}. Reanalysis runs low in big mountains, so compare resorts and months rather than reading it as reported totals.`);

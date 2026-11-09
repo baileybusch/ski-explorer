@@ -38,7 +38,7 @@ function weekday(date: string) {
 }
 
 export function ResortProfile({
-  row, onBack, onScroll, snow, units, tempUnits = 'F', onShowMap, onAlert, history, social,
+  row, onBack, onScroll, snow, units, tempUnits = 'F', onShowMap, onAlert, onAsk, history, social,
 }: {
   row: { r: any; m: any; storm?: any; wx?: any };
   onBack: () => void;
@@ -48,6 +48,7 @@ export function ResortProfile({
   tempUnits?: TempUnits;
   onShowMap: (r: any) => void;
   onAlert?: (r: any) => void;
+  onAsk?: (r: any) => void;
   history?: any;
   social?: { instagram?: string; featuredPosts?: string[] } | null;
 }) {
@@ -181,9 +182,19 @@ export function ResortProfile({
                 <p className="max-w-[62ch] text-[17px] leading-relaxed min-[840px]:text-xl min-[840px]:leading-snug" data-testid="storm-status-text">
                   {status.text}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {dump.estimated ? 'Last 72h is estimated from the weather model.' : 'Last 72h is measured at the nearest SNOTEL station.'} Next 7 days is a model forecast.
+                <p className="mt-2 text-xs text-muted-foreground" data-testid="storm-source">
+                  {status.source}
                 </p>
+                {onAsk ? (
+                  <button
+                    type="button"
+                    className="mt-3 min-h-11 text-left text-sm text-muted-foreground underline-offset-4 outline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    data-testid="profile-ask"
+                    onClick={() => onAsk(resort)}
+                  >
+                    Ask about {String(resort.name || '').replace(/ \([^)]*\)$/, '') || 'this mountain'}
+                  </button>
+                ) : null}
               </div>
               {onAlert ? (
                 <Button type="button" className="min-h-12 w-full text-base" data-testid="profile-alert-me" onClick={() => onAlert(resort)}>

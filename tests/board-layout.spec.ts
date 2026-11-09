@@ -26,8 +26,7 @@ test('one full-width leaderboard list on every size; #1 only lightly featured', 
   expect(new Set(boxes.map(b => b.w)).size).toBe(1);
   const rowH = boxes[1].h;
   expect(new Set(boxes.slice(1).map(b => b.h)).size).toBe(1);
-  expect(boxes[0].h).toBeGreaterThan(rowH);
-  expect(boxes[0].h).toBeLessThanOrEqual(Math.round(rowH * 1.35));
+  expect(boxes[0].h).toBe(rowH);
   await expect(page.getByTestId('block').first()).toHaveAttribute('data-featured', '1');
   if (isDesktop(info.project.name)) {
     await expect(page.getByTestId('board-shell')).toHaveCSS('max-width', '1200px');

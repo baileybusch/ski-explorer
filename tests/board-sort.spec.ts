@@ -20,7 +20,7 @@ test('sort control reorders the whole board', async ({ page }) => {
   }
 });
 
-test('region filter and observed-only apply to the board', async ({ page }) => {
+test('region filter applies to the board without an observed-only toggle', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
 
@@ -31,9 +31,8 @@ test('region filter and observed-only apply to the board', async ({ page }) => {
   expect(japanIds.every(id => /niseko|furano|rusutsu|kiroro|tomamu|larch|zao|hakuba|shiga|appi|arai|madarao|mt-t|myoko|nekoma/i.test(id))).toBeTruthy();
 
   await page.getByTestId('board-region').selectOption({ label: 'All regions' });
-  await page.getByTestId('observed-only').click();
-  await expect(page.getByTestId('observed-only')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('observed-only')).toHaveCount(0);
   const flags = await page.getByTestId('block').evaluateAll(els => els.map(e => e.getAttribute('data-estimated')));
   expect(flags.length).toBeGreaterThan(0);
-  expect(flags.every(v => v === '0')).toBeTruthy();
+  expect(flags.some(v => v === '1')).toBeTruthy();
 });

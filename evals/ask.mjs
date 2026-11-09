@@ -130,6 +130,21 @@ export async function runAskEvals() {
     check(`plan "${text}"`, ok, `got ${plan.intent} ${JSON.stringify(plan.steps)}`);
   }
   check('mentioned resorts ignore "snow"/"best"', mentionedResorts('best snow right now', cat).length === 0);
+  const focused = planAnswer("how's the snow this week?", { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, focusResortId: 'alta' } });
+  check('focus resort: generic snow question is getResort', focused.intent === 'resort' && focused.steps[0]?.input?.resort === 'alta');
+  const focusedRank = planAnswer("who's getting the most snow right now?", { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, focusResortId: 'alta' } });
+  check('focus resort: ranking question still ranks', focusedRank.intent === 'rank' && focusedRank.steps[0]?.tool === 'rankResorts');
+
+  check('rankResorts labels Last 72h / Last 24h / Next 7 days',
+    rankResorts({ sort: 'actual72h', limit: 1 }, cat).sortLabel === 'Last 72h'
+    && rankResorts({ sort: 'actual24h', limit: 1 }, cat).sortLabel === 'Last 24h'
+    && rankResorts({ sort: 'forecast7d', limit: 1 }, cat).sortLabel === 'Next 7 days');
+  check('rankResorts labels are not Actual/Forecast 7d',
+    !/actual|forecast 7d/i.test([
+      rankResorts({ sort: 'actual72h', limit: 1 }, cat).sortLabel,
+      rankResorts({ sort: 'actual24h', limit: 1 }, cat).sortLabel,
+      rankResorts({ sort: 'forecast7d', limit: 1 }, cat).sortLabel,
+    ].join(' ')));
 
   for (const sort of ['actual72h', 'actual24h', 'forecast7d']) {
     const out = rankResorts({ sort, limit: 12 }, cat);

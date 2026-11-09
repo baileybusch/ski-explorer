@@ -42,62 +42,97 @@ const snow = {
 const cases = [
   {
     id: 'building-cold',
-    resort: { id: 'alta' },
+    resort: { id: 'alta', name: 'Alta' },
     expect: {
       kind: 'Building',
       includes: [
-        'Storm status: Building.',
-        '9″ in the last 72h',
-        '+14″ forecast next 7 days',
-        'peaking Sun',
-        'Cold temps = light, dry powder.',
+        'Alta is lining up a storm',
+        '9″ estimated in the last 72 hours',
+        'About 14″ is forecast',
+        'heaviest Sunday',
+        'well below freezing',
       ],
+      excludes: ['Storm status:', 'light, dry powder'],
     },
   },
   {
     id: 'quiet',
-    resort: { id: 'quiet' },
+    resort: { id: 'quiet', name: 'Quiet Ridge' },
     expect: {
       kind: 'Quiet',
-      includes: ['Storm status: Quiet.', 'Nothing over 2″ in the next 7 days.'],
+      includes: ['Quiet Ridge is quiet', '7-day forecast stays under 2″'],
+      excludes: ['Storm status:'],
     },
   },
   {
     id: 'winding-down',
-    resort: { id: 'wind' },
+    resort: { id: 'wind', name: 'Windham' },
     expect: {
       kind: 'Winding down',
-      includes: ['Storm status: Winding down.', '9″ fell in the last 72h', 'Only'],
+      includes: ['just came through a storm', '9″ estimated in the last 72 hours', 'Only'],
     },
   },
   {
     id: 'peaking',
-    resort: { id: 'peak' },
+    resort: { id: 'peak', name: 'Peak Resort' },
     expect: {
       kind: 'Peaking',
-      includes: ['Storm status: Peaking.', 'Heaviest Fri'],
+      includes: ['in the heart of it', 'Heaviest Friday'],
     },
   },
   {
     id: 'active',
-    resort: { id: 'active' },
+    resort: { id: 'active', name: 'Active Mountain' },
     expect: {
       kind: 'Active',
-      includes: ['Storm status: Active.'],
+      includes: ['is in a live cycle'],
     },
   },
   {
     id: 'building-warm',
-    resort: { id: 'warm' },
+    resort: { id: 'warm', name: 'Warm Springs' },
     expect: {
       kind: 'Building',
-      includes: ['Storm status: Building.', 'Warm and wet, expect heavy snow or rain at base'],
+      includes: ['Warm Springs is lining up a storm', 'above freezing'],
+      excludes: ['heavy snow or rain at base'],
     },
   },
   {
     id: 'source-label',
-    resort: { id: 'alta' },
-    expect: { source: 'Modeled forecast.' },
+    resort: { id: 'alta', name: 'Alta' },
+    expect: { source: 'Last 72h is an Open-Meteo snowfall estimate, not a station observation. Next 7 days is an Open-Meteo forecast.' },
+  },
+  {
+    id: 'swe-slr-not-measured',
+    resort: { id: 'alta', name: 'Alta' },
+    snow: {
+      ...snow,
+      observed: {
+        alta: { snow72hCm: 22.86, snow24hCm: 2.54, source: 'snotel:766:UT:SNTL', method: 'swe-slr' },
+      },
+    },
+    expect: {
+      kind: 'Building',
+      includes: ['from SNOTEL water equivalent in the last 72 hours'],
+      excludes: ['measured in the last 72 hours', 'estimated in the last 72 hours', 'recorded snowfall'],
+      source: 'Last 72h is SNOTEL SWE (WTEQ) converted at 12:1 — not recorded snowfall. Next 7 days is an Open-Meteo forecast.',
+    },
+  },
+  {
+    id: 'snwd-peak-not-snowfall',
+    resort: { id: 'alta', name: 'Alta' },
+    snow: {
+      ...snow,
+      observed: {
+        alta: { snow72hCm: 22.86, snow24hCm: 2.54, source: 'snotel:766:UT:SNTL', method: 'snwd-peak' },
+      },
+    },
+    expect: {
+      kind: 'Building',
+      includes: ['of SNOTEL snow-depth rise in the last 72 hours'],
+      excludes: ['measured in the last 72 hours', 'recorded snowfall', 'estimated in the last 72 hours'],
+      source: 'Last 72h is SNOTEL snow-depth (SNWD) peak-rise, not recorded snowfall. Next 7 days is an Open-Meteo forecast.',
+    },
   },
 ];
 
@@ -105,12 +140,15 @@ export function runStormStatusEvals() {
   let fail = 0;
   const lines = [];
   for (const c of cases) {
-    const out = stormStatus(c.resort, snow, { units: 'in' });
+    const out = stormStatus(c.resort, c.snow || snow, { units: 'in' });
     const miss = [];
     if (c.expect.kind && out.kind !== c.expect.kind) miss.push(`kind ${out.kind} != ${c.expect.kind}`);
     if (c.expect.source && out.source !== c.expect.source) miss.push(`source ${out.source}`);
     for (const chunk of c.expect.includes || []) {
       if (!out.text.includes(chunk)) miss.push(`missing "${chunk}" in "${out.text}"`);
+    }
+    for (const chunk of c.expect.excludes || []) {
+      if (out.text.includes(chunk)) miss.push(`unexpected "${chunk}" in "${out.text}"`);
     }
     if (miss.length) {
       fail++;
