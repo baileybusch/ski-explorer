@@ -135,6 +135,17 @@ export async function runAskEvals() {
   const focusedRank = planAnswer("who's getting the most snow right now?", { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, focusResortId: 'alta' } });
   check('focus resort: ranking question still ranks', focusedRank.intent === 'rank' && focusedRank.steps[0]?.tool === 'rankResorts');
 
+  check('rankResorts labels Last 72h / Last 24h / Next 7 days',
+    rankResorts({ sort: 'actual72h', limit: 1 }, cat).sortLabel === 'Last 72h'
+    && rankResorts({ sort: 'actual24h', limit: 1 }, cat).sortLabel === 'Last 24h'
+    && rankResorts({ sort: 'forecast7d', limit: 1 }, cat).sortLabel === 'Next 7 days');
+  check('rankResorts labels are not Actual/Forecast 7d',
+    !/actual|forecast 7d/i.test([
+      rankResorts({ sort: 'actual72h', limit: 1 }, cat).sortLabel,
+      rankResorts({ sort: 'actual24h', limit: 1 }, cat).sortLabel,
+      rankResorts({ sort: 'forecast7d', limit: 1 }, cat).sortLabel,
+    ].join(' ')));
+
   for (const sort of ['actual72h', 'actual24h', 'forecast7d']) {
     const out = rankResorts({ sort, limit: 12 }, cat);
     const board = { actual72h: 'actual72', actual24h: 'actual24', forecast7d: 'forecast7d' }[sort];

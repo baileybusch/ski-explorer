@@ -119,7 +119,7 @@ function rowAttrs(row: Row, d: Parts, rank: number, units: SnowUnits) {
 
 type StatCol = { key: 'actual24' | 'actual72' | 'forecast7d'; label: string; sort: BoardSortId; testid: string };
 
-/** Fixed stat columns per density. Compact folds 24h into the Actual column. */
+/** Fixed stat columns per density. Compact folds 24h into the Last 72h column. */
 function statCols(density: BoardDensity, sort: BoardSortId): StatCol[] {
   if (density === 'full') {
     return [
@@ -135,7 +135,7 @@ function statCols(density: BoardDensity, sort: BoardSortId): StatCol[] {
   ];
 }
 
-/** Compact has one Actual column: tapping it while it is active flips 72h ↔ 24h. */
+/** Compact has one Last 72h column: tapping it while it is active flips 72h ↔ 24h. */
 function headSort(c: StatCol, sort: BoardSortId, full: boolean): BoardSortId {
   if (full || c.key === 'forecast7d' || sort !== c.sort) return c.sort;
   return c.sort === 'actual72' ? 'actual24' : 'actual72';

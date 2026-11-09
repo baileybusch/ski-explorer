@@ -43,8 +43,8 @@ Tokens live in `src/lib/boardLayout.ts` — retune there when a desktop sketch a
 ```
 Phone (< 720px, "compact")              Desktop (≥ 720px, "full"; ≥1100px Ask docks right)
 [mark POWTRACKER]          [≡]          [mark] [ search ........ ] [≡]      │ Ask SkiScope
-[ search .................. ]           Rank by [Actual 72h] [All]          │ compact prompts
-[Actual 72h][All regions]               Resort          24h  ↓Last 72h  Next 7 days
+[ search .................. ]           Rank by [Last 72h] [All]            │ compact prompts
+[Last 72h][All regions]                 Resort          24h  ↓Last 72h  Next 7 days
 Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬   0.1 ▨ ▒│ chips…
 ▒1 APPI Resort      est 8.6″   0.1″▒     2 Niseko …       1.2  est 6.9▬    1   ▨  │
  2 Niseko Annupuri  est 6.9″   1″        3 …                                      │ [ask… (↑)]
@@ -53,7 +53,7 @@ Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬
 
 - **One leaderboard list everywhere.** Every resort is a full-width row: rank, name + region on the left, then fixed stat columns on the right. Phones and desktop share `BoardList`; only the column template changes (`list.compact` / `list.full`).
 - **Columns never move.** Changing Rank by re-ranks rows (280ms FLIP, off under reduced motion) but the column template is fixed. The active column gets the bright number and bright header with the sort arrow; inactive numbers drop to 55% and their stakes to 45%.
-- **Headers are sticky and tappable.** On phones the Actual header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
+- **Headers are sticky and tappable.** On phones the Last 72h header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
 - **#1 is only lightly featured**: 7% tint and semibold name, same row height as everyone else so re-rank FLIP does not jump. It shares the template so its numbers sit in the same columns.
 - **Desktop Ask is a docked side panel** (≥1100px, `role="complementary"`, no close X). The search box focuses its input instead of opening a sheet.
 - Resort page uses the same 1200px column: hero (name left, two-stat right), storm status as the only raised panel (with Alert me), then ruled sections on a 12-column grid: Next 7 days (7) | Today on the mountain (5), Radar (7) | Mountain Facts (5), Snow history (12).
@@ -76,7 +76,7 @@ None on load. The radar loop is the only autoplay and it starts paused under `pr
 Subject: ski buddies trading "who's getting the most". The chat should look like the board answering back, not a generic assistant.
 
 - **Third stake texture.** Solid = fell, hatched = forecast, **hollow outline = past-season average** (`.stake-history`). A historical average can never be mistaken for a forecast at a glance, and the caption always says "Historical average".
-- **Answer first, evidence below.** The model's (or fallback's) sentence sits above the cards; cards are raised panels (`bg-card`, ring 10%) with a plain sentence-case caption ("Japan, ranked by actual 72h"). No bubbles on assistant text; the user's question is a small right-aligned bubble.
+- **Answer first, evidence below.** The model's (or fallback's) sentence sits above the cards; cards are raised panels (`bg-card`, ring 10%) with a plain sentence-case caption ("Japan, ranked by last 72h"). No bubbles on assistant text; the user's question is a small right-aligned bubble.
 - **Ranked rows** reuse the leaderboard grammar: rank in Barlow, name (wraps to 2 lines) + region, then two equal columns with number and stake on one shared scale per answer. Sorted column header is brighter. Tap a row → resort page.
 - **Footnote** per answer: sources and as-of date in 11px muted prose, no labels or dots.
 - **Layout.** Phone: full-screen sheet, "‹ Board" back, composer pinned to the safe area. Desktop: 30rem right panel; at ≥1100px the board reflows beside it instead of being covered.
@@ -88,7 +88,7 @@ Phone                         Desktop ≥1100px
 ‹ Board   Ask SkiScope  New   ┌ board (reflowed) ──────┬ Ask SkiScope   New × ┐
             [question]         │                        │          [question] │
 Answer sentence…               │                        │ Answer sentence…    │
-┌ Japan, ranked by actual 72h ┐│                        │ ┌ ranked rows ─────┐│
+┌ Japan, ranked by last 72h   ┐│                        │ ┌ ranked rows ─────┐│
 │1 Name      8.6″▬   1″▨     ││                        │ └──────────────────┘│
 └ See all 15 on the board ────┘│                        │ ┌ hollow month bars┐│
 ┌ Historical average by month ┐│                        │ footnote            │

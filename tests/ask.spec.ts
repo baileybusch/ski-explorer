@@ -92,7 +92,7 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   const chat = await askTop(answer);
   expect(chat.length).toBeGreaterThanOrEqual(5);
   expect(chat).toEqual(board.slice(0, chat.length));
-  await expect(answer.getByTestId('ask-ranked')).toContainText(/Ikon resorts, ranked by actual 72h/);
+  await expect(answer.getByTestId('ask-ranked')).toContainText(/Ikon resorts, ranked by last 72h/);
 
   await page.keyboard.press('Escape');
   await page.getByTestId('board-sort').selectOption('actual24');
@@ -115,7 +115,7 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   const forecastAnswer = await ask(page, 'Who is getting the most snow?');
   const forecastChat = await askTop(forecastAnswer);
   expect(forecastChat).toEqual(forecastBoard.slice(0, forecastChat.length));
-  await expect(forecastAnswer.getByTestId('ask-ranked')).toContainText(/ranked by forecast 7d/i);
+  await expect(forecastAnswer.getByTestId('ask-ranked')).toContainText(/ranked by next 7 days/i);
 });
 
 test('Japan trip: Japan resorts plus a month-by-month historical profile', async ({ page }) => {
@@ -154,7 +154,7 @@ test('compare and resort answers; tapping a card opens the resort page', async (
 test('California projected snow ranks by forecast; show on board applies region and sort', async ({ page }, info) => {
   await openAsk(page);
   const answer = await ask(page, 'California resorts with the most projected snow');
-  await expect(answer.getByTestId('ask-ranked')).toContainText('California, ranked by forecast 7d');
+  await expect(answer.getByTestId('ask-ranked')).toContainText('California, ranked by next 7 days');
   await answer.getByTestId('ask-show-board').click();
   if (info.project.name.startsWith('desktop')) await expect(page.getByTestId('search')).toBeVisible();
   else await expect(page.getByTestId('search')).toBeHidden();

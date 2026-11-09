@@ -4,7 +4,7 @@ import { windowMetrics } from '../../lib/snowWindow.js';
 import { snowAmount } from '@/lib/format';
 import { fallbackStyle, loadStyle } from '@/lib/mapStyle';
 import { stormForResort } from '../../lib/storms.js';
-import { rainviewerMaps, radarTileUrl, satelliteTileUrl, radarAvailable, satelliteAvailable } from '@/lib/rainviewer';
+import { rainviewerMaps, radarTileUrl, satelliteTileUrl, radarAvailable, satelliteAvailable, probeRadarTile } from '@/lib/rainviewer';
 import type { LayerStatus } from '@/components/MapLayers';
 
 const DEM = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
@@ -75,7 +75,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
     layout?: MapLayout;
     parallax?: number;
     radarEpoch?: number;
-    onLayerStatus?: (s: Pick<LayerStatus, 'radar' | 'clouds'>) => void;
+    onLayerStatus?: (s: Pick<LayerStatus, 'radar' | 'clouds'> & Pick<LayerStatus, 'radarCover' | 'stormRings'>) => void;
     onLodgingStatus?: (s: LayerStatus['lodging']) => void;
   },
   ref: Ref<GlobeHandle>,
@@ -96,7 +96,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
   const stormsLayerOnRef = useRef(stormsLayerOn);
   const nwsOnRef = useRef(nwsOn);
   const [mapEpoch, setMapEpoch] = useState(0);
-  const [wxAttr, setWxAttr] = useState({ radar: 'off', clouds: 'off', storms: 'off', nws: 'off', radarReady: '0', cloudsReady: '0' });
+  const [wxAttr, setWxAttr] = useState({ radar: 'off', clouds: 'off', storms: 'off', nws: 'off', radarReady: '0', cloudsReady: '0', radarCover: 'unknown', stormRings: '0', stormHits: '0' });
   onSelectRef.current = onSelect;
   layoutRef.current = layout;
   fireRef.current = fire;
@@ -127,12 +127,16 @@ export const GlobeMap = forwardRef(function GlobeMap(
       const pad = padFor(layoutRef.current);
       const cam = map.cameraForBounds([[x0, y0], [x1, y1]], { padding: pad });
       const hero = layoutRef.current === 'hero';
-      const z = r.id === 'eagle-point' ? 11.6 : Math.min(hero ? 12.6 : 13.6, Math.max(11.0, (cam?.zoom ?? 12) - 0.2));
+      // RainViewer mosaic maxzoom is 7. Full-map camera stays near that so
+      // precipitation in the cell is on screen; close-up overzoom is a clear hole.
+      const z = hero
+        ? (r.id === 'eagle-point' ? 11.6 : Math.min(12.6, Math.max(11.0, (cam?.zoom ?? 12) - 0.2)))
+        : 7.35;
       syncTerrain(map, terrainOn, terrainOk);
       map.flyTo({
         center: [(x0 + x1) / 2, (y0 + y1) / 2],
         zoom: z,
-        pitch: hero ? 54 : (window.innerWidth < 900 ? 58 : 64),
+        pitch: hero ? 54 : 36,
         bearing: r.bearing || 0,
         duration: hero ? 1400 : 2800,
         essential: true,
@@ -260,7 +264,10 @@ export const GlobeMap = forwardRef(function GlobeMap(
     const map = mapRef.current;
     if (!map || !snow) return;
     const paint = () => {
-      if (!map.getSource('resorts')) return;
+      if (!map.getSource('resorts')) {
+        map.once('idle', paint);
+        return;
+      }
       const pts = snow.grid
         ? snow.grid.filter(([x, y]: number[]) => resorts.some(r => Math.hypot(r.center[0] - x, r.center[1] - y) < 3)).map(([x, y, sf]: any) => [x, y, (sf || []).reduce((a: number, b: number) => a + b, 0)])
         : resorts.map(r => [r.center[0], r.center[1], (r.d7 || 0) / 6]);
@@ -278,9 +285,12 @@ export const GlobeMap = forwardRef(function GlobeMap(
           return { type: 'Feature', geometry: { type: 'Point', coordinates: r.center }, properties: { id: r.id, pass: (r.passes || []).join('+'), name: r.name.replace(/ \(.*\)/, ''), v, lbl, tier: storm.tier } };
         }),
       });
+      const rings = resorts.filter(r => stormForResort(r, snow).tier > 0).length;
+      setWxAttr(s => ({ ...s, stormRings: String(rings) }));
+      onLayerStatusRef.current?.({ stormRings: rings } as any);
     };
-    if (map.loaded()) paint();
-    else map.once('load', paint);
+    const cancel = whenStyleReady(map, paint);
+    return () => cancel();
   }, [resorts, snow, typical, win, units, mapEpoch]);
 
   useEffect(() => {
@@ -323,6 +333,14 @@ export const GlobeMap = forwardRef(function GlobeMap(
         map.setLayoutProperty('nws-fill', 'visibility', vis(nws));
         map.setLayoutProperty('nws-line', 'visibility', vis(nws));
       } catch { /* style not ready */ }
+      let hits = 0;
+      if (full && storms) {
+        try {
+          const box = map.getContainer();
+          hits = map.queryRenderedFeatures([[0, 0], [box.clientWidth, box.clientHeight]], { layers: ['storm-ring'] }).length;
+        } catch { /* style not ready */ }
+      }
+      setWxAttr(s => ({ ...s, stormHits: String(hits) }));
       return { full, radar, clouds };
     };
     const apply = async () => {
@@ -339,26 +357,43 @@ export const GlobeMap = forwardRef(function GlobeMap(
           if (cUrl) setRasterTiles(map, 'clouds', cUrl);
           const radarOk = radarAvailable(maps);
           const cloudsOk = satelliteAvailable(maps);
-          setWxAttr(s => ({ ...s, radarReady: radarOk ? '1' : '0', cloudsReady: cloudsOk ? '1' : '0' }));
+          const focus = resorts.find(x => x.id === selectedId) || resorts[0];
+          const probe = focus?.center
+            ? await probeRadarTile(maps, focus.center[0], focus.center[1], 7)
+            : { kind: 'unavailable' as const };
+          if (!live) return;
+          setWxAttr(s => ({
+            ...s,
+            radarReady: radarOk ? '1' : '0',
+            cloudsReady: cloudsOk ? '1' : '0',
+            radarCover: probe.kind,
+          }));
           onLayerStatusRef.current?.({
             radar: radarOk ? 'ready' : 'empty',
             clouds: cloudsOk ? 'ready' : 'unavailable',
+            radarCover: probe.kind,
           });
         } catch {
           if (!live) return;
-          setWxAttr(s => ({ ...s, radarReady: '0', cloudsReady: '0' }));
-          onLayerStatusRef.current?.({ radar: 'error', clouds: 'error' });
+          setWxAttr(s => ({ ...s, radarReady: '0', cloudsReady: '0', radarCover: 'error' }));
+          onLayerStatusRef.current?.({ radar: 'error', clouds: 'error', radarCover: 'error' });
         }
+      } else if (full) {
+        setWxAttr(s => ({ ...s, radarCover: s.radarCover }));
       }
       if (nwsGeo && map.getSource('nws')) (map.getSource('nws') as any).setData(nwsGeo);
     };
-    const cancel = whenStyleReady(map, () => { apply().catch(() => {}); });
+    const cancel = whenStyleReady(map, () => {
+      apply().catch(() => {});
+      map.once('idle', () => { if (live) paintOverlays(); });
+    });
     return () => { live = false; cancel(); };
-  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, mapEpoch, radarEpoch, layout]);
+  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, mapEpoch, radarEpoch, layout, selectedId, resorts]);
 
   const hidden = layout === 'hidden';
   const hero = layout === 'hero';
   const full = layout === 'full';
+  const stormRingCount = (resorts || []).filter((r: any) => snow && stormForResort(r, snow).tier > 0).length;
 
   return (
     <div
@@ -370,6 +405,9 @@ export const GlobeMap = forwardRef(function GlobeMap(
       data-nws={full && nwsOn ? 'on' : 'off'}
       data-radar-ready={wxAttr.radarReady}
       data-clouds-ready={wxAttr.cloudsReady}
+      data-radar-cover={wxAttr.radarCover}
+      data-storm-rings={String(stormRingCount)}
+      data-storm-hits={wxAttr.stormHits}
       style={hero ? { transform: `translate3d(0, ${Math.round(parallax * 0.22)}px, 0)`, pointerEvents: 'none' } : undefined}
     >
       <div ref={el} className="h-full w-full" />
@@ -441,13 +479,15 @@ function setRasterTiles(map: MapLibreMap, id: string, url: string) {
       tiles: [url],
       tileSize: 256,
       maxzoom: 7,
+      attribution: 'Radar © RainViewer',
     });
+    const before = map.getLayer('lodge-dot') ? 'lodge-dot' : (map.getLayer('storm-ring') ? 'storm-ring' : undefined);
     map.addLayer({
       id,
       type: 'raster',
       source: id,
-      paint: { 'raster-opacity': id === 'radar' ? 0.72 : 0.45 },
-    }, id === 'radar' ? 'hillshade' : 'radar');
+      paint: { 'raster-opacity': id === 'radar' ? 0.95 : 0.45, 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
+    }, before);
   } catch { /* style mid-swap */ }
 }
 

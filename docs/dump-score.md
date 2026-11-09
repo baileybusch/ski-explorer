@@ -23,9 +23,9 @@ Inches = centimeters / 2.54. **Ranking uses last 72h only.** Never show the sum 
 - A resort whose pillow **rose then settled** can rank above one that received similar snow but compacted in place.
 - `swe-slr` (12:1) can over- or under-rank vs true snowfall; it only fires when SNWD did not rise.
 - A **model-est** row with a large `snowfall_sum` can outrank a SNOTEL `0` (noise discarded or no depth rise). `est.` marks the model rows; SNOTEL-backed rows are not tagged `est.` even though they are still not recorded snowfall.
-- Sort control labels stay **Actual 72h** vs **Forecast 7d** (already-happened vs coming). The resort-page source line states the metric.
+- Visible sort labels are **Last 72h** / **Last 24h** / **Next 7 days** (internal ids stay `actual72` / `actual24` / `forecast7d`). Ranking methodology is unchanged: last-72h proxy, forecast as tie-break only. The resort-page source line states the metric.
 
-Cards (phone) and table rows (desktop) show **Last 72h** and **Next 7 days** with equal weight, each on a snow-stake bar: solid for last 72h, hatched for forecast, one shared scale. A compact **Rank by** control (Actual 72h default, Actual 24h, Forecast 7d, Name) reorders the whole board; on desktop the column headers do the same. **All regions** filters the same list; modeled last-72h stays on the board with an `est.` tag. Layout tokens live in `src/lib/boardLayout.ts`; see [design-tokens.md](design-tokens.md).
+Cards (phone) and table rows (desktop) show **Last 72h** and **Next 7 days** with equal weight, each on a snow-stake bar: solid for last 72h, hatched for forecast, one shared scale. A compact **Rank by** control (Last 72h default, Last 24h, Next 7 days, Name) reorders the whole board; on desktop the column headers do the same. **All regions** filters the same list; modeled last-72h stays on the board with an `est.` tag. Layout tokens live in `src/lib/boardLayout.ts`; see [design-tokens.md](design-tokens.md).
 
 ## Tie-breaks (deterministic)
 

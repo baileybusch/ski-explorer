@@ -6,7 +6,7 @@
  * columns. Stat columns are fixed-width and right-aligned, so numbers line up down
  * the list and never move when the sort changes; only the highlight moves.
  *
- *   compact (< fullMin)  Actual · Forecast      Actual shows 24h when ranked by 24h
+ *   compact (< fullMin)  Last 72h · Next 7d     Last 72h shows 24h when ranked by 24h
  *   full    (≥ fullMin)  Last 24h · Last 72h · Next 7 days
  */
 export const BOARD_LAYOUT = {
@@ -30,9 +30,9 @@ export const BOARD_LAYOUT = {
 } as const;
 
 export const BOARD_SORTS = [
-  { id: 'actual72', label: 'Actual 72h' },
-  { id: 'actual24', label: 'Actual 24h' },
-  { id: 'forecast7d', label: 'Forecast 7d' },
+  { id: 'actual72', label: 'Last 72h' },
+  { id: 'actual24', label: 'Last 24h' },
+  { id: 'forecast7d', label: 'Next 7 days' },
   { id: 'name', label: 'Name' },
 ] as const;
 

@@ -6,9 +6,11 @@ import { Switch } from '@/components/ui/switch';
 
 export type LayerStatus = {
   radar: 'loading' | 'ready' | 'error' | 'empty';
+  radarCover?: 'unavailable' | 'error' | 'clear' | 'precip' | 'unknown';
   clouds: 'loading' | 'ready' | 'unavailable' | 'error';
   nws: 'off' | 'loading' | 'ready' | 'empty' | 'error';
   lodging: 'off' | 'loading' | 'ready' | 'empty' | 'error';
+  stormRings?: number;
 };
 
 export function MapLayers({
@@ -29,13 +31,22 @@ export function MapLayers({
   onRetryRadar?: () => void;
 }) {
   const cloudsOk = status?.clouds === 'ready';
+  const stormN = status?.stormRings ?? 0;
+  const stormsOk = stormN > 0;
   const radarNote = status?.radar === 'error'
-    ? 'RainViewer did not load. Retry, or the mosaic may be down.'
+    ? 'RainViewer did not load. Retry, or the mosaic may be down. Personal/educational tiles, max zoom 7.'
     : status?.radar === 'empty'
-      ? 'RainViewer returned no radar frames.'
+      ? 'RainViewer returned no radar frames — mosaic unavailable, not a clear sky.'
       : status?.radar === 'loading'
         ? 'Loading RainViewer mosaic…'
-        : 'RainViewer precipitation mosaic. Global, coarsest outside N. America / Europe / Japan. Max zoom 7. Not snow totals.';
+        : status?.radarCover === 'clear'
+          ? 'Mosaic is up. No echo in this tile (clear, or outside a dense radar network). Not snow totals. Max zoom 7.'
+          : status?.radarCover === 'precip'
+            ? 'RainViewer precipitation in this mosaic cell (max zoom 7). Coarsest outside N. America / Europe / Japan. Not snow totals. Personal/educational API.'
+            : 'RainViewer precipitation mosaic. Global, coarsest outside N. America / Europe / Japan. Max zoom 7. Not snow totals.';
+  const stormsNote = !stormsOk
+    ? 'No resort in the snapshot has a 6″+ Open-Meteo forecast dump in any rolling 72h, so this toggle is off. Independent of radar.'
+    : `Cyan rings on ${stormN} resort${stormN === 1 ? '' : 's'} with a 6″+ Open-Meteo forecast dump in any rolling 72h. Independent of radar — not a tropical track, not RainViewer.`;
   const cloudsNote = !cloudsOk
     ? 'RainViewer infrared satellite has no frames right now, so this toggle is off.'
     : 'RainViewer infrared satellite. Independent of radar.';
@@ -76,8 +87,15 @@ export function MapLayers({
             />
           </Field>
           <Field orientation="horizontal">
-            <FieldLabel htmlFor="storm-rings">Storm tracker</FieldLabel>
-            <Switch id="storm-rings" checked={stormsLayerOn} onCheckedChange={setStormsLayerOn} data-testid="layer-storms" />
+            <FieldLabel htmlFor="storm-rings">Storm rings</FieldLabel>
+            <Switch
+              id="storm-rings"
+              checked={stormsLayerOn && stormsOk}
+              disabled={!stormsOk}
+              onCheckedChange={setStormsLayerOn}
+              data-testid="layer-storms"
+              data-disabled={stormsOk ? undefined : '1'}
+            />
           </Field>
           <Field orientation="horizontal">
             <FieldLabel htmlFor="nws">NWS winter (US)</FieldLabel>
@@ -89,7 +107,7 @@ export function MapLayers({
           </Field>
           <FieldDescription data-testid="layer-radar-note">{radarNote}</FieldDescription>
           <FieldDescription data-testid="layer-clouds-note">{cloudsNote}</FieldDescription>
-          <FieldDescription data-testid="layer-storms-note">Rings on resorts with a 6″+ forecast dump in any rolling 72h. From the Open-Meteo snapshot, not a tropical track.</FieldDescription>
+          <FieldDescription data-testid="layer-storms-note">{stormsNote}</FieldDescription>
           <FieldDescription data-testid="layer-nws-note">{nwsNote}</FieldDescription>
           <FieldDescription data-testid="layer-lodging-note">{lodgeNote}</FieldDescription>
           {status?.radar === 'error' && onRetryRadar ? (

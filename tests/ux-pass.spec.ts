@@ -16,7 +16,7 @@ test('home has no Observed only toggle and keeps honest est. tags', async ({ pag
   await openBoard(page);
   await expect(page.getByTestId('observed-only')).toHaveCount(0);
   await expect(page.getByTestId('board-sort')).toHaveValue('actual72');
-  await expect(page.getByTestId('board-sort')).toContainText('Forecast 7d');
+  await expect(page.getByTestId('board-sort').locator('option')).toHaveText(['Last 72h', 'Last 24h', 'Next 7 days', 'Name']);
   const flags = await page.getByTestId('block').evaluateAll(els => els.map(e => e.getAttribute('data-estimated')));
   expect(flags.some(v => v === '1')).toBeTruthy();
   await expect(page.getByTestId('est-tag').first()).toBeVisible();
@@ -94,14 +94,28 @@ test('resort storm synopsis is natural, sourced, and has a restrained Ask entry'
 });
 
 test('radar player leaves loading and map back returns to the resort', async ({ page }) => {
-  test.setTimeout(90_000);
-  await openFirstResort(page);
+  test.setTimeout(120_000);
+  await page.goto('/resort/blue-mountain-on?alerts=1');
+  await expect(page.getByTestId('resort-profile')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('tile-radar').scrollIntoViewIfNeeded();
   const player = page.getByTestId('radar-player');
   await expect(player).toBeVisible();
   await expect.poll(async () => player.getAttribute('data-status'), { timeout: 20_000 }).not.toBe('loading');
   const status = await player.getAttribute('data-status');
   expect(['ready', 'empty', 'error']).toContain(status);
+  if (status === 'empty') {
+    await expect(page.getByTestId('radar-player-msg')).toContainText(/unavailable, not a clear sky/i);
+  }
+  if (status === 'ready') {
+    const cover = await player.getAttribute('data-cover');
+    expect(['precip', 'clear', 'unavailable', 'error', 'unknown']).toContain(cover);
+    await expect(page.getByTestId('radar-cover-note')).toBeVisible();
+    if (cover === 'precip') {
+      await expect.poll(async () => Number((await player.getAttribute('data-opaque')) || '0'), { timeout: 10_000 }).toBeGreaterThan(100);
+    } else if (cover === 'clear') {
+      await expect.poll(async () => (await player.getAttribute('data-opaque')) || '', { timeout: 10_000 }).toMatch(/^0$|^$/);
+    }
+  }
 
   await page.getByTestId('profile-map').click();
   await expect(page.getByTestId('map-mode')).toBeVisible({ timeout: 20_000 });
@@ -109,23 +123,54 @@ test('radar player leaves loading and map back returns to the resort', async ({ 
   await expect(page.getByTestId('list-button')).toHaveCount(0);
   await expect(page.getByText('Cards', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('layers-button')).toBeVisible();
+  await expect(page.getByTestId('map-radar-chip')).toBeVisible();
+  await expect(page.getByTestId('map-storm-chip')).toContainText(/Storm rings/i);
+  await expect.poll(async () => page.getByTestId('globe').getAttribute('data-radar-ready'), { timeout: 20_000 }).toBe('1');
+  const cover = await page.getByTestId('globe').getAttribute('data-radar-cover');
+  expect(['precip', 'clear', 'unavailable', 'error', 'unknown']).toContain(cover);
+  if (cover === 'empty' || cover === 'unavailable') {
+    await expect(page.getByTestId('map-radar-chip')).toContainText(/unavailable/i);
+  } else if (cover === 'clear') {
+    await expect(page.getByTestId('map-radar-chip')).toContainText(/no echo/i);
+  } else if (cover === 'precip') {
+    await expect(page.getByTestId('map-radar-chip')).toContainText(/precipitation/i);
+  }
+  await expect(page.getByTestId('map-storm-chip')).toContainText(/Storm rings on/);
+  await expect.poll(async () => Number((await page.getByTestId('globe').getAttribute('data-storm-rings')) || '0'), { timeout: 15_000 }).toBeGreaterThan(0);
+
+  await page.waitForTimeout(2500);
+  const globeBox = await page.getByTestId('globe').boundingBox();
+  expect(globeBox).toBeTruthy();
+  const radarOnShot = await page.screenshot({ clip: globeBox! });
 
   await page.getByTestId('layers-button').click();
   await expect(page.getByTestId('layers-popover')).toBeVisible();
   await expect(page.getByTestId('layer-radar')).toBeChecked();
   await expect(page.getByTestId('layer-storms')).toBeChecked();
+  await expect(page.getByTestId('layer-storms-note')).toContainText(/independent of radar/i);
   const clouds = page.getByTestId('layer-clouds');
-  const cloudsDisabled = await clouds.getAttribute('data-disabled');
-  if (cloudsDisabled != null) {
+  if (await clouds.isDisabled()) {
     await expect(page.getByTestId('layer-clouds-note')).toContainText(/no frames|offline|unavailable/i);
   } else {
     await clouds.click();
     await expect(page.getByTestId('globe')).toHaveAttribute('data-clouds', 'on', { timeout: 10_000 });
     await clouds.click();
   }
+  await page.getByTestId('layer-radar').click();
+  await expect(page.getByTestId('layer-radar')).not.toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('globe')).toHaveAttribute('data-radar', 'off', { timeout: 8_000 });
+  await expect(page.getByTestId('map-radar-chip')).toHaveText(/Radar off/);
+  await page.waitForTimeout(700);
+  const radarOffShot = await page.screenshot({ clip: globeBox! });
+  expect(radarOnShot.equals(radarOffShot), 'radar on vs off should change the rendered map').toBe(false);
+
+  await page.getByTestId('layers-button').click();
+  await expect(page.getByTestId('layers-popover')).toBeVisible();
   await page.getByTestId('layer-storms').click();
   await expect(page.getByTestId('layer-storms')).not.toBeChecked();
   await expect(page.getByTestId('globe')).toHaveAttribute('data-storms', 'off', { timeout: 8_000 });
+  await expect(page.getByTestId('map-storm-chip')).toHaveText(/Storm rings off/i);
   await page.keyboard.press('Escape');
 
   await page.getByTestId('map-back').click();

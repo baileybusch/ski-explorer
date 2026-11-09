@@ -91,7 +91,7 @@ export default function App() {
   const [stormsLayerOn, setStormsLayerOn] = useState(true);
   const [nwsOn, setNwsOn] = useState(false);
   const [radarEpoch, setRadarEpoch] = useState(0);
-  const [layerStatus, setLayerStatus] = useState<LayerStatus>({ radar: 'loading', clouds: 'loading', nws: 'off', lodging: 'off' });
+  const [layerStatus, setLayerStatus] = useState<LayerStatus>({ radar: 'loading', clouds: 'loading', nws: 'off', lodging: 'off', radarCover: 'unknown', stormRings: 0 });
   const mapOrigin = useRef<'profile' | 'board'>('profile');
   const [stormMin, setStormMin] = useState(6);
   const [nwsGeo, setNwsGeo] = useState<any>(null);
@@ -447,6 +447,9 @@ export default function App() {
 
   const visibleRows = rowsAll.slice(0, shown);
   const selected = catalog?.resorts.find((r: any) => r.id === selectedId) || visibleRows[0]?.r || null;
+  const stormRingCount = catalog
+    ? catalog.resorts.filter((r: any) => stormForResort(r, catalog.snow).tier > 0).length
+    : 0;
   const maxDump = Math.max(0, ...rowsAll.map(x => x.dump.past72Cm));
   const zeroHint = maxDump === 0;
   const mapLayout: MapLayout = view === 'map' ? 'full' : view === 'profile' ? 'hero' : 'hidden';
@@ -527,9 +530,34 @@ export default function App() {
               stormsLayerOn={stormsLayerOn} setStormsLayerOn={setStormsLayerOn}
               nwsOn={nwsOn} setNwsOn={setNwsOn}
               lodgingOn={lodgingOn} setLodgingOn={setLodgingOn}
-              status={layerStatus}
+              status={{ ...layerStatus, stormRings: stormRingCount }}
               onRetryRadar={() => setRadarEpoch(n => n + 1)}
             />
+          </div>
+          <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-3 max-w-[22rem] space-y-1 text-[11px] leading-snug" data-testid="map-layer-readout">
+            {selected ? (
+              <p className="rounded-md bg-background/80 px-2 py-1 font-medium text-foreground" data-testid="map-focus">{selected.name}</p>
+            ) : null}
+            <p className="rounded-md bg-background/80 px-2 py-1 text-foreground" data-testid="map-radar-chip">
+              {!radarOn
+                ? 'Radar off'
+                : layerStatus.radar === 'error'
+                  ? 'Radar failed · RainViewer unreachable'
+                  : layerStatus.radar === 'empty'
+                    ? 'Radar mosaic unavailable (not a clear sky)'
+                    : layerStatus.radarCover === 'precip'
+                      ? 'Radar on · precipitation in this mosaic cell (RainViewer)'
+                      : layerStatus.radarCover === 'clear'
+                        ? 'Radar on · mosaic up, no echo here'
+                        : 'Radar on · RainViewer mosaic'}
+            </p>
+            <p className="rounded-md bg-background/80 px-2 py-1 text-foreground" data-testid="map-storm-chip">
+              {stormsLayerOn && stormRingCount > 0
+                ? `Storm rings on · ${stormRingCount} forecast 6″+ dumps (not radar)`
+                : stormsLayerOn
+                  ? 'Storm rings on · none in this snapshot'
+                  : 'Storm rings off'}
+            </p>
           </div>
         </div>
       ) : null}

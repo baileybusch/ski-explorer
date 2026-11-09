@@ -33,6 +33,12 @@ export function runSourceEvals() {
   check('firecrawl-grants-no-rights', firecrawl?.grantsContentRights === false && firecrawl.resortReportsCleared === false && firecrawl.usedInProduction === false);
 
   check('used-sources-exist', usedSources().length >= 5 && usedSources().every(s => s.usedInProduction));
+  const rv = sourceById('rainviewer');
+  check('rainviewer-personal-edu', rv?.serviceTerms.commercial === 'no' && /personal/i.test(rv.serviceTerms.note) && /educational/i.test(rv.serviceTerms.note));
+  check('rainviewer-maxzoom-7', /max zoom 7/i.test(rv?.serviceTerms.note || ''));
+  check('rainviewer-clear-vs-unavailable', /clear/i.test(rv?.serviceTerms.note || '') && /unavailable/i.test(rv?.serviceTerms.note || ''));
+  check('rainviewer-terms-url', rv?.serviceTerms.url === 'https://www.rainviewer.com/api.html');
+
   check('noncommercial-services-listed', noncommercialServices().some(s => s.id === 'open-meteo-forecast') && noncommercialServices().some(s => s.id === 'rainviewer'));
   check('uncleared-reports-include-alta', unclearedResortReports().some(s => s.id === 'alta-com'));
   check('no-crawler-in-production', !SOURCES.some(s => s.category === 'tool' && s.usedInProduction));
