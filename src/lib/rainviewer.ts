@@ -15,17 +15,33 @@ export async function rainviewerMaps() {
   return maps;
 }
 
+export function radarFrames(mapsJson: any) {
+  return [...(mapsJson?.radar?.past || []), ...(mapsJson?.radar?.nowcast || [])].filter((f: any) => f?.path);
+}
+
+export function satelliteFrames(mapsJson: any) {
+  return (mapsJson?.satellite?.infrared || []).filter((f: any) => f?.path);
+}
+
+export function radarAvailable(mapsJson: any) {
+  return radarFrames(mapsJson).length > 0;
+}
+
+export function satelliteAvailable(mapsJson: any) {
+  return satelliteFrames(mapsJson).length > 0;
+}
+
 export function radarTileUrl(mapsJson: any) {
-  const host = mapsJson.host || 'https://tilecache.rainviewer.com';
-  const frames = [...(mapsJson.radar?.past || []), ...(mapsJson.radar?.nowcast || [])];
+  const host = mapsJson?.host || 'https://tilecache.rainviewer.com';
+  const frames = radarFrames(mapsJson);
   const last = frames[frames.length - 1];
   if (!last?.path) return null;
   return `${host}${last.path}/256/{z}/{x}/{y}/2/1_1.png`;
 }
 
 export function satelliteTileUrl(mapsJson: any) {
-  const host = mapsJson.host || 'https://tilecache.rainviewer.com';
-  const frames = mapsJson.satellite?.infrared || [];
+  const host = mapsJson?.host || 'https://tilecache.rainviewer.com';
+  const frames = satelliteFrames(mapsJson);
   const last = frames[frames.length - 1];
   if (!last?.path) return null;
   return `${host}${last.path}/256/{z}/{x}/{y}/0/0_0.png`;

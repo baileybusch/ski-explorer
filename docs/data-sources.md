@@ -26,7 +26,7 @@ Footer is wordmark + Privacy, Terms, Contact. Affiliate disclosure stays conditi
 | **Geocoding** | We do **not** call a geocoder. Search is the local gazetteer + fuzzy resort names (`lib/agent/parseTrip.js`). | n/a | n/a | n/a | Search still works offline against committed JSON. |
 | **Overpass (lodging pins)** | No. | OSM ODbL. | OSM (map i) when the layer is on. | Public Overpass; easy to 429. | Empty lodging layer. |
 | **NWS winter alerts** (US) | No. | Public domain. | “Alerts: NWS (US only)” on the map source. | Public endpoint. | Layer off. |
-| **NRCS SNOTEL / AWDB** | No. | Public domain (US Government work). | “Last 72h from SNOTEL” on the resort storm tile when mapped. | Public REST; hourly SNWD + WTEQ for mapped stations only (~80). | US resorts without a station ≤45 km fall back to model-est. |
+| **NRCS SNOTEL / AWDB** | No. | Public domain (US Government work). Cite [NRCS](https://www.nrcs.usda.gov/programs-initiatives/sswsf-snow-survey-and-water-supply-forecasting-program/citing-data-from-the). | “Last 72h is SNOTEL snow-depth (SNWD) peak-rise, not recorded snowfall.” | Public REST; hourly SNWD + WTEQ for mapped stations only (~80). | US resorts without a station ≤45 km fall back to model-est. |
 | **NIFC WFIGS fire perimeter** | No. | Public. | NIFC WFIGS. | Static committed GeoJSON. | No fire outline. |
 | **Esri World Imagery** | n/a | **Excluded.** Terms do not allow commercial use. Layer removed. | — | — | Not used. |
 | **CARTO dark_nolabels** | Would need a key now. | Not free for commercial use. | — | Watermarks “API KEY REQUIRED”. | Replaced by OpenFreeMap. |
@@ -77,18 +77,51 @@ Locationforecast has precipitation + temperature, not snowfall_sum. SLR:
 
 Open-Meteo `snowfall_sum` is a model snowfall field. MET Norway snow here is precip × SLR. For the same mountain, MET will usually be **lower and later** in mixed storms (T>2°C → 0) and **similar** when it is cold. A live 8-resort check is `node scripts/compare_weather.mjs` (network; skipped in CI). Until revenue, keep the committed Open-Meteo snapshot.
 
+## Source / rights registry
+
+Machine-readable registry: `lib/data/sources.js` (evals: `evals/sources.mjs`).
+
+- **Data license** and **hosted API / service terms** are separate fields. Open-Meteo data is CC BY 4.0; the **free hosted API is NONCOMMERCIAL** ([terms](https://open-meteo.com/en/terms)) — flag before sponsors, ads, or subscriptions. Do not purchase in this pass.
+- **Resort reports default NOT cleared.** Alta [prohibits unapproved automated scraping](https://www.alta.com/mountain-policy). Firecrawl does not grant resort rights.
+- MET Norway is commercial-ok and unused for committed snapshots.
+
+## Observation / provenance contract
+
+Canonical record: `lib/data/observation.js` (`skiscope.observation.v1`, evals: `evals/observation.mjs`). Adapter maps today's `observed.json` fields; it does **not** invent confidence scores.
+
+Required: metric, source kind, units (`cm`), observation/window time, `retrieved_at`, station + mapping metadata, missing vs zero, quality flags, `revision`/`rawRef` (both null until an immutable store exists).
+
+**SNWD ≠ snowfall.** NRCS SNWD is snow depth. A depth increase is not measured snowfall (compaction, wind, melt). WTEQ is water equivalent. The board still ranks by this proxy (see [dump-score.md](dump-score.md)); copy must not call it recorded snowfall.
+
 ## Observed snow vs forecast (pass 4)
 
-Cards show **Last 72h** (observed, or `est.` from the model) and **Next 7 days** (forecast) as equal two-stat columns. They are never mixed into one fallen-snow total. Default sort is last 72h; the board can also sort by 24h, forecast, or name.
+Cards show **Last 72h** (SNOTEL snow-depth peak-rise, or `est.` from the model) and **Next 7 days** (forecast) as equal two-stat columns. They are never mixed into one fallen-snow total. Default sort is last 72h; the board can also sort by 24h, forecast, or name.
 
-| Region | Observed source | `source` field | License |
+| Region | Last-72h source | `source` field | License |
 |---|---|---|---|
-| **US (western, SNOTEL coverage)** | NRCS AWDB REST, networks `SNTL` / `SNTLT`. Each resort maps to the nearest station by distance + elevation (≤45 km, ≤900 m elev gap). New snow = peak snow-depth rise in the window; integer-inch flicker is dropped unless SWE also rose. | `snotel:<triplet>` e.g. `snotel:1308:UT:SNTL` | US Government work / public domain. No key. [AWDB REST](https://wcc.sc.egov.usda.gov/awdbRestApi/swagger-ui/index.html) |
+| **US (western, SNOTEL coverage)** | NRCS AWDB REST, networks `SNTL` / `SNTLT`. Each resort maps to the nearest station by distance + elevation (≤45 km, ≤900 m elev gap). Metric = peak **snow-depth** rise in the window (not snowfall); integer-inch flicker is dropped unless SWE also rose. | `snotel:<triplet>` e.g. `snotel:1308:UT:SNTL` | US Government work / public domain. No key. [AWDB REST](https://wcc.sc.egov.usda.gov/awdbRestApi/swagger-ui/index.html) · [Citing NRCS](https://www.nrcs.usda.gov/programs-initiatives/sswsf-snow-survey-and-water-supply-forecasting-program/citing-data-from-the) |
 | **Canada** | ECCC GeoMet climate-daily `TOTAL_SNOW` / `SNOW_ON_GROUND` was evaluated (Whistler Roundhouse, Blackcomb 1540). Alpine auto stations currently return **null** snow fields; not reliable for a live board. BC ASWS is HTML, not a stable JSON feed. | `model-est` until ECCC snow fields populate | ECCC open government / GeoMet — legal to use, just not useful yet |
 | **Japan, Alps, NZ, AU, rest** | Open-Meteo `snowfall_sum` for the last 3 snapshot days | `model-est` | CC BY 4.0, **non-commercial** free tier. UI labels **est.** |
 | **Eastern US without SNOTEL** | Same model fallback | `model-est` | SNOTEL is western; no fake distant station |
 
-Schema (`public/data/observed.json` and each tool row): `snow72h_observed`, `snow24h_observed`, `source`, `observed_at`, plus `forecast7d` from the model snapshot.
+Stored snapshot (`public/data/observed.json`): `snow72hCm`, `snow24hCm`, `source`, `observedAt`, `method`, `station`, `snwdIn`, `sweIn`. Live builder also writes `metric`, `windowHours`, `retrievedAt`, `valueState`. The canonical contract is the adapter output, not a second Blob.
+
+### Storage audit (do not grow writes)
+
+| Store | What | Bound |
+|---|---|---|
+| `public/data/observed.json` | Latest last-72h snapshot, one record per resort | One file, overwritten hourly by GH Action |
+| `public/data/snotel-map.json` | Resort → station mapping | One file |
+| `public/data/snow.json` | Open-Meteo forecast snapshot | One file |
+| `public/data/seasons/*.json` + `climatology.json` + `history.json` | Precomputed ERA5-class archive | Committed, bounded by resort × season |
+| `/api/observed` | 45 min in-memory + 30 min CDN | Same snapshot shape; live AWDB when stale |
+| Vercel Blob | **Subscribers / insights only** | Not a snow archive. Do not write raw AWDB series here |
+
+Raw hourly SNWD/WTEQ series are fetched, reduced to peak-rise, and discarded. `rawRef` stays null.
+
+### Later (not in this PR): immutable history
+
+Keep one current snapshot. If we add history, write **one immutable daily object per UTC day** (canonical observations + source ids, no raw pillow series unless a later budget allows it) under the existing git/GH-Action bound — not an unbounded Blob log. No crawler, no MCP snow server, no paid store.
 
 ### Refresh cadence (free, no paid cron)
 
@@ -117,7 +150,7 @@ Evaluated, **not ingested**:
 | OnTheSnow / Skiinfo | Commercial product; scraping/republishing prohibited. |
 | Typical resort “snow report” widgets | Often the same third-party feeds above, or stale daily HTML. |
 
-SkiScope does **not** scrape resort pages. Official storm totals remain the mountain’s number; ours is SNOTEL (US) or modeled (est.).
+SkiScope does **not** scrape resort pages. Alta [prohibits unapproved automated scraping](https://www.alta.com/mountain-policy). Firecrawl does not grant republication rights. Official storm totals remain the mountain’s number; ours is SNOTEL snow-depth rise (US) or modeled (est.).
 
 ## How to extend history
 

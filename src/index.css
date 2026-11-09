@@ -204,8 +204,29 @@ input::placeholder {
   animation: ask-fill 1.1s ease-in-out infinite alternate;
 }
 
+.ghost-prompt {
+  display: grid;
+}
+.ghost-prompt > span {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+.ghost-prompt > [data-state="out"] {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+.ghost-prompt > [data-state="in"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ask-pending { animation: none; }
+  .ghost-prompt > span { transition: none; }
 }
 
 .hero-scrim {

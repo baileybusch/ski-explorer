@@ -1,4 +1,6 @@
 /** MapLibre style: OpenFreeMap dark vector basemap + overlays. No Esri. No CARTO. */
+import { radarTileUrl, satelliteTileUrl, rainviewerMaps } from '@/lib/rainviewer';
+
 
 export const OFM_DARK = 'https://tiles.openfreemap.org/styles/dark';
 export const OFM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://openfreemap.org">OpenFreeMap</a> / <a href="https://openmaptiles.org">OpenMapTiles</a>';
@@ -50,14 +52,16 @@ export function inlineOfmStyle() {
   };
 }
 
-export function overlaySources({ fire }: { fire?: any } = {}) {
+export function overlaySources({ fire, maps }: { fire?: any; maps?: any } = {}) {
+  const radarUrl = radarTileUrl(maps);
+  const cloudUrl = satelliteTileUrl(maps);
   return {
     dem: { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], tileSize: 512, encoding: 'terrarium', maxzoom: 12, attribution: 'Terrain © <a href="https://mapterhorn.com">Mapterhorn</a>' },
     hs: { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], tileSize: 512, encoding: 'terrarium', maxzoom: 12 },
     snow: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     resorts: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
-    radar: { type: 'raster', tiles: ['https://tilecache.rainviewer.com/v2/radar/0/256/{z}/{x}/{y}/2/1_1.png'], tileSize: 256, maxzoom: 7, attribution: 'Radar © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
-    clouds: { type: 'raster', tiles: ['https://tilecache.rainviewer.com/v2/satellite/0/256/{z}/{x}/{y}/0/0_0.png'], tileSize: 256, maxzoom: 7, attribution: 'Satellite © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
+    radar: { type: 'raster', tiles: radarUrl ? [radarUrl] : [], tileSize: 256, maxzoom: 7, attribution: 'Radar © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
+    clouds: { type: 'raster', tiles: cloudUrl ? [cloudUrl] : [], tileSize: 256, maxzoom: 7, attribution: 'Satellite © <a href="https://www.rainviewer.com/api.html">RainViewer</a>' },
     nws: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: 'Alerts: NWS (US only)' },
     osm: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: 'Runs & lifts © <a href="https://openskimap.org">OpenSkiMap</a>, © OpenStreetMap contributors (ODbL)' },
     fire: { type: 'geojson', data: fire || { type: 'FeatureCollection', features: [] }, attribution: 'Fire perimeter: NIFC WFIGS' },
@@ -94,7 +98,7 @@ export function overlayLayers() {
   ];
 }
 
-export function withOverlays(base: any, opts: { fire?: any } = {}) {
+export function withOverlays(base: any, opts: { fire?: any; maps?: any } = {}) {
   const style = {
     version: 8,
     glyphs: base.glyphs || 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -109,20 +113,21 @@ export function withOverlays(base: any, opts: { fire?: any } = {}) {
   return style;
 }
 
-export function fallbackStyle(opts: { fire?: any } = {}) {
+export function fallbackStyle(opts: { fire?: any; maps?: any } = {}) {
   return withOverlays(plainStyle(), opts);
 }
 
-export function buildStyle(opts: { fire?: any } = {}) {
+export function buildStyle(opts: { fire?: any; maps?: any } = {}) {
   return withOverlays(inlineOfmStyle(), opts);
 }
 
 export async function loadStyle(opts: { fire?: any } = {}) {
+  const maps = await rainviewerMaps().catch(() => null);
   try {
     const r = await fetch(OFM_DARK);
     if (!r.ok) throw new Error(String(r.status));
-    return withOverlays(await r.json(), opts);
+    return withOverlays(await r.json(), { ...opts, maps });
   } catch {
-    return buildStyle(opts);
+    return buildStyle({ ...opts, maps });
   }
 }

@@ -6,13 +6,13 @@ Default theme is **dark**. `next-themes` follows the system when the user has no
 
 ## Brief
 
-Pass holders deciding where to ski. The board answers two questions with equal weight: **who actually got snow** (last 72h, observed or `est.`) and **who is about to** (next 7 days, modeled). The vernacular is the base-area snow report board and the snow stake.
+Pass holders deciding where to ski. The board answers two questions with equal weight: **last 72h** (SNOTEL snow-depth rise in the US, or `est.` from the model — not recorded snowfall) and **who is about to** (next 7 days, modeled). The vernacular is the base-area snow report board and the snow stake.
 
 ## The one bold thing: the snow stake
 
 Every snow number sits on a stake bar.
 
-- **Solid** = snow that fell (actual). Lower opacity when the actual is a model estimate.
+- **Solid** = last 72h (SNOTEL snow-depth peak-rise or model `est.`). Lower opacity when the number is a model estimate.
 - **Hatched** = snow the model expects (forecast).
 - Both share **one scale per view** (floor 6″), so bar lengths compare across rows and across actual vs forecast.
 
@@ -43,8 +43,8 @@ Tokens live in `src/lib/boardLayout.ts` — retune there when a desktop sketch a
 ```
 Phone (< 720px, "compact")              Desktop (≥ 720px, "full"; ≥1100px Ask docks right)
 [mark POWTRACKER]          [≡]          [mark] [ search ........ ] [≡]      │ Ask SkiScope
-[ search .................. ]           Rank by [Actual 72h] [All] [Obs]    │ starters…
-[Actual 72h][All regions][Observed]     Resort          24h  ↓Last 72h  Next 7 days
+[ search .................. ]           Rank by [Actual 72h] [All]          │ compact prompts
+[Actual 72h][All regions]               Resort          24h  ↓Last 72h  Next 7 days
 Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬   0.1 ▨ ▒│ chips…
 ▒1 APPI Resort      est 8.6″   0.1″▒     2 Niseko …       1.2  est 6.9▬    1   ▨  │
  2 Niseko Annupuri  est 6.9″   1″        3 …                                      │ [ask… (↑)]
@@ -54,7 +54,7 @@ Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬
 - **One leaderboard list everywhere.** Every resort is a full-width row: rank, name + region on the left, then fixed stat columns on the right. Phones and desktop share `BoardList`; only the column template changes (`list.compact` / `list.full`).
 - **Columns never move.** Changing Rank by re-ranks rows (280ms FLIP, off under reduced motion) but the column template is fixed. The active column gets the bright number and bright header with the sort arrow; inactive numbers drop to 55% and their stakes to 45%.
 - **Headers are sticky and tappable.** On phones the Actual header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
-- **#1 is only lightly featured**: 7% tint, slightly taller row, semibold name. It shares the template so its numbers sit in the same columns as everyone else's.
+- **#1 is only lightly featured**: 7% tint and semibold name, same row height as everyone else so re-rank FLIP does not jump. It shares the template so its numbers sit in the same columns.
 - **Desktop Ask is a docked side panel** (≥1100px, `role="complementary"`, no close X). The search box focuses its input instead of opening a sheet.
 - Resort page uses the same 1200px column: hero (name left, two-stat right), storm status as the only raised panel (with Alert me), then ruled sections on a 12-column grid: Next 7 days (7) | Today on the mountain (5), Radar (7) | Mountain Facts (5), Snow history (12).
 
@@ -65,11 +65,11 @@ Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬
 
 ## Buttons
 
-**Alert me** is the only filled (white) button. Everything else is outline or ghost, including the Observed only toggle (pressed = brighter outline + check).
+**Alert me** is the only filled (white) button. Everything else is outline or ghost. The home board does not have an Observed only filter; `est.` tags stay on modeled actuals, and source/coverage copy lives on the resort page.
 
 ## Motion
 
-None on load. The radar loop is the only autoplay and it starts paused under `prefers-reduced-motion`. Board re-rank is a short FLIP slide, skipped under reduced motion.
+None on load. The radar loop is the only autoplay and it starts paused under `prefers-reduced-motion`. Board re-rank is a short FLIP slide, skipped under reduced motion. Home search ghosts fade and drift; they freeze while the user has typed a query and under reduced motion.
 
 ## Ask SkiScope (chat)
 

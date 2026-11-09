@@ -36,8 +36,8 @@ async function ask(page: Page, text: string) {
 
 test('search box opens the Ask thread with suggestions; board stays home', async ({ page }, info) => {
   await openAsk(page);
-  await expect(page.getByTestId('ask-suggestion')).toHaveCount(6);
-  await expect(page.getByTestId('region-japan')).toBeVisible();
+  await expect(page.getByTestId('ask-suggestion')).toHaveCount(3);
+  await expect(page.getByTestId('search-chips')).toHaveCount(0);
   await page.keyboard.press('Escape');
   if (info.project.name.startsWith('desktop')) await expect(page.getByTestId('search')).toHaveAttribute('data-docked', '1');
   else await expect(page.getByTestId('search')).toBeHidden();
@@ -97,8 +97,6 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   await page.keyboard.press('Escape');
   await page.getByTestId('board-sort').selectOption('actual24');
   await page.getByTestId('board-region').selectOption('utah');
-  await page.getByTestId('observed-only').click();
-  await expect(page.getByTestId('block').first()).toHaveAttribute('data-estimated', '0');
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'actual24');
   const scopedBoard = await settledBoardTop(page);
   await page.getByTestId('search-trigger').click();
@@ -106,10 +104,9 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   const scoped = await askTop(scopedAnswer);
   expect(scoped.length).toBeGreaterThanOrEqual(3);
   expect(scoped).toEqual(scopedBoard.slice(0, scoped.length));
-  await expect(scopedAnswer.getByTestId('ask-ranked')).toContainText(/Ikon resorts in Utah, observed only/);
+  await expect(scopedAnswer.getByTestId('ask-ranked')).toContainText(/Ikon resorts in Utah/);
 
   await page.keyboard.press('Escape');
-  await page.getByTestId('observed-only').click();
   await page.getByTestId('board-region').selectOption('');
   await page.getByTestId('board-sort').selectOption('forecast7d');
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'forecast7d');

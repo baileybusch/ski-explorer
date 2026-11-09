@@ -16,13 +16,13 @@ export const BOARD_LAYOUT = {
   list: {
     compact: {
       columns: '1.5rem minmax(0,1fr) 4.5rem 4.5rem',
-      rowH: 50,
-      leadH: 60,
+      rowH: 52,
+      leadH: 52,
     },
     full: {
       columns: '2.25rem minmax(0,1fr) 5.5rem 9.5rem 9.5rem',
-      rowH: 54,
-      leadH: 66,
+      rowH: 56,
+      leadH: 56,
     },
   },
   /** Stake bars never scale below this many inches, so a 0.3″ day stays short. */

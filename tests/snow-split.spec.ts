@@ -30,6 +30,6 @@ test('resort hero and storm status split actual vs forecast', async ({ page }) =
   const storm = page.getByTestId('storm-status-text');
   await expect(storm).toBeVisible();
   const text = await storm.innerText();
-  expect(text).toMatch(/last 72h/i);
-  expect(text.toLowerCase()).toMatch(/forecast|nothing over/);
+  expect(text).toMatch(/last 72h|last 72 hours/i);
+  expect(text.toLowerCase()).toMatch(/forecast|nothing over|stays under/);
 });

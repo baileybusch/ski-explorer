@@ -4,7 +4,8 @@ import { windowMetrics } from '../../lib/snowWindow.js';
 import { snowAmount } from '@/lib/format';
 import { fallbackStyle, loadStyle } from '@/lib/mapStyle';
 import { stormForResort } from '../../lib/storms.js';
-import { rainviewerMaps, radarTileUrl, satelliteTileUrl } from '@/lib/rainviewer';
+import { rainviewerMaps, radarTileUrl, satelliteTileUrl, radarAvailable, satelliteAvailable } from '@/lib/rainviewer';
+import type { LayerStatus } from '@/components/MapLayers';
 
 const DEM = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
 const EXAG = 1.25;
@@ -55,6 +56,7 @@ export const GlobeMap = forwardRef(function GlobeMap(
   {
     resorts, snow, typical, fire, win, units, lodgingOn, selectedId, onSelect,
     radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, layout = 'full', parallax = 0,
+    radarEpoch = 0, onLayerStatus, onLodgingStatus,
   }: {
     resorts: any[];
     snow: any;
@@ -72,6 +74,9 @@ export const GlobeMap = forwardRef(function GlobeMap(
     nwsGeo?: any;
     layout?: MapLayout;
     parallax?: number;
+    radarEpoch?: number;
+    onLayerStatus?: (s: Pick<LayerStatus, 'radar' | 'clouds'>) => void;
+    onLodgingStatus?: (s: LayerStatus['lodging']) => void;
   },
   ref: Ref<GlobeHandle>,
 ) {
@@ -84,10 +89,23 @@ export const GlobeMap = forwardRef(function GlobeMap(
   const onSelectRef = useRef(onSelect);
   const layoutRef = useRef(layout);
   const fireRef = useRef(fire);
+  const onLayerStatusRef = useRef(onLayerStatus);
+  const onLodgingStatusRef = useRef(onLodgingStatus);
+  const radarOnRef = useRef(radarOn);
+  const cloudsOnRef = useRef(cloudsOn);
+  const stormsLayerOnRef = useRef(stormsLayerOn);
+  const nwsOnRef = useRef(nwsOn);
   const [mapEpoch, setMapEpoch] = useState(0);
+  const [wxAttr, setWxAttr] = useState({ radar: 'off', clouds: 'off', storms: 'off', nws: 'off', radarReady: '0', cloudsReady: '0' });
   onSelectRef.current = onSelect;
   layoutRef.current = layout;
   fireRef.current = fire;
+  onLayerStatusRef.current = onLayerStatus;
+  onLodgingStatusRef.current = onLodgingStatus;
+  radarOnRef.current = radarOn;
+  cloudsOnRef.current = cloudsOn;
+  stormsLayerOnRef.current = stormsLayerOn;
+  nwsOnRef.current = nwsOn;
 
   useImperativeHandle(ref, () => ({
     flyHome() {
@@ -275,50 +293,83 @@ export const GlobeMap = forwardRef(function GlobeMap(
         map.setLayoutProperty('lodge-label', 'visibility', vis);
       } catch { /* */ }
       if (!lodgingOn) {
+        onLodgingStatusRef.current?.('off');
         (map.getSource('lodging') as any)?.setData({ type: 'FeatureCollection', features: [] });
         return;
       }
       const r = resorts.find(x => x.id === selectedId);
-      if (r) loadLodging(map, r);
+      if (r) loadLodging(map, r, s => onLodgingStatusRef.current?.(s));
+      else onLodgingStatusRef.current?.('empty');
     };
-    if (map.loaded()) apply();
-    else map.once('load', apply);
+    const cancel = whenStyleReady(map, apply);
+    return () => cancel();
   }, [lodgingOn, selectedId, resorts, mapEpoch]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = async () => {
-      const vis = (on: boolean) => (on ? 'visible' : 'none');
+    let live = true;
+    const paintOverlays = () => {
+      const full = layoutRef.current === 'full';
+      const vis = (on: boolean) => (full && on ? 'visible' : 'none');
+      const radar = !!radarOnRef.current;
+      const clouds = !!cloudsOnRef.current;
+      const storms = !!stormsLayerOnRef.current;
+      const nws = !!nwsOnRef.current;
       try {
-        map.setLayoutProperty('radar', 'visibility', vis(!!radarOn));
-        map.setLayoutProperty('clouds', 'visibility', vis(!!cloudsOn));
-        map.setLayoutProperty('storm-ring', 'visibility', vis(!!stormsLayerOn));
-        map.setLayoutProperty('nws-fill', 'visibility', vis(!!nwsOn));
-        map.setLayoutProperty('nws-line', 'visibility', vis(!!nwsOn));
+        map.setLayoutProperty('radar', 'visibility', vis(radar));
+        map.setLayoutProperty('clouds', 'visibility', vis(clouds));
+        map.setLayoutProperty('storm-ring', 'visibility', vis(storms));
+        map.setLayoutProperty('nws-fill', 'visibility', vis(nws));
+        map.setLayoutProperty('nws-line', 'visibility', vis(nws));
       } catch { /* style not ready */ }
-      if (radarOn || cloudsOn) {
+      return { full, radar, clouds };
+    };
+    const apply = async () => {
+      if (!live) return;
+      const { full, radar, clouds } = paintOverlays();
+      if (full && (radar || clouds)) {
         try {
           const maps = await rainviewerMaps();
+          if (!live) return;
+          paintOverlays();
           const rUrl = radarTileUrl(maps);
           const cUrl = satelliteTileUrl(maps);
-          if (rUrl && map.getSource('radar')) (map.getSource('radar') as any).setTiles([rUrl]);
-          if (cUrl && map.getSource('clouds')) (map.getSource('clouds') as any).setTiles([cUrl]);
-        } catch { /* radar optional */ }
+          if (rUrl) setRasterTiles(map, 'radar', rUrl);
+          if (cUrl) setRasterTiles(map, 'clouds', cUrl);
+          const radarOk = radarAvailable(maps);
+          const cloudsOk = satelliteAvailable(maps);
+          setWxAttr(s => ({ ...s, radarReady: radarOk ? '1' : '0', cloudsReady: cloudsOk ? '1' : '0' }));
+          onLayerStatusRef.current?.({
+            radar: radarOk ? 'ready' : 'empty',
+            clouds: cloudsOk ? 'ready' : 'unavailable',
+          });
+        } catch {
+          if (!live) return;
+          setWxAttr(s => ({ ...s, radarReady: '0', cloudsReady: '0' }));
+          onLayerStatusRef.current?.({ radar: 'error', clouds: 'error' });
+        }
       }
       if (nwsGeo && map.getSource('nws')) (map.getSource('nws') as any).setData(nwsGeo);
     };
-    if (map.loaded()) apply();
-    else map.once('load', apply);
-  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, mapEpoch]);
+    const cancel = whenStyleReady(map, () => { apply().catch(() => {}); });
+    return () => { live = false; cancel(); };
+  }, [radarOn, cloudsOn, stormsLayerOn, nwsOn, nwsGeo, mapEpoch, radarEpoch, layout]);
 
   const hidden = layout === 'hidden';
   const hero = layout === 'hero';
+  const full = layout === 'full';
 
   return (
     <div
       className={hidden ? 'hidden' : hero ? 'hero-map absolute inset-x-0 top-0 z-0 h-[48dvh] overflow-hidden' : 'absolute inset-0 z-10'}
       data-testid="globe"
+      data-radar={full && radarOn ? 'on' : 'off'}
+      data-clouds={full && cloudsOn ? 'on' : 'off'}
+      data-storms={full && stormsLayerOn ? 'on' : 'off'}
+      data-nws={full && nwsOn ? 'on' : 'off'}
+      data-radar-ready={wxAttr.radarReady}
+      data-clouds-ready={wxAttr.cloudsReady}
       style={hero ? { transform: `translate3d(0, ${Math.round(parallax * 0.22)}px, 0)`, pointerEvents: 'none' } : undefined}
     >
       <div ref={el} className="h-full w-full" />
@@ -349,15 +400,75 @@ async function loadOSM(map: MapLibreMap, id: string) {
   (map.getSource('osm') as any)?.setData({ type: 'FeatureCollection', features: loaded.flatMap((f: any) => f.features || []) });
 }
 
-async function loadLodging(map: MapLibreMap, r: any) {
-  if (lodgingCache[r.id]) {
-    (map.getSource('lodging') as any)?.setData(lodgingCache[r.id]);
+function whenStyleReady(map: MapLibreMap, fn: () => void) {
+  let done = false;
+  let timer = 0;
+  const run = () => {
+    if (done) return;
+    done = true;
+    map.off('load', run);
+    map.off('idle', run);
+    if (timer) window.clearTimeout(timer);
+    try { map.resize(); } catch { /* hidden → full */ }
+    fn();
+  };
+  if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded()) {
+    run();
+    return () => {};
+  }
+  map.once('load', run);
+  map.once('idle', run);
+  timer = window.setTimeout(run, 500);
+  return () => {
+    done = true;
+    map.off('load', run);
+    map.off('idle', run);
+    if (timer) window.clearTimeout(timer);
+  };
+}
+
+function setRasterTiles(map: MapLibreMap, id: string, url: string) {
+  const src = map.getSource(id) as any;
+  if (src?.setTiles) {
+    src.setTiles([url]);
     return;
   }
-  const [lon, lat] = r.center;
-  const q = `[out:json][timeout:20];(nwr["tourism"~"hotel|chalet|guest_house|apartment"](around:7000,${lat},${lon}););out center 30;`;
   try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+    if (map.getLayer(id)) map.removeLayer(id);
+    if (map.getSource(id)) map.removeSource(id);
+    map.addSource(id, {
+      type: 'raster',
+      tiles: [url],
+      tileSize: 256,
+      maxzoom: 7,
+    });
+    map.addLayer({
+      id,
+      type: 'raster',
+      source: id,
+      paint: { 'raster-opacity': id === 'radar' ? 0.72 : 0.45 },
+    }, id === 'radar' ? 'hillshade' : 'radar');
+  } catch { /* style mid-swap */ }
+}
+
+async function loadLodging(map: MapLibreMap, r: any, onStatus?: (s: LayerStatus['lodging']) => void) {
+  if (lodgingCache[r.id]) {
+    (map.getSource('lodging') as any)?.setData(lodgingCache[r.id]);
+    onStatus?.(lodgingCache[r.id].features?.length ? 'ready' : 'empty');
+    return;
+  }
+  onStatus?.('loading');
+  const [lon, lat] = r.center;
+  const q = `[out:json][timeout:12];(nwr["tourism"~"hotel|chalet|guest_house|apartment"](around:7000,${lat},${lon}););out center 30;`;
+  const ac = new AbortController();
+  const timer = window.setTimeout(() => ac.abort(), 12_000);
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(q),
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      signal: ac.signal,
+    });
     if (!res.ok) throw new Error(String(res.status));
     const json = await res.json();
     const features = (json.elements || []).map((el: any) => {
@@ -368,7 +479,11 @@ async function loadLodging(map: MapLibreMap, r: any) {
     const fc = { type: 'FeatureCollection', features };
     lodgingCache[r.id] = fc;
     (map.getSource('lodging') as any)?.setData(fc);
+    onStatus?.(features.length ? 'ready' : 'empty');
   } catch {
     (map.getSource('lodging') as any)?.setData({ type: 'FeatureCollection', features: [] });
+    onStatus?.('error');
+  } finally {
+    window.clearTimeout(timer);
   }
 }

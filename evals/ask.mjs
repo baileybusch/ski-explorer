@@ -130,6 +130,10 @@ export async function runAskEvals() {
     check(`plan "${text}"`, ok, `got ${plan.intent} ${JSON.stringify(plan.steps)}`);
   }
   check('mentioned resorts ignore "snow"/"best"', mentionedResorts('best snow right now', cat).length === 0);
+  const focused = planAnswer("how's the snow this week?", { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, focusResortId: 'alta' } });
+  check('focus resort: generic snow question is getResort', focused.intent === 'resort' && focused.steps[0]?.input?.resort === 'alta');
+  const focusedRank = planAnswer("who's getting the most snow right now?", { ...cat, board: { pass: 'ikon', regionId: null, observedOnly: false, focusResortId: 'alta' } });
+  check('focus resort: ranking question still ranks', focusedRank.intent === 'rank' && focusedRank.steps[0]?.tool === 'rankResorts');
 
   for (const sort of ['actual72h', 'actual24h', 'forecast7d']) {
     const out = rankResorts({ sort, limit: 12 }, cat);
