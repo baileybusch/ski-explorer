@@ -27,7 +27,12 @@ Alert model **v2**: one email can hold many subscriptions (`type`: `resort` | `r
 1. **Sending domain** — buy one you control. `skiscope.vercel.app` is the app, not mail.
 2. **Resend domain verification** — SPF + DKIM + DMARC. Set `RESEND_FROM` to `SkiScope <alerts@yourdomain>`. `RESEND_API_KEY` stays in Vercel env.
 3. **Flag** — `EMAIL_ALERTS_ENABLED = true` in `public/config.js`.
-4. **Cron** — already wired. On Pro, change the schedule to 6-hourly (`15 */6 * * *`) if you want faster dump alerts. Hobby is one daily tick.
+4. **Cron** — the daily Vercel tick stays (Sunday recap). For alerts on the data cadence, add GitHub repo secret `CRON_SECRET` (same value as the Vercel env var); the refresh workflow then calls `/api/cron/alerts` after each data commit. Optional `ALERTS_URL` secret overrides the default `https://skiscope.vercel.app/api/cron/alerts`.
+
+**Alert types (resort rules):**
+
+- **Storm (forecast):** the rule's inches within the window, counting local today onward (so tonight's snow counts). One per pulse + tier; 12-hour cooldown per rule.
+- **Overnight dump (observed):** a SNOTEL or CDEC station saw the rule's inches in the last 24 h. Checked 5 AM to noon in the rule's time zone; quiet hours (to 7 AM) still hold it, so it lands on the first run after 7. Once per resort per local day, not blocked by the forecast cooldown. Model-estimated resorts never fire it.
 5. **Allowlist first** — keep `DIGEST_ALLOWLIST=baileybusch@gmail.com` for the first live runs.
 6. **Postal address** in the footer (CAN-SPAM) once a domain exists.
 

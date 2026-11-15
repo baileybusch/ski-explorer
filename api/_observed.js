@@ -1,7 +1,7 @@
 /**
  * Live observed snapshot. Routed through /api/headless?surface=observed.
  * Serves committed public/data/observed.json, and when that file is older
- * than ~45 minutes, refreshes US rows from NRCS AWDB (SNOTEL) in-process.
+ * than ~45 minutes, refreshes US rows from NRCS AWDB (SNOTEL) and CDEC in-process.
  * CDN + in-memory cache keep us inside Hobby time and Open-Meteo is not used here.
  */
 import { readFileSync } from 'node:fs';
@@ -35,7 +35,8 @@ async function liveRefresh() {
   const resorts = readJSON('public/data/resorts-index.json', []);
   const snow = readJSON('public/data/snow.json', { dates: [], today: 0, resorts: {} });
   const map = readJSON('public/data/snotel-map.json', { resorts: {} }).resorts || {};
-  return buildObservedSnapshot({ resorts, snow, map });
+  const cdecMap = readJSON('public/data/cdec-map.json', { resorts: {} }).resorts || {};
+  return buildObservedSnapshot({ resorts, snow, map, cdecMap });
 }
 
 export async function getObserved({ force = false } = {}) {

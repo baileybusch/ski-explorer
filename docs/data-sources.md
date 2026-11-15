@@ -103,6 +103,7 @@ Cards show **Last 72h** (SNOTEL snow-depth peak-rise, or `est.` from the model) 
 | **Canada** | ECCC GeoMet climate-daily `TOTAL_SNOW` / `SNOW_ON_GROUND` was evaluated (Whistler Roundhouse, Blackcomb 1540). Alpine auto stations currently return **null** snow fields; not reliable for a live board. BC ASWS is HTML, not a stable JSON feed. | `model-est` until ECCC snow fields populate | ECCC open government / GeoMet — legal to use, just not useful yet |
 | **Japan, Alps, NZ, AU, rest** | Open-Meteo `snowfall_sum` for the last 3 snapshot days | `model-est` | CC BY 4.0, **non-commercial** free tier. UI labels **est.** |
 | **Eastern US without SNOTEL** | Same model fallback | `model-est` | SNOTEL is western; no fake distant station |
+| **California without SNOTEL** (Mammoth) | CDEC (California DWR) hourly pillows: sensor 18 snow depth, sensor 3 SWE, PST timestamps. Hand-mapped in `public/data/cdec-map.json` (`mammoth → MHP` Mammoth Pass, 9,400 ft). Same SNWD peak-rise reduction as SNOTEL (`lib/cdec.js`). CDEC failure falls back to `model-est`. | `cdec:<station>` e.g. `cdec:MHP` | California state public data, no key |
 
 Stored snapshot (`public/data/observed.json`): `snow72hCm`, `snow24hCm`, `source`, `observedAt`, `method`, `station`, `snwdIn`, `sweIn`. Live builder also writes `metric`, `windowHours`, `retrievedAt`, `valueState`. The canonical contract is the adapter output, not a second Blob.
 
@@ -123,11 +124,21 @@ Raw hourly SNWD/WTEQ series are fetched, reduced to peak-rise, and discarded. `r
 
 Keep one current snapshot. If we add history, write **one immutable daily object per UTC day** (canonical observations + source ids, no raw pillow series unless a later budget allows it) under the existing git/GH-Action bound — not an unbounded Blob log. No crawler, no MCP snow server, no paid store.
 
+### US forecast days (NWS, then NBM)
+
+`scripts/fetch_snow.py` fills each US resort's forecast days (local today onward) from:
+
+1. **NWS gridded `snowfallAmount`** (`api.weather.gov/points` → `forecastGridData`), summed into resort-local days, used only for days it covers fully (≥23 h). Forecaster-edited with varying snow ratios. Free, no key, User-Agent required. Points lookups are cached in `public/data/nws-points.json` and re-checked every 30 days.
+2. **Open-Meteo NBM** (`models=ncep_nbm_conus`, native snowfall) for the remaining days.
+3. **Open-Meteo `best_match`** (snowfall at a fixed 7:1, which runs low in cold storms) when both are missing.
+
+Past days stay on `best_match`. The per-day source is `sfSrc` (`nws` / `nbm` / `om`). `--no-nws` skips the pass. "Today" is index `PAST` (each resort's local today), not the UTC date.
+
 ### Refresh cadence (free, no paid cron)
 
 | Path | Cadence | Notes |
 |---|---|---|
-| **GitHub Actions** `.github/workflows/refresh-observed.yml` | **Hourly** (`17 * * * *`) | Best free near-real-time persist. Commits `observed.json` + slim `snow.json`. Scheduled workflows run on **main** after merge; until then preview uses the on-demand API. |
+| **GitHub Actions** `.github/workflows/refresh-observed.yml` | **Hourly** (`17 * * * *`), best-effort: GitHub delays or skips scheduled runs (Nov 2026: commits landed every 4–9 h) | Forecast step runs **before** observed so model-est uses this run's forecast. Commits `observed.json` + slim `snow.json` + `nws-points.json`. If repo secret `CRON_SECRET` is set, it then calls `/api/cron/alerts` (after a 3-minute wait for the deploy). |
 | **`GET /api/observed`** (same Hobby function as MCP/search/data) | On demand, **45 min** in-memory + **30 min** CDN (`s-maxage=1800`) | Live AWDB pull when the committed file is stale. No new serverless function. |
 | **Vercel Hobby cron** | Once/day | Already used by `/api/cron/alerts`. Not used for snow. |
 | **`snow.json` forecast job** | Same hourly Action | **1 center/resort**, `past_days=7`, `forecast_days=7`, no hourly, no 2×2 grid. ≈158 weighted calls vs the old 4360 that hit Open-Meteo’s 4000/hour cap. |

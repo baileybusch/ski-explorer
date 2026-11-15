@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build public/data/observed.json from NRCS SNOTEL (US) + Open-Meteo model-est.
+ * Build public/data/observed.json from NRCS SNOTEL (US), CDEC (California) + Open-Meteo model-est.
  * Also writes public/data/snotel-map.json when --remap is passed or the map is missing.
  *
  * Usage:
@@ -34,7 +34,10 @@ if (remap || !existsSync('public/data/snotel-map.json')) {
   console.log('using committed snotel-map.json', Object.keys(map).length, 'resorts');
 }
 
-const observed = await buildObservedSnapshot({ resorts, snow, map });
+const cdecMap = existsSync('public/data/cdec-map.json')
+  ? JSON.parse(readFileSync('public/data/cdec-map.json', 'utf8')).resorts || {}
+  : {};
+const observed = await buildObservedSnapshot({ resorts, snow, map, cdecMap });
 writeFileSync('public/data/observed.json', JSON.stringify(observed));
 const n = observed.counts || {};
-console.log('ok observed.json snotel', n.snotel, 'est', n.est, 'stations', n.stations, 'fetched', observed.fetched);
+console.log('ok observed.json snotel', n.snotel, 'cdec', n.cdec, 'est', n.est, 'stations', n.stations, 'fetched', observed.fetched);

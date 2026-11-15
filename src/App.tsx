@@ -580,7 +580,7 @@ export default function App() {
           />
           {zeroHint ? (
             <p className="px-4 pt-1 text-sm text-muted-foreground">
-              Quiet across the board. US last 72h is SNOTEL snow-depth rise, not recorded snowfall; elsewhere modeled (est.).
+              Quiet across the board. US last 72h is SNOTEL or CDEC snow-depth rise, not recorded snowfall; elsewhere modeled (est.).
             </p>
           ) : null}
           <BlockBoard

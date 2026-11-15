@@ -1,7 +1,7 @@
 name: Refresh observed snow
 on:
   schedule:
-    - cron: "17 * * * *"   # hourly — Hobby cron is once/day, so GH Actions is the free near-real-time path
+    - cron: "17 * * * *"   # hourly — Hobby cron is once/day, so GH Actions is the free near-real-time path (GitHub may delay or skip runs)
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,14 +16,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Observed (NRCS SNOTEL + model-est)
-        run: node scripts/fetch_observed.mjs
-      - name: Forecast chip (Open-Meteo, 1 point/resort)
+      # Forecast first, so the observed step's model-est fallback reads this run's
+      # forecast instead of the previous one.
+      - name: Forecast chip (Open-Meteo; US days from NWS, then NBM)
         run: python scripts/fetch_snow.py
+      - name: Observed (NRCS SNOTEL + CDEC + model-est)
+        run: node scripts/fetch_observed.mjs
       - name: Commit if changed
+        id: commit
         run: |
           git config user.name "snow-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/observed.json public/data/snotel-map.json public/data/snow.json
-          git diff --cached --quiet || git commit -m "data: refresh observed snow $(date -u +%FT%H:%MZ)"
-          git push
+          git add public/data/observed.json public/data/snotel-map.json public/data/snow.json public/data/nws-points.json
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "data: refresh observed snow $(date -u +%FT%H:%MZ)"
+            git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+      # Evaluate alerts on the data cadence instead of once a day. Needs repo
+      # secrets CRON_SECRET (same value as the Vercel env var) and, optionally,
+      # ALERTS_URL. Skipped when the secret is not set. The endpoint is a no-op
+      # while EMAIL_ALERTS_ENABLED=false.
+      - name: Evaluate alerts
+        if: steps.commit.outputs.pushed == 'true'
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ALERTS_URL: ${{ secrets.ALERTS_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set; skipping"; exit 0; fi
+          # Give Vercel time to deploy the data commit before evaluating it.
+          sleep 180
+          curl -fsS -m 290 -H "Authorization: Bearer $CRON_SECRET" "${ALERTS_URL:-https://skiscope.vercel.app/api/cron/alerts}"
