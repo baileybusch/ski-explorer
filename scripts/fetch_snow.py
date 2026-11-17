@@ -243,11 +243,14 @@ def us_forecast(centers, c_res, us_ids):
       return {}
     # NBM via Open-Meteo, same points + elevations as the main request.
     nbm = [None] * len(rows)
+    # NBM CONUS only: one point outside it (Alyeska, Alaska) makes Open-Meteo
+    # reject the whole batch with 400 "No data is available for this location".
+    conus = [j for j, (c, _) in enumerate(rows) if 24 <= c[2] <= 49.6 and -125.5 <= c[1] <= -66]
     try:
-      lats = [c[2] for c, _ in rows]
-      lons = [c[1] for c, _ in rows]
-      elevs = [c[3] for c, _ in rows]
-      for k in range(0, len(rows), 40):
+      lats = [rows[j][0][2] for j in conus]
+      lons = [rows[j][0][1] for j in conus]
+      elevs = [rows[j][0][3] for j in conus]
+      for k in range(0, len(conus), 40):
         sl = slice(k, k + 40)
         q = {
           'latitude': ','.join(str(x) for x in lats[sl]),
@@ -260,7 +263,7 @@ def us_forecast(centers, c_res, us_ids):
         d = get_json('https://api.open-meteo.com/v1/forecast?' + urllib.parse.urlencode(q), UA)
         d = d if isinstance(d, list) else [d]
         for i, dd in enumerate(d):
-          nbm[k + i] = dd
+          nbm[conus[k + i]] = dd
         time.sleep(0.4)
     except Exception as e:
       print('NBM pass failed, NWS/best_match only:', e, flush=True)
