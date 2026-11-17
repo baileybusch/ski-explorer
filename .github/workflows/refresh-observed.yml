@@ -20,7 +20,10 @@ jobs:
       # forecast instead of the previous one.
       - name: Forecast chip (Open-Meteo; US days from NWS, then NBM)
         run: python scripts/fetch_snow.py
+      # continue-on-error: an upstream outage here must not throw away the
+      # forecast refresh above (the commit step still commits snow.json).
       - name: Observed (NRCS SNOTEL + CDEC + model-est)
+        continue-on-error: true
         run: node scripts/fetch_observed.mjs
       - name: Commit if changed
         id: commit

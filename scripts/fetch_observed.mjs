@@ -37,7 +37,12 @@ if (remap || !existsSync('public/data/snotel-map.json')) {
 const cdecMap = existsSync('public/data/cdec-map.json')
   ? JSON.parse(readFileSync('public/data/cdec-map.json', 'utf8')).resorts || {}
   : {};
-const observed = await buildObservedSnapshot({ resorts, snow, map, cdecMap });
+// Previous snapshot lets recent SNOTEL rows stand in if NRCS AWDB is down.
+const previous = existsSync('public/data/observed.json')
+  ? JSON.parse(readFileSync('public/data/observed.json', 'utf8'))
+  : null;
+const observed = await buildObservedSnapshot({ resorts, snow, map, cdecMap, previous });
 writeFileSync('public/data/observed.json', JSON.stringify(observed));
 const n = observed.counts || {};
-console.log('ok observed.json snotel', n.snotel, 'cdec', n.cdec, 'est', n.est, 'stations', n.stations, 'fetched', observed.fetched);
+if (observed.warnings) console.warn('warnings', observed.warnings.join(', '));
+console.log('ok observed.json snotel', n.snotel, 'cdec', n.cdec, 'est', n.est, 'carried', n.carried, 'stations', n.stations, 'fetched', observed.fetched);
