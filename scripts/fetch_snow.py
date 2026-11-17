@@ -25,7 +25,7 @@ US resorts (forecast days only):
   Past days stay on best_match. Per-day source lands in rec['sfSrc'].
   --no-nws skips the NWS + NBM pass (falls back to best_match everywhere).
 """
-import json, urllib.request, urllib.parse, time, datetime, sys, os
+import json, urllib.request, urllib.error, urllib.parse, time, datetime, sys, os
 
 provider = os.environ.get('WEATHER_PROVIDER', 'openmeteo')
 if '--provider' in sys.argv:
@@ -153,6 +153,17 @@ def get_json(url, headers, tries=3):
   for attempt in range(tries):
     try:
       return json.load(urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30))
+    except urllib.error.HTTPError as e:
+      # Open-Meteo / NWS explain 4xx in the body ({"reason": ...}); keep it.
+      try:
+        body = e.read().decode('utf-8', 'replace')[:300]
+      except Exception:
+        body = ''
+      if 400 <= e.code < 500 and e.code != 429:
+        raise RuntimeError(f'HTTP {e.code}: {body}') from e
+      if attempt == tries - 1:
+        raise RuntimeError(f'HTTP {e.code}: {body}') from e
+      time.sleep(5 * (attempt + 1))
     except Exception as e:
       if attempt == tries - 1:
         raise

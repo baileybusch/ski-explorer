@@ -3,7 +3,7 @@
  * "dump" alert. Offline: no network.
  */
 import { parseCdecTime, cdecSeries } from '../lib/cdec.js';
-import { buildObservedSnapshot } from '../lib/snotel.js';
+import { buildObservedSnapshot, newSnowInches, observedFromSeries, cleanDepth, fetchJsonRetry } from '../lib/snotel.js';
 import { evaluateAlerts, forecastWindow } from '../lib/evaluateAlerts.js';
 import { toObservation, validateObservation, sourceKindOf, SOURCE_KINDS } from '../lib/data/observation.js';
 import { sourceById } from '../lib/data/sources.js';
@@ -104,6 +104,67 @@ export async function runStationDumpEvals() {
   // Forecast window now includes local today.
   const fw = forecastWindow('x', { today: 0, dates: ['d0', 'd1', 'd2', 'd3'], resorts: { x: { sf: [20.32, 0, 0, 0] } } }, 72);
   check('forecast-counts-today', Math.round(fw.snowIn) === 8 && fw.pulseStart === 'd0', `${fw.snowIn} ${fw.pulseStart}`);
+
+  // ── Sensor faults (Nov 17: CDEC MHP depth read -201/-205 → Mammoth showed 80″) ──
+  const hr = h => ({ t: Date.parse('2026-11-16T00:00:00Z') + h * 3600000, date: `h${h}` });
+  const ser = vals => vals.map((v, h) => ({ ...hr(h), v }));
+  const flatSwe = ser(Array.from({ length: 72 }, () => 1.32));
+  const risingSwe = ser(Array.from({ length: 72 }, (_, h) => (h < 48 ? 1.32 : 1.32 + Math.min(0.48, (h - 47) * 0.02))));
+  const faultDepth = ser(Array.from({ length: 72 }, (_, h) => (h % 5 === 0 ? -205 : (h % 7 === 0 ? 10 : -201))));
+  const mhp = observedFromSeries(faultDepth, risingSwe);
+  check('fault-depth-not-80in', mhp.snow24hCm < 20, String(mhp.snow24hCm));
+  check('fault-depth-uses-swe', Math.abs(mhp.snow24hIn - 5.8) < 0.3 && mhp.method.startsWith('swe-slr'), `${mhp.snow24hIn} ${mhp.method}`);
+  const allNeg = observedFromSeries(ser(Array.from({ length: 72 }, () => -205)), risingSwe);
+  check('all-negative-depth-swe-fallback', allNeg.method === 'swe-slr' && allNeg.snwdIn === null, `${allNeg.method} ${allNeg.snwdIn}`);
+  const cdecNeg = cdecSeries([{ stationId: 'MHP', SENSOR_NUM: 18, date: '2026-11-17 5:00', value: -201 }]);
+  check('cdec-drops-negative', !cdecNeg.MHP || cdecNeg.MHP.SNWD.length === 0);
+
+  const spiky = Array.from({ length: 72 }, () => 40);
+  spiky[60] = 95;
+  check('spike-dropped', cleanDepth(ser(spiky)).length === 71 && newSnowInches(ser(spiky), flatSwe, 24).inches === 0);
+  const jump = ser(Array.from({ length: 72 }, (_, h) => (h < 50 ? 20 : 70)));
+  const j = newSnowInches(jump, flatSwe, 24);
+  check('unbacked-jump-rejected', j.inches === 0 && j.method === 'swe-slr-suspect-depth', `${j.inches} ${j.method}`);
+  const realStorm = ser(Array.from({ length: 72 }, (_, h) => (h < 48 ? 20 : 20 + Math.min(40, (h - 47) * 2))));
+  const realSwe = ser(Array.from({ length: 72 }, (_, h) => (h < 48 ? 5 : 5 + Math.min(3.5, (h - 47) * 0.175))));
+  const rs = newSnowInches(realStorm, realSwe, 24);
+  check('real-big-storm-kept', rs.inches === 40 && rs.method === 'snwd-peak', `${rs.inches} ${rs.method}`);
+  const normal = newSnowInches(ser(depths.slice(0, 72).map(v => (v < 0 ? 20 : v))), ser(swes), 24);
+  check('normal-dump-unchanged', Math.abs(normal.inches - 12) < 0.01, String(normal.inches));
+
+  // ── NRCS AWDB outage (Nov 16–17: 502 failed two runs) ──
+  const fake = codes => {
+    let i = 0;
+    return async () => { const c = codes[Math.min(i++, codes.length - 1)]; return { ok: c === 200, status: c, json: async () => ({ ok: 1 }) }; };
+  };
+  const got = await fetchJsonRetry('x', 'AWDB data', { delays: [0, 0], fetchImpl: fake([502, 502, 200]) });
+  check('awdb-retries-502', got?.ok === 1);
+  let threw404 = '';
+  const f404 = fake([404, 200]);
+  try { await fetchJsonRetry('x', 'AWDB data', { delays: [0, 0], fetchImpl: f404 }); } catch (e) { threw404 = e.message; }
+  check('awdb-no-retry-404', threw404 === 'AWDB data 404', threw404);
+
+  const nowT = new Date('2026-11-17T05:00:00Z');
+  const usResorts = [{ id: 'alta', name: 'Alta', country: 'US', center: [-111.64, 40.59] }, { id: 'brighton', name: 'Brighton', country: 'US', center: [-111.58, 40.6] }];
+  const prev = {
+    fetched: '2026-11-16T23:00:00Z',
+    resorts: {
+      alta: { snow24hCm: 30, snow72hCm: 40, source: 'snotel:1308:UT:SNTL', retrievedAt: '2026-11-16T23:00:00Z', method: 'snwd-peak' },
+      brighton: { snow24hCm: 10, snow72hCm: 10, source: 'snotel:366:UT:SNTL', retrievedAt: '2026-11-15T23:00:00Z', method: 'snwd-peak' },
+    },
+  };
+  const awdbDown = async () => { throw new Error('AWDB data 502'); };
+  const umap = { alta: { triplet: '1308:UT:SNTL' }, brighton: { triplet: '366:UT:SNTL' } };
+  const out = await buildObservedSnapshot({ resorts: usResorts, snow: { dates: [], today: 0, resorts: {} }, map: umap, previous: prev, now: nowT, awdbFetch: awdbDown });
+  check('outage-carries-recent', out.resorts.alta?.stale === true && out.resorts.alta.snow24hCm === 30 && out.counts.carried === 1);
+  check('outage-old-row-to-est', out.resorts.brighton?.source === 'model-est');
+  check('outage-warning', out.warnings?.includes('snotel-unavailable'));
+  let liveThrew = false;
+  try { await buildObservedSnapshot({ resorts: usResorts, snow: {}, map: umap, now: nowT, awdbFetch: awdbDown }); } catch { liveThrew = true; }
+  check('live-path-still-throws', liveThrew);
+
+  const staleJson = { ...snowJson, observed: { ...snowJson.observed, mammoth: { ...snowJson.observed.mammoth, stale: true } } };
+  check('dump-skips-stale', !evaluateAlerts([rule()], staleJson, morning).alerts.some(a => a.event === 'dump'));
 
   return { fail, total: lines.length, lines };
 }
