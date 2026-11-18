@@ -7,6 +7,7 @@ import { DEFAULT_BRAND } from '../lib/brand.js';
 import { defaultPrefs } from '../lib/accountPrefs.js';
 import { canReceiveEmail } from '../lib/consent.js';
 import { CONFIRM_TTL_SEC, signAuthToken } from '../lib/authToken.js';
+import { presentingReportCardHtml } from '../lib/eve/reportEmail.js';
 
 export const SITE = process.env.SITE_URL || DEFAULT_SITE;
 const A = { access: 'private' };
@@ -60,7 +61,16 @@ export async function loadData() {
   const resorts = idx.map(r => {
     const sf = snow.resorts[r.id]?.sf || [];
     const sum = (a, b) => sf.slice(Math.max(0, a), b).reduce((x, y) => x + y, 0);
-    return { ...r, d24: sf[t - 1] || 0, d7: sum(t - 6, t + 1), fc: sum(t + 1, D), fcDays: sf.slice(t + 1).map((v, i) => [snow.dates[t + 1 + i], v]) };
+    const obs = snow.observed?.[r.id];
+    return {
+      ...r,
+      d24: sf[t - 1] || 0,
+      d7: sum(t - 6, t + 1),
+      fc: sum(t + 1, D),
+      fcDays: sf.slice(t + 1).map((v, i) => [snow.dates[t + 1 + i], v]),
+      sweIn: Number.isFinite(obs?.sweIn) ? obs.sweIn : null,
+      snwdIn: Number.isFinite(obs?.snwdIn) ? obs.snwdIn : null,
+    };
   });
   return { resorts, byId: Object.fromEntries(resorts.map(r => [r.id, r])), date: snow.dates[t], generated: snow.generated, photos };
 }
@@ -119,15 +129,8 @@ export function confirmEmail(sub) {
   <a href="${url}" style="display:inline-block;margin-top:10px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Confirm subscription</a>`,
   `You'll get nothing else unless you confirm. <a href="${SITE}/manage" style="color:#c3c9d6">Manage preferences</a> · <a href="${SITE}/api/unsubscribe?token=${sub.token}" style="color:#c3c9d6">Unsubscribe</a>`);
 }
-function resortCard(r, rank, weekly) {
-  const fc = r.fcDays.slice(0, 7).map(([d, v]) => `<td align="center" style="padding:4px 2px;font-size:11px;color:#8b93a7">${new Date(d + 'T12:00').toLocaleDateString('en-US', { weekday: 'narrow' })}<br><b style="color:${v > 0.5 ? '#d5b3ff' : '#c3c9d6'};font-size:12px">${inch(v)}</b></td>`).join('');
-  return `<a href="${SITE}/?r=${r.id}" style="display:block;text-decoration:none;color:#fff;background:#141a26;border:1px solid #1f2633;border-radius:14px;padding:14px 16px;margin:0 0 10px">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-    <td style="font-size:16px;font-weight:700">${rank ? `<span style="color:#8b93a7;font-weight:600">${rank}.</span> ` : ''}${esc(r.name)} <span style="font-size:12px;color:#8b93a7;font-weight:500">${esc(r.state)}</span></td>
-    <td align="right" style="white-space:nowrap">${weekly ? `<span style="font-size:20px;font-weight:800">${inch(r.d7)}</span><span style="font-size:11px;color:#8b93a7"> this week</span> &nbsp;<span style="font-size:20px;font-weight:800;color:#d5b3ff">${inch(r.fc)}</span><span style="font-size:11px;color:#8b93a7"> next 7d</span>` : `<span style="font-size:20px;font-weight:800">${inch(r.d24)}</span><span style="font-size:11px;color:#8b93a7"> 24h</span> &nbsp;<span style="font-size:20px;font-weight:800">${inch(r.d7)}</span><span style="font-size:11px;color:#8b93a7"> 7d</span>`}</td>
-  </tr></table>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px"><tr><td style="font-size:12px;color:#8b93a7;white-space:nowrap;padding-right:8px">Next 7d <b style="color:#d5b3ff">${inch(r.fc)}</b></td>${fc}</tr></table>
-  </a>`;
+function resortCard(r, rank, weekly, dateLabel) {
+  return presentingReportCardHtml(r, { rank, weekly, dateLabel, site: SITE, esc, inch });
 }
 // Deterministic photo per issue: daily issues rotate by day, weekly issues by week.
 export function pickPhoto(photos, date, freq) {
@@ -164,12 +167,12 @@ export function digestEmail({ data, followIds, token, freq = 'daily' }) {
   const sub = weekly ? `Week ending ${date} · 7-day totals and the week ahead` : date;
   const html = shell(subject, `<div style="font-size:13px;color:#8b93a7;margin-bottom:4px">${sub}</div>
   <div class="big" style="font-size:26px;font-weight:800;margin-bottom:16px">${head}</div>
-  ${followed.length ? `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:6px 0 10px">Resorts you follow</div>${followed.map(r => resortCard(r, 0, weekly)).join('')}` : ''}
+  ${followed.length ? `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:6px 0 10px">Resorts you follow</div>${followed.map(r => resortCard(r, 0, weekly, date)).join('')}` : ''}
   <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a7;font-weight:600;margin:22px 0 10px">Top 10 · most snow ${weekly ? 'this week' : 'last 7 days'}</div>
-  ${top.map((r, i) => resortCard(r, i + 1, weekly)).join('')}
+  ${top.map((r, i) => resortCard(r, i + 1, weekly, date)).join('')}
   <a href="${SITE}" style="display:block;text-align:center;margin-top:16px;background:#fff;color:#0b0f17;text-decoration:none;font-weight:700;padding:14px;border-radius:12px">Open SkiScope 3D map</a>
   ${photoSection(pickPhoto(data.photos, data.date, freq))}`,
-  `You're getting the ${weekly ? 'weekly (Saturday)' : 'daily'} digest. Modeled snowfall from Open-Meteo (NOAA GFS/HRRR, ECMWF); not resort-reported. <br>
+  `You're getting the ${weekly ? 'weekly (Saturday)' : 'daily'} digest. Template from presenting-snow-conditions (ranges, confidence, best day). Last 72h is SNWD depth-rise or model est. — not recorded snowfall. Forecast from Open-Meteo (NOAA GFS/HRRR, ECMWF); not resort-reported. <br>
   <a href="${manage}" style="color:#c3c9d6">Manage resorts &amp; frequency</a> · <a href="${unsub}" style="color:#c3c9d6">Unsubscribe with one click</a>`);
   return { subject, html, unsubscribeUrl: unsub };
 }

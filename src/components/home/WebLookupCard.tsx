@@ -1,5 +1,6 @@
 import { snowAmount, type SnowUnits } from '@/lib/format';
 import { fmtShort } from '../../../lib/util.js';
+import { ExpertSnowMeta } from '@/components/ask/ExpertSnowMeta';
 
 export function WebLookupCard({ out, units }: { out: any; units: SnowUnits }) {
   if (!out?.found) {
@@ -21,6 +22,7 @@ export function WebLookupCard({ out, units }: { out: any; units: SnowUnits }) {
         Model forecast only. Not a station observation and not recorded snowfall.
         {out.forecastDays?.[0]?.date ? ` Through ${fmtShort(out.forecastDays[out.forecastDays.length - 1].date)}.` : ''}
       </p>
+      <ExpertSnowMeta out={out} units={units} />
     </section>
   );
 }

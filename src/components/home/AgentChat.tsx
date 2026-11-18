@@ -10,12 +10,48 @@ import type { RankOutput } from '@/lib/askTypes';
 import {
   CompareAnswer, PartPending, RankedAnswer, ResortAnswer, SourcesNote,
 } from '@/components/ask/AskParts';
+import { ExpertSnowMeta } from '@/components/ask/ExpertSnowMeta';
 import { WebLookupCard } from '@/components/home/WebLookupCard';
+import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 
 function unwrap(out: any) {
   if (!out) return out;
   return out.data && (out.data.kind || out.data.rows || out.data.found != null) ? out.data : out;
+}
+
+function ForecastCard({ out, units }: { out: any; units: SnowUnits }) {
+  const days = out.extras?.days || out.days || [];
+  return (
+    <section className="rounded-xl bg-card p-3.5 ring-1 ring-foreground/10" data-testid="ask-forecast">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Forecast · Open-Meteo · est.</p>
+      <h3 className="mt-1 text-lg font-semibold leading-tight">{out.name}</h3>
+      {out.total ? <p className="mt-1 text-[15px]">Next {days.length || 7} days {typeof out.total === 'string' ? out.total : snowAmount(out.extras?.next7SnowCm ?? 0, units)} <span className="text-[10px] opacity-60">est.</span></p> : null}
+      {days.length ? (
+        <table className="mt-3 w-full text-xs">
+          <thead>
+            <tr className="text-muted-foreground">
+              <th className="py-1 text-left font-normal">Morning report</th>
+              <th className="py-1 text-right font-normal">Snow</th>
+              <th className="py-1 text-right font-normal">Water</th>
+              <th className="py-1 text-right font-normal">Feel</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.slice(0, 5).map((d: any) => (
+              <tr key={d.date} className="border-t border-foreground/8">
+                <td className="py-1.5">{d.date}</td>
+                <td className="py-1.5 text-right tabular">{d.snowCmMin != null ? `${snowAmount(d.snowCmMin, units)}–${snowAmount(d.snowCmMax, units)}` : snowAmount(d.snowCm, units)}</td>
+                <td className="py-1.5 text-right tabular">{d.waterIn != null ? `${d.waterIn}″` : '—'}</td>
+                <td className="py-1.5 text-right">{d.feel || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      <ExpertSnowMeta out={out} units={units} />
+    </section>
+  );
 }
 
 function ToolCards({
@@ -46,6 +82,10 @@ function ToolCards({
     if (data.kind === 'compare') {
       outputs.push(data);
       return <CompareAnswer key={i} out={data} units={units} onOpen={onOpen} />;
+    }
+    if (data.kind === 'forecast') {
+      outputs.push(data);
+      return <ForecastCard key={i} out={data} units={units} />;
     }
     if (part.name === 'startReportSubscription') {
       return (
