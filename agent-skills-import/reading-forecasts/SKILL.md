@@ -7,6 +7,8 @@ description: Use when interpreting weather-model output for a ski resort — com
 
 Source: method distilled from mammothsnowman.com — Ted Schlaepfer, CCM (twice-weekly Powder Forecast) and Steve Taylor ("The Mammoth Snowman", daily discussion and 50-question Weather FAQ). Paraphrased; numbers are theirs unless tagged **[general knowledge]**.
 
+> **Regional adjustment:** Load `regional-snow-climates` for the resort's region to get its official agency, avalanche center, local forecasters, typical freezing levels and model quirks (e.g. JMA for Japan, MeteoSwiss/SLF for Switzerland). The Mammoth examples and the ECMWF-first preference below come from Sierra forecasters; keep the reasoning but check the regional file for local sources.
+
 ## When to use
 - Models disagree on how much snow a storm brings and you must give one range.
 - A user asks "how sure are you?" or "will it actually snow next weekend?"

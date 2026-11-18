@@ -7,6 +7,8 @@ description: Use when judging whether an incoming storm setup is productive for 
 
 Source: method distilled from mammothsnowman.com — Ted Schlaepfer, CCM (Powder Forecast) and Steve Taylor ("The Mammoth Snowman", daily discussion, Weather FAQ). Paraphrased; numbers are theirs unless tagged **[general knowledge]**. Mammoth/Sierra details are examples; generalize to the user's range.
 
+> **Regional adjustment:** The favored flow direction is range-specific. Southwest flow is the Sierra answer; load `regional-snow-climates` for others (e.g. NW flow and lake effect for the Wasatch, Nordstau/Südstau for the Alps, the NW winter monsoon for Japan, nor'easters and lake effect for the Northeast). Teleconnection rules here (PNA, MJO into California) are **Sierra/US West-specific**; use the region file's ENSO/NAO/AO/SAM notes elsewhere.
+
 ## When to use
 - "Is this storm going to be big for [resort]?" beyond just model totals.
 - Explaining why one storm overperforms and another fizzles.
