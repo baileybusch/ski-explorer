@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const isDesktop = (name: string) => name.startsWith('desktop');
 
 async function openBoard(page: Page) {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('block').first()).toBeVisible();
 }

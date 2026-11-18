@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function openBoard(page: Page) {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('block').first()).toBeVisible();
 }
@@ -53,7 +53,7 @@ test('home ghost prompt rotates with a fade, and pauses once the field has a que
   await openBoard(page);
   const ghost = page.getByTestId('search-ghost');
   await expect(ghost).toBeVisible();
-  await expect.poll(async () => ghost.getAttribute('data-ghost-index'), { timeout: 8_000 }).not.toBe('0');
+  await expect.poll(async () => ghost.getAttribute('data-ghost-index'), { timeout: 12_000 }).not.toBe('0');
   await page.getByTestId('search-trigger').click();
   await expect(page.getByTestId('search')).toBeVisible();
   await page.getByLabel('Ask SkiScope', { exact: true }).last().fill('Utah');

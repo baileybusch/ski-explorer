@@ -2,12 +2,11 @@
  * Guard the SPA rewrite fix: cleanUrls + destination /index.html 404s
  * because Vercel treats /index.html as /index.
  */
-import { readFileSync } from 'node:fs';
+import { vercelSpa as vercel } from '../lib/vercelSpa.js';
 
 const REQUIRED = ['/manage', '/my-alerts', '/do-not-sell', '/admin', '/about', '/privacy', '/terms', '/disclosure', '/contact'];
 
 export function runSpaRouteEvals() {
-  const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
   const lines = [];
   let fail = 0;
 

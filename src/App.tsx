@@ -28,6 +28,7 @@ import { CategoryFooterCta, CategoryHeader } from '@/components/CategoryHeader';
 import { PASS_PAGES, categoryMeta, categoryName, categoryPath, ctaLabel as categoryCta, parseCategoryPath } from '../lib/categoryPages.js';
 import { ContextCta } from '@/components/ContextCta';
 import { SiteFooter } from '@/components/SiteFooter';
+import { HomeLanding } from '@/components/home/HomeLanding';
 import { intentChip, ctaKind } from '../lib/intent.js';
 import { type LocalRule } from '@/lib/alertRules';
 import { alertsUiState } from '@/lib/alertsUi';
@@ -40,7 +41,15 @@ const AskPanel = lazy(() => import('@/components/ask/AskPanel').then(m => ({ def
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 const ASK_DOCK_MIN = 1100;
-type View = 'board' | 'profile' | 'map';
+type View = 'home' | 'board' | 'profile' | 'map';
+
+function initialView(): View {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('ss') === 'board' || qs.get('alerts') === '1' || qs.get('view') === 'incoming') return 'board';
+  if (qs.get('resort') || qs.get('r') || qs.get('ss') === 'profile') return 'profile';
+  if (parseCategoryPath(location.pathname)) return 'board';
+  return 'home';
+}
 
 type SearchFacets = {
   regionId?: string | null;
@@ -78,7 +87,7 @@ export default function App() {
   const boardScroll = useRef<HTMLDivElement | null>(null);
   const savedBoardTop = useRef(0);
   const [catalog, setCatalog] = useState<any>(null);
-  const [view, setView] = useState<View>('board');
+  const [view, setView] = useState<View>(initialView);
   const [pass, setPass] = useState(initialPass);
   const [trip, setTrip] = useState(() => loadTrip());
   const [win, setWin] = useState<any>(null);
@@ -215,7 +224,7 @@ export default function App() {
     const { start, end } = tripDates(trip, win);
     const { adults, kids } = partyOf(trip);
     const kind = extra.ss
-      || (extra.resort ?? selectedId ? 'profile' : (extra.region || activeIds ? 'filter' : 'board'));
+      || (extra.resort ?? selectedId ? 'profile' : (extra.region || activeIds ? 'filter' : (view === 'home' ? 'home' : 'board')));
     const region = 'region' in extra ? extra.region : facets.regionId;
     const resort = extra.resort ?? selectedId;
     const path = boardPath(region, pass, resort);
@@ -227,7 +236,8 @@ export default function App() {
       mode: extra.mode,
       pass: path.startsWith('/pass/') ? undefined : pass,
       region: onCategory || onResort ? undefined : extra.region ?? facets.regionId,
-      alerts: alertsUi.mode === 'preview' ? '1' : undefined,
+      alerts: alertsUi.mode === 'preview' && kind !== 'home' ? '1' : undefined,
+      ss: kind === 'board' || kind === 'filter' ? 'board' : undefined,
       ...Object.fromEntries(brandParams()),
     }));
   }
@@ -333,9 +343,9 @@ export default function App() {
     setSelectedId(null);
     setFacets({});
     setParsedIntent(null);
-    setView('board');
+    setView('home');
     if (catalog) setWin(presetWindow(catalog.snow, 'fc7'));
-    writeURL({ resort: null, region: null, ss: 'board' });
+    writeURL({ resort: null, region: null, ss: 'home' });
     setRestoreTop(0);
     requestAnimationFrame(() => {
       if (boardScroll.current) boardScroll.current.scrollTop = 0;
@@ -481,7 +491,7 @@ export default function App() {
   ) : null;
 
   return (
-    <div className="relative h-full min-h-dvh w-full overflow-hidden bg-background">
+    <div className={`relative h-full min-h-dvh w-full bg-background ${view === 'home' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       {catalog ? (
         <GlobeMap
           ref={globe}
@@ -560,6 +570,25 @@ export default function App() {
             </p>
           </div>
         </div>
+      ) : null}
+
+      {catalog && win && view === 'home' ? (
+        <HomeLanding
+          catalog={catalog}
+          units={units}
+          pass={pass}
+          rows={rankBoard(catalog.resorts, catalog.snow, { pass: 'all', sort: 'actual72' }).slice(0, 2).map((r: any) => ({
+            r,
+            dump: dumpParts(r, catalog.snow),
+          }))}
+          onOpen={id => openResort(id)}
+          onShowBoard={showOnBoard}
+          onMenu={() => setMenuOpen(true)}
+          onBoard={() => {
+            setView('board');
+            writeURL({ ss: 'board' });
+          }}
+        />
       ) : null}
 
       {catalog && win && view === 'board' ? (

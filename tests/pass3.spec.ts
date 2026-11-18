@@ -29,7 +29,7 @@ test('Japan search shows interpretation chip and context CTA', async ({ page }) 
 });
 
 test('footer mentions MCP', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('site-footer').scrollIntoViewIfNeeded();
   await expect(page.getByTestId('footer-mcp')).toBeVisible();

@@ -105,11 +105,13 @@ function Thread({
 
 export function AskPanel({
   open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard, onAlertSignup,
-  board, docked = false, focusTick = 0,
+  board, docked = false, embedded = false, focusTick = 0,
 }: {
   open: boolean;
   /** Desktop: a persistent side panel beside the board (no close, no Escape, no autofocus on load). */
   docked?: boolean;
+  /** Sit in normal flow (homepage chat card) instead of a fixed overlay. */
+  embedded?: boolean;
   /** Bump to move focus into the composer (header search box while docked). */
   focusTick?: number;
   onClose: () => void;
@@ -188,17 +190,22 @@ export function AskPanel({
 
   return (
     <div
-      className={`${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-background min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 ${docked ? '' : 'min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]'}`}
+      className={embedded
+        ? `${open ? 'flex' : 'hidden'} relative inset-auto z-0 min-h-0 w-full flex-1 flex-col bg-transparent`
+        : `${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-background min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 ${docked ? '' : 'min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]'}`}
       data-testid="search"
       data-docked={docked ? '1' : '0'}
+      data-embedded={embedded ? '1' : '0'}
       role={docked ? 'complementary' : 'dialog'}
       aria-modal={docked ? undefined : false}
       aria-label={`Ask ${BRAND.name}`}
     >
       <header className="relative flex items-center gap-1 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 min-[840px]:px-3 min-[840px]:pt-3">
-        <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2 text-[15px] min-[840px]:hidden" data-testid="search-cancel" onClick={onClose}>
-          <ChevronLeftIcon className="size-5" /> Board
-        </Button>
+        {embedded ? null : (
+          <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2 text-[15px] min-[840px]:hidden" data-testid="search-cancel" onClick={onClose}>
+            <ChevronLeftIcon className="size-5" /> Board
+          </Button>
+        )}
         <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask {BRAND.name}</h2>
         {messages.length ? (
           <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm max-[839px]:absolute max-[839px]:right-2" data-testid="ask-new" onClick={() => { stop(); setMessages([]); }}>

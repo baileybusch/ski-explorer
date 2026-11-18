@@ -4,7 +4,8 @@ import { expect, test, type Page } from '@playwright/test';
 const DIR = '/opt/cursor/artifacts/screenshots';
 
 async function openHome(page: Page, qs = '') {
-  await page.goto(`/${qs}`);
+  const url = qs ? `/${qs}${qs.includes('ss=') ? '' : '&ss=board'}` : '/?ss=board';
+  await page.goto(url);
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('block').first()).toBeVisible();
 }

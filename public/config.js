@@ -3,7 +3,7 @@
 // and cron handlers no-op. Evaluator + templates are implemented.
 // Preview deployments may reveal the flow with ?alerts=1 (writes nothing, sends nothing).
 // To turn on real sends: verify a Resend domain, set RESEND_FROM, then flip this to true.
-// Cron is wired in vercel.json (/api/cron/alerts daily) but stays a no-op while this is false.
+// Cron is wired in vercel.ts (/api/cron/alerts daily) but stays a no-op while this is false.
 export const EMAIL_ALERTS_ENABLED = false;
 
 // Affiliate wrap for outbound booking links. Leave empty — no wrap, no disclosure.

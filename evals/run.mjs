@@ -25,6 +25,7 @@ import { runAskEvals } from './ask.mjs';
 import { runFunnelEvals } from './funnel.mjs';
 import { runRainviewerEvals } from './rainviewer.mjs';
 import { runStationDumpEvals } from './stationDump.mjs';
+import { runEveAgentEvals } from './eveAgent.mjs';
 
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 'utf8'));
 const resorts = JSON.parse(readFileSync(new URL('../public/data/resorts-index.json', import.meta.url), 'utf8'));
@@ -176,6 +177,11 @@ console.log('\nstation + dump alerts\n');
 for (const line of stationDump.lines) console.log(line);
 console.log(`\n${stationDump.total - stationDump.fail}/${stationDump.total} station/dump evals passed`);
 
+const eveAgent = await runEveAgentEvals();
+console.log('\neve agent tools\n');
+for (const line of eveAgent.lines) console.log(line);
+console.log(`\n${eveAgent.total - eveAgent.fail}/${eveAgent.total} eve-agent evals passed`);
+
 process.exit(stationDump.fail || fail || alerts.fail || storms.fail || dumps.fail || tokens.fail || hist.fail || spa.fail
   || tools.fail || mcp.fail || subs.fail || readouts.fail || wx.fail || observed.fail || sources.fail
-  || observations.fail || askEv.fail || funnel.fail || radarEv.fail ? 1 : 0);
+  || observations.fail || askEv.fail || funnel.fail || radarEv.fail || eveAgent.fail ? 1 : 0);

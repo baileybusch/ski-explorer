@@ -1,44 +1,9 @@
-import { useEffect, useState } from 'react';
 import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
+import { GhostPrompt } from '@/components/GhostPrompt';
 import { BRAND } from '@/lib/brand';
 import { GHOSTS } from '@/lib/ghosts';
-import { prefersReducedMotion } from '@/lib/motion';
-
-function GhostPrompt({ paused }: { paused: boolean }) {
-  const [i, setI] = useState(0);
-  const [shown, setShown] = useState(GHOSTS[0]);
-  const [phase, setPhase] = useState<'in' | 'out'>('in');
-
-  useEffect(() => {
-    if (paused || prefersReducedMotion()) return;
-    const t = window.setInterval(() => {
-      setPhase('out');
-      window.setTimeout(() => {
-        setI(n => {
-          const next = (n + 1) % GHOSTS.length;
-          setShown(GHOSTS[next]);
-          return next;
-        });
-        setPhase('in');
-      }, 320);
-    }, 3800);
-    return () => window.clearInterval(t);
-  }, [paused]);
-
-  return (
-    <span
-      className="ghost-prompt min-w-0 flex-1 truncate text-base text-muted-foreground"
-      data-testid="search-ghost"
-      data-ghost-index={i}
-      data-ghost-phase={phase}
-      aria-hidden={paused ? undefined : true}
-    >
-      <span data-state={phase}>{shown}</span>
-    </span>
-  );
-}
 
 export function BoardChrome({
   q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading, chip,
@@ -77,7 +42,7 @@ export function BoardChrome({
           {q ? (
             <span className="min-w-0 flex-1 truncate text-base text-muted-foreground">{q}</span>
           ) : (
-            <GhostPrompt paused={!!q} />
+            <GhostPrompt lines={GHOSTS} paused={!!q} />
           )}
         </button>
         <Button

@@ -14,5 +14,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "lib", "evals", "api/agent.js", "public/config.js"]
+  "include": ["src", "lib", "evals", "agent", "api/agent.js", "public/config.js", "vercel.ts"]
 }
