@@ -31,6 +31,7 @@ export default await withEve({
   services: {
     web: {
       framework: 'vite',
+      root: '.',
       buildCommand: 'npm run build',
       outputDirectory: 'dist',
     },
