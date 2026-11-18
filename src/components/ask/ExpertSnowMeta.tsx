@@ -47,6 +47,11 @@ export function ExpertSnowMeta({ out, units }: { out: any; units: SnowUnits }) {
           {call.rainAtBase ? ' · rain at the base' : ''}
         </p>
       ) : null}
+      {out?.snowClimate?.region ? (
+        <p className="mb-2 text-[11px] text-muted-foreground" data-testid="ask-climate-region">
+          Climate {out.snowClimate.region}{out.snowClimate.nearestFit ? ' · nearest fit' : ''}
+        </p>
+      ) : null}
       <dl className="grid grid-cols-2 gap-2 text-xs min-[480px]:grid-cols-4">
         <Cell k="Water (est.)" v={liquid != null ? `${inch(liquid)} SWE` : (water?.sweIn != null ? `${inch(water.sweIn)} pack SWE` : '—')} />
         <Cell k="SLR / feel" v={slr != null ? `${slr}:1${feel ? ` · ${feel}` : ''}` : (feel || '—')} />

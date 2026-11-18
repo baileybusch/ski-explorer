@@ -6,6 +6,7 @@ export const PERSONA = 'agent/instructions.md';
 export const MODEL = 'lib/eve/models.ts';
 
 export const SKILLS = [
+  { id: 'regional-snow-climates', path: 'agent/skills/regional-snow-climates/SKILL.md' },
   { id: 'presenting-snow-conditions', path: 'agent/skills/presenting-snow-conditions/SKILL.md' },
   { id: 'powder-day-call', path: 'agent/skills/powder-day-call/SKILL.md' },
   { id: 'reading-snow-quality', path: 'agent/skills/reading-snow-quality/SKILL.md' },

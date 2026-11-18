@@ -7,6 +7,8 @@ description: Use when a user asks "is tomorrow (or this weekend) a powder day?",
 
 Source: method distilled from mammothsnowman.com — Ted Schlaepfer, CCM (Powder Forecast, run since 2008/09 to help skiers plan powder days) and Steve Taylor ("The Mammoth Snowman"). Paraphrased; numbers are theirs unless tagged **[general knowledge]**. Uses `reading-snow-quality`, `reading-forecasts`, `storm-setups-and-patterns`.
 
+> **Regional adjustment:** Depth tiers, wind-hold thresholds and storm-day patterns below are calibrated on Mammoth (Sierra). Load `regional-snow-climates` and adjust: e.g. Japan's frequent light refills, Colorado's lighter but less frequent snow on a shallow base, and maritime regions where freezing level vs. base elevation decides the call. Steenburgh & Alcott's ≥25 cm (~10 in) "deep-powder day" is a cross-region reference point.
+
 ## When to use
 - Choosing the best day in a window, or grading one specific morning.
 - Deciding whether to recommend storm skiing vs. the day after.

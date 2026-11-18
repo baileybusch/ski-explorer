@@ -7,6 +7,8 @@ description: Use when judging what new or forecast snow will actually ski like �
 
 Source: method distilled from the Mammoth Snowman site (mammothsnowman.com) — Ted Schlaepfer, CCM ("Mammoth WeatherGuy", Powder Forecast posts) and Steve Taylor ("The Mammoth Snowman", daily discussions and Weather FAQ). Paraphrased; numbers are theirs unless tagged **[general knowledge]**.
 
+> **Regional adjustment:** Before applying any ratio or density here to a specific resort, load `regional-snow-climates` and use that region's typical ratios (e.g. Alta's mean new-snow water content is 8.4%, ≈12:1; Hokkaido runs lighter; Cascades and Honshu run denser). All Mammoth/Sierra numbers and examples below are **Sierra-specific** (maritime climate), not global defaults.
+
 ## When to use
 - A user asks "will it be good snow?", "is it powder or cement?", "why only 8 inches from all that rain?"
 - You have liquid / SWE / QPF numbers and need inches of snow, or vice versa.

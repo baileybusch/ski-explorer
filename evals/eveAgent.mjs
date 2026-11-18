@@ -2,7 +2,8 @@
  * Deterministic checks for the eve tool layer (no LLM).
  */
 import { readFileSync } from 'node:fs';
-import { getTrending, getResortConditions, compareResorts, lookupUnknownResort, powderFlag, parseMeteoExtras } from '../lib/eve/skiTools.js';
+import { getTrending, getResortConditions, compareResorts, lookupUnknownResort, powderFlag, parseMeteoExtras, catalog, assertClimateRegions } from '../lib/eve/skiTools.js';
+import { readdirSync } from 'node:fs';
 import { powderDayCall } from '../lib/eve/powderDayCall.js';
 import { presentingShortReport } from '../lib/eve/reportEmail.js';
 import { digestEmail } from '../api/_lib.js';
@@ -35,7 +36,28 @@ export async function runEveAgentEvals() {
   check('alta-powder-basis', /depth-rise|heuristic/i.test(alta.data.powder?.basis || ''));
   check('alta-base-label', /pillow|not new snow/i.test(alta.data.baseDepth?.label || ''));
   check('alta-water-label', /SWE|liquid/i.test(alta.data.water?.label || ''));
+  check('alta-climate-region', alta.data.region === 'utah-wasatch' && alta.data.snowClimate?.region === 'utah-wasatch', JSON.stringify(alta.data.snowClimate));
+  check('alta-region-guide', /wasatch|lake effect/i.test(alta.data.snowClimate?.guide || ''), (alta.data.snowClimate?.guide || '').slice(0, 80));
   check('powder-24', powderFlag({ actual24In: 7, actual72In: 2 }).flagged === true);
+
+  try {
+    const mapped = assertClimateRegions(catalog().resorts);
+    check('climate-regions-mapped', mapped.ok && mapped.total === catalog().resorts.length, JSON.stringify({ total: mapped.total, ambiguous: mapped.ambiguous.length }));
+  } catch (e) {
+    check('climate-regions-mapped', false, e.message);
+  }
+  try {
+    assertClimateRegions([{ id: 'alta', name: 'Alta', country: 'US', region: 'Utah', state: 'UT', climateRegion: 'not-a-real-slug' }]);
+    check('climate-unknown-slug-fails', false, 'expected throw');
+  } catch {
+    check('climate-unknown-slug-fails', true);
+  }
+  const japan = getResortConditions({ resort: 'niseko-hirafu' });
+  const alps = getResortConditions({ resort: 'chamonix' });
+  const sierra = getResortConditions({ resort: 'mammoth' });
+  check('region-japan', japan.data.region === 'japan', japan.data.region);
+  check('region-alps-north', alps.data.region === 'alps-north', alps.data.region);
+  check('region-sierra', sierra.data.region === 'sierra-nevada-california', sierra.data.region);
 
   const yes = powderDayCall({
     last24In: 10, slr: 14, windSustainedMph: 18, windGustMph: 28, snowLevelFt: 5000, baseFt: 8500,
@@ -99,6 +121,7 @@ export async function runEveAgentEvals() {
   check('web-lookup-source', /web.?lookup/i.test(web.data.source || ''), web.data.source);
   check('web-lookup-not-obs', web.data.isRecordedSnowfall === false);
   check('web-lookup-extras', web.data.wind != null && web.data.water?.stormSlr != null, JSON.stringify(web.data.water));
+  check('web-lookup-region', web.data.region === 'pacific-northwest-bc-coast', web.data.region);
 
   const presenting = skill('presenting-snow-conditions');
   const powderSkill = skill('powder-day-call');
@@ -110,8 +133,15 @@ export async function runEveAgentEvals() {
   check('skill-reading-quality', /snow-to-liquid|SWE/i.test(skill('reading-snow-quality')));
   check('skill-reading-forecasts', /confidence|model/i.test(skill('reading-forecasts')));
   check('skill-storm-setups', /pattern|setup/i.test(skill('storm-setups-and-patterns')));
-  check('persona', /not recorded snowfall/i.test(readFileSync(new URL('../agent/instructions.md', import.meta.url), 'utf8')));
-  check('persona-skills', /presenting-snow-conditions/.test(readFileSync(new URL('../agent/instructions.md', import.meta.url), 'utf8')));
+  const regional = skill('regional-snow-climates');
+  check('skill-regional-frontmatter', /^---[\s\S]*name: regional-snow-climates/m.test(regional));
+  check('skill-regional-files', /regions\/utah-wasatch\.md/.test(regional) && /regions\/japan\.md/.test(regional));
+  const regionFiles = readdirSync(new URL('../agent/skills/regional-snow-climates/regions', import.meta.url)).filter(f => f.endsWith('.md'));
+  check('skill-regional-13', regionFiles.length === 13, String(regionFiles.length));
+  check('skill-regional-adjustment', /Regional adjustment/.test(skill('reading-snow-quality')) && /Regional adjustment/.test(skill('powder-day-call')));
+  const persona = readFileSync(new URL('../agent/instructions.md', import.meta.url), 'utf8');
+  check('persona', /not recorded snowfall/i.test(persona));
+  check('persona-skills', /presenting-snow-conditions/.test(persona) && /regional-snow-climates/.test(persona));
   check('consent-version', CONSENT_VERSION === 'ss-consent-4');
 
   const copy = presentingShortReport({
