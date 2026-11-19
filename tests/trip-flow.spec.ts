@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 async function openTrip(page) {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('menu-button').click();
   await expect(page.getByTestId('settings-sheet')).toBeVisible({ timeout: 10_000 });

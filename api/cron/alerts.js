@@ -1,6 +1,6 @@
 /**
  * Pulse job: evaluate dump alerts, welcome series W2/W3 (W1 goes out at confirm), Sunday recap.
- * Sending stays behind EMAIL_ALERTS_ENABLED. Wired in vercel.json; this
+ * Sending stays behind EMAIL_ALERTS_ENABLED. Wired in vercel.ts; this
  * handler is a no-op while the flag is false.
  */
 import { readFileSync } from 'node:fs';

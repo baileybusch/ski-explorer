@@ -6,6 +6,7 @@ import { fzlLabel, snowAmount, type SnowUnits } from '@/lib/format';
 import { stakeMax } from '@/lib/boardLayout';
 import { fmtShort } from '../../../lib/util.js';
 import type { ClimateOutput, CompareOutput, RankOutput, ResortOutput, SnowRow } from '@/lib/askTypes';
+import { ExpertSnowMeta } from '@/components/ask/ExpertSnowMeta';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -159,6 +160,7 @@ export function ResortAnswer({ out, units, onOpen }: { out: ResortOutput; units:
         <SnowSplit pastCm={r.actual72Cm} nextCm={r.next7Cm} units={units} estimated={r.estimated} max={max} />
       </div>
       {out.storm?.text ? <p className="mt-3 text-[13px] leading-snug text-muted-foreground">{out.storm.text}</p> : null}
+      <ExpertSnowMeta out={out} units={units} />
       <dl className="mt-3 grid grid-cols-4 gap-2 border-t border-foreground/8 pt-3 text-xs">
         {[
           ['Vertical', elev(r.verticalM, units)],
@@ -190,6 +192,7 @@ export function CompareAnswer({ out, units, onOpen }: { out: CompareOutput; unit
   const lines: { label: string; get: (r: (typeof rows)[number]) => number | null; show: (r: (typeof rows)[number]) => ReactNode }[] = [
     { label: 'Last 72h', get: r => r.actual72Cm, show: r => <span className="inline-flex items-baseline"><Num cm={r.actual72Cm} units={units} className="text-xl" />{r.estimated ? <Est /> : null}</span> },
     { label: 'Next 7 days', get: r => r.next7Cm, show: r => <Num cm={r.next7Cm} units={units} className="text-xl" /> },
+    { label: 'Pack SWE', get: r => (r as any).water?.sweIn ?? null, show: r => (r as any).water?.sweIn != null ? `${(r as any).water.sweIn}″` : '—' },
     { label: 'Vertical', get: r => r.verticalM, show: r => elev(r.verticalM, units) },
     { label: 'Runs', get: r => r.runs, show: r => r.runs ?? '—' },
     { label: 'Lifts', get: r => r.lifts, show: r => r.lifts ?? '—' },

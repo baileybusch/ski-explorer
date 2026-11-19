@@ -16,7 +16,7 @@ function shotDir() {
 }
 
 async function openAsk(page: Page) {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('search-trigger').click();
   await expect(page.getByTestId('search')).toBeVisible({ timeout: 15_000 });
@@ -84,7 +84,7 @@ async function askTop(answer: ReturnType<Page['getByTestId']>) {
 }
 
 test('chat ranking is the board ranking: same snapshot, scope, order, and est.', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   const board = await settledBoardTop(page);
   await page.getByTestId('search-trigger').click();

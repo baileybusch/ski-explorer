@@ -6,7 +6,7 @@
  *   /api/ask    Ask SkiScope chat (AI SDK UI message stream)
  *   /api/events funnel insight events from the browser
  *
- * vercel.json rewrites those paths here (?surface=).
+ * vercel.ts rewrites those paths here (?surface=).
  */
 import mcp from './_mcp.js';
 import search from './_search.js';

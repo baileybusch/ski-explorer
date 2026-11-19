@@ -23,6 +23,30 @@ test.beforeAll(() => {
   mkdirSync(DIR, { recursive: true });
 });
 
+test('agent homepage + chat answer screenshots', async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const device = info.project.name;
+  if (device !== 'iphone-13' && device !== 'desktop') test.skip();
+
+  await page.goto('/');
+  await expect(page.getByTestId('home-agent')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('home-trending-card')).toHaveCount(2);
+  await expect(page.getByTestId('home-chat-ghost')).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${DIR}/homepage-${device}.png` });
+
+  if (device === 'desktop') {
+    await expect(page.getByTestId('home-chat')).toHaveAttribute('data-mode', /eve|fallback/, { timeout: 10_000 });
+    await page.getByLabel('Ask SkiScope', { exact: true }).last().fill("How's Mammoth looking this weekend?");
+    await page.getByTestId('home-chat-send').click();
+    await expect(page.getByTestId('ask-answer')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('home-chat').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${DIR}/chat-answer-mammoth-${device}.png` });
+    await page.getByTestId('ask-answer').screenshot({ path: `${DIR}/chat-answer-mammoth-card-${device}.png` });
+  }
+});
+
 test('design screenshots: home + resort per device', async ({ page }, info) => {
   test.setTimeout(120_000);
   const device = info.project.name;

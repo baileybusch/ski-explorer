@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('sort control reorders the whole board', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('board-sort')).toHaveValue('actual72');
 
@@ -21,7 +21,7 @@ test('sort control reorders the whole board', async ({ page }) => {
 });
 
 test('region filter applies to the board without an observed-only toggle', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
 
   await page.getByTestId('board-region').selectOption('japan');

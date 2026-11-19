@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { eveVite } from 'eve/vite';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { DEFAULT_BRAND } from './lib/brand.js';
@@ -64,7 +65,15 @@ function categoryPages() {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), maplibreWorker(), brandHtml(), devApi(), categoryPages()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    process.env.SKISCOPE_SKIP_EVE === '1' ? null : eveVite(),
+    maplibreWorker(),
+    brandHtml(),
+    devApi(),
+    categoryPages(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
