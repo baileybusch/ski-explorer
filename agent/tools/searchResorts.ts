@@ -1,3 +1,4 @@
+import '../../lib/eve/embeddedData';
 import { defineTool } from 'eve/tools';
 import { z } from 'zod';
 import { searchResorts } from '../../lib/eve/skiTools.js';

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowUpIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
@@ -154,6 +154,9 @@ function Composer({
   );
 }
 
+/** No tokens or tool output for this long while busy = treat the turn as failed. */
+const CHAT_STALL_MS = 40_000;
+
 function EveChat({
   units, onOpen, onShowBoard, input, setInput,
 }: {
@@ -164,15 +167,54 @@ function EveChat({
   setInput: (v: string) => void;
 }) {
   const agent = useEveAgent({ prewarm: true });
-  const busy = agent.status === 'busy' || agent.status === 'resuming';
+  const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
   const messages = agent.messages || [];
+  const [failed, setFailed] = useState(false);
+  const [sent, setSent] = useState(false);
+  const lastQ = useRef('');
+  const busy = rawBusy && !failed;
+  // Progress signature: changes whenever tokens or tool parts arrive.
+  const progress = messages.reduce((n: number, m: any) => n + JSON.stringify(m.parts || []).length, messages.length);
+  const last: any = messages[messages.length - 1];
+
+  // Transport error from the eve client.
+  useEffect(() => {
+    if (agent.error && sent) setFailed(true);
+  }, [agent.error, sent]);
+
+  // Watchdog: busy with no new output for CHAT_STALL_MS -> stop the spinner.
+  useEffect(() => {
+    if (!rawBusy || failed) return;
+    const t = window.setTimeout(() => {
+      setFailed(true);
+      agent.cancel().catch(() => {});
+    }, CHAT_STALL_MS);
+    return () => window.clearTimeout(t);
+  }, [rawBusy, failed, progress]);
+
+  // Turn settled (e.g. model call failed) without any assistant answer.
+  useEffect(() => {
+    if (sent && !rawBusy && last?.role === 'user') setFailed(true);
+  }, [sent, rawBusy, last?.role, last?.id]);
+
+  async function ask(q: string) {
+    lastQ.current = q;
+    setFailed(false);
+    setSent(false);
+    try {
+      await agent.send(q);
+      setSent(true);
+    } catch {
+      setFailed(true);
+    }
+  }
 
   async function send(e: FormEvent) {
     e.preventDefault();
     const q = input.trim().slice(0, 400);
     if (!q || busy) return;
     setInput('');
-    await agent.send(q);
+    await ask(q);
   }
 
   return (
@@ -199,6 +241,14 @@ function EveChat({
               );
             })}
             {busy ? <li><PartPending label="Checking the snow" /></li> : null}
+            {failed ? (
+              <li className="flex flex-wrap items-center gap-3 rounded-xl bg-card px-3.5 py-3 text-sm ring-1 ring-foreground/10" data-testid="home-chat-error" role="alert">
+                <span>Sorry, the snow desk didn&rsquo;t answer. Try again in a moment.</span>
+                <button type="button" className="rounded-full px-3 py-1 text-sm font-medium ring-1 ring-foreground/20 hover:bg-foreground/5" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
+                  Retry
+                </button>
+              </li>
+            ) : null}
           </ol>
         ) : (
           <p className="max-w-[40ch] text-[15px] leading-snug text-muted-foreground" data-testid="home-chat-empty">
