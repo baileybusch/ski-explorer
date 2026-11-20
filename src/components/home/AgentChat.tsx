@@ -205,24 +205,48 @@ function TypingBubble({ label }: { label?: string }) {
 
 type Followup = { label: string; send?: string; toggleData?: boolean };
 
-function followupsFor(m: any, topNames: string[]): Followup[] {
-  const outs = (m.parts || []).filter((p: any) => p.type === 'tool' && p.output).map((p: any) => unwrap(p.output)).filter(Boolean);
-  const cards = outs.filter((d: any) => ['resort', 'compare', 'rank', 'forecast', 'web-lookup'].includes(d.kind));
-  const data: Followup = cards.length ? { label: 'Show the data', toggleData: true } : { label: 'Show the numbers', send: 'Show me the numbers.' };
-  const why: Followup = { label: 'Why?', send: 'Why? Walk me through it.' };
-  const main = cards[0];
-  if (!main) return [{ label: "Where's it dumping?", send: "Where's it dumping right now?" }, { label: "How's Mammoth?", send: "How's Mammoth looking?" }];
-  if (main.kind === 'resort' || main.kind === 'forecast' || main.kind === 'web-lookup') {
-    const name = main.resort?.name || main.name || 'it';
-    const other = topNames.find(n => n !== name);
-    return [why, data, other ? { label: `vs ${other}`, send: `Compare ${name} with ${other}` } : { label: 'Best day?', send: `What's the best day this week at ${name}?` }];
+const CARD_KINDS = ['resort', 'compare', 'rank', 'forecast', 'web-lookup'];
+
+function cardsOf(m: any) {
+  return (m?.parts || []).filter((p: any) => p.type === 'tool' && p.output).map((p: any) => unwrap(p.output))
+    .filter((d: any) => d && CARD_KINDS.includes(d.kind));
+}
+
+function userTextBefore(messages: any[], idx: number) {
+  for (let i = idx - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return (messages[i].parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
   }
-  if (main.kind === 'compare') return [why, data, { label: 'Which has better snow?', send: 'Which one has the better snow quality?' }];
-  if (main.kind === 'rank') {
+  return '';
+}
+
+/**
+ * 2–3 follow-up chips. Context comes from this answer's tool output, or from
+ * the latest earlier answer that had one (e.g. after a "Why?" deep dive).
+ */
+function followupsFor(messages: any[], idx: number): Followup[] {
+  const own = cardsOf(messages[idx]);
+  let main = own[0];
+  for (let i = idx - 1; !main && i >= 0; i--) main = cardsOf(messages[i])[0];
+  const asked = userTextBefore(messages, idx).toLowerCase();
+  const askedWhy = /\bwhy\b|walk me through/.test(asked);
+  const askedData = /numbers|data/.test(asked);
+  const data: Followup | null = own.length
+    ? { label: 'Show the data', toggleData: true }
+    : askedData ? null : { label: 'Show the numbers', send: 'Show me the key numbers.' };
+  const why: Followup | null = askedWhy ? null : { label: 'Why?', send: 'Why? Walk me through it.' };
+  const out: (Followup | null)[] = [];
+  if (!main) {
+    out.push({ label: "Where's it dumping?", send: "Where's it dumping right now?" }, { label: "How's Mammoth?", send: "How's Mammoth looking?" });
+  } else if (main.kind === 'compare') {
+    out.push(why, data, { label: 'Which has better snow?', send: 'Which one has the better snow quality?' });
+  } else if (main.kind === 'rank') {
     const top = main.rows?.[0]?.name;
-    return [{ label: 'Why there?', send: 'Why there? Walk me through it.' }, data, top ? { label: `How's ${top}?`, send: `How's ${top} looking?` } : why];
+    out.push(askedWhy ? null : { label: 'Why there?', send: 'Why there? Walk me through it.' }, data, top ? { label: `How's ${top}?`, send: `How's ${top} looking?` } : null);
+  } else {
+    const name = main.resort?.name || main.name || 'there';
+    out.push(why, data, { label: 'Where else is good?', send: `Where else should I go instead of ${name}?` });
   }
-  return [why, data];
+  return out.filter(Boolean).slice(0, 3) as Followup[];
 }
 
 function EveChat({
@@ -334,7 +358,7 @@ function EveChat({
               const text = (m.parts || []).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n\n').trim();
               const tools = (m.parts || []).filter((p: any) => p.type === 'tool' && p.output);
               const isLast = m.id === last?.id;
-              const chips = isLast && !busy && !failed && text ? followupsFor(m, topNames) : [];
+              const chips = isLast && !busy && !failed && text ? followupsFor(messages, messages.indexOf(m)) : [];
               const dataOpen = shownData.has(m.id);
               if (!text && !dataOpen) return null;
               return (
