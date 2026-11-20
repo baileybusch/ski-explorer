@@ -1,4 +1,3 @@
-import { MessageCircleIcon } from 'lucide-react';
 import { SnowSplit, statNum, Unit } from '@/components/SnowSplit';
 import { SnowStake } from '@/components/SnowStake';
 import { stakeMax } from '@/lib/boardLayout';
@@ -9,7 +8,18 @@ type Row = { r: any; dump?: ReturnType<typeof dumpParts> };
 
 const RANK_LABEL = ['Most new snow', 'Runner-up', 'Third'];
 
-/** Thought-starter cards under the chat. Clicking one asks the chat about that resort. */
+/** Soft tints for the preview area (Claude "recent artifacts" style), dark-theme friendly. */
+const TINTS = [
+  'color-mix(in oklch, oklch(0.72 0.09 235) 16%, transparent)',
+  'color-mix(in oklch, oklch(0.74 0.08 190) 14%, transparent)',
+  'color-mix(in oklch, oklch(0.72 0.08 285) 15%, transparent)',
+];
+
+/**
+ * Thought-starter cards under the chat: exactly the column width, tinted top
+ * with the big Last 72h / Next 7 days numbers, footer with name + region.
+ * Clicking one asks the chat about that resort.
+ */
 export function TrendingCards({
   rows, units, snow, onAsk,
 }: {
@@ -21,7 +31,7 @@ export function TrendingCards({
   const parts = rows.map(row => row.dump || dumpParts(row.r, snow));
   const max = stakeMax(parts.flatMap(d => [d.past72Cm, d.next7Cm]));
   return (
-    <div className="grid gap-3 min-[720px]:grid-cols-3" data-testid="home-trending">
+    <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3 min-[640px]:gap-4" data-testid="home-trending">
       {rows.map((row, i) => {
         const d = parts[i];
         const r = row.r;
@@ -29,27 +39,23 @@ export function TrendingCards({
           <button
             key={r.id}
             type="button"
-            className="group rounded-xl bg-card p-3 text-left ring-1 ring-foreground/10 outline-offset-2 hover:bg-foreground/[0.03] focus-visible:outline-2 focus-visible:outline-ring min-[720px]:p-3.5"
+            className="group flex flex-col overflow-hidden rounded-xl bg-card text-left ring-1 ring-foreground/12 outline-offset-2 transition-shadow hover:ring-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
             data-testid="home-trending-card"
             data-resort={r.id}
             data-estimated={d.estimated ? '1' : '0'}
             aria-label={`Ask SkiScope how ${r.name} is looking`}
             onClick={() => onAsk({ id: r.id, name: r.name })}
           >
-            <div className="mb-2 flex items-baseline justify-between gap-2">
-              <span className="text-[11px] text-muted-foreground">{RANK_LABEL[i] || `#${i + 1}`} · Last 72h</span>
-              {r.passes?.length ? (
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{r.passes.join(' · ')}</span>
-              ) : null}
-            </div>
-            <div className="text-lg font-semibold leading-tight">{r.name}</div>
-            <div className="truncate text-xs text-muted-foreground">{r.region || r.state || r.country}</div>
-            <div className="mt-3">
+            <div className="flex min-h-[6.5rem] flex-col justify-between gap-3 px-3.5 min-[640px]:min-h-[8.25rem] pt-3 pb-3.5" style={{ background: TINTS[i % TINTS.length] }} data-testid="home-trending-preview">
+              <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                <span>{RANK_LABEL[i] || `#${i + 1}`}</span>
+                {r.passes?.length ? <span className="uppercase tracking-wide">{r.passes.join(' · ')}</span> : null}
+              </div>
               <SnowSplit pastCm={d.past72Cm} nextCm={d.next7Cm} units={units} estimated={d.estimated} max={max} />
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground">
-              <MessageCircleIcon className="size-3.5" aria-hidden />
-              How&rsquo;s {r.name} looking?
+            <div className="flex items-baseline justify-between gap-3 border-t border-foreground/8 px-3.5 py-2.5">
+              <span className="min-w-0 truncate text-[15px] font-medium leading-tight" data-testid="home-trending-name">{r.name}</span>
+              <span className="shrink-0 truncate text-xs text-muted-foreground">{r.region || r.state || r.country}</span>
             </div>
           </button>
         );

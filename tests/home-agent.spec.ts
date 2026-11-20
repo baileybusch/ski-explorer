@@ -72,24 +72,41 @@ test('clicking a thought-starter card asks the chat about that resort', async ({
   await page.goto('/');
   await expect(page.getByTestId('home-chat')).toHaveAttribute('data-mode', /eve|fallback/, { timeout: 15_000 });
   const card = page.getByTestId('home-trending-card').first();
-  const name = (await card.locator('div.text-lg').innerText()).trim();
+  const name = (await card.getByTestId('home-trending-name').innerText()).trim();
   await card.click();
   await expect(page.getByTestId('home-chat')).toContainText(name, { timeout: 40_000 });
 });
 
-test('chat box is a centered column on desktop, full width on mobile, compact while empty', async ({ page }, info) => {
+test('Claude-style single column: chat card and trending cards share one centered column', async ({ page }, info) => {
   await page.goto('/');
   await expect(page.getByTestId('home-trending-card')).toHaveCount(3, { timeout: 30_000 });
   const vw = page.viewportSize()!.width;
+  const desktop = info.project.name.startsWith('desktop');
   const chat = (await page.getByTestId('home-chat').boundingBox())!;
-  if (info.project.name.startsWith('desktop')) {
-    expect(chat.width).toBeLessThanOrEqual(760);
+  const composer = (await page.getByTestId('home-chat-composer').boundingBox())!;
+  const grid = (await page.getByTestId('home-trending').boundingBox())!;
+  if (desktop) {
+    expect(chat.width).toBeGreaterThanOrEqual(800);
+    expect(chat.width).toBeLessThanOrEqual(860);
     expect(Math.abs(chat.x + chat.width / 2 - vw / 2)).toBeLessThan(4);
+    // Input card is the big rounded box (~130px).
+    expect(composer.height).toBeGreaterThanOrEqual(120);
+    expect(composer.height).toBeLessThan(170);
+    // Three cards in one row, exactly the column width.
+    const boxes = await Promise.all((await page.getByTestId('home-trending-card').all()).map(c => c.boundingBox()));
+    expect(new Set(boxes.map(b => Math.round(b!.y))).size).toBe(1);
+    expect(Math.abs(grid.x - chat.x)).toBeLessThan(2);
+    expect(Math.abs(grid.width - chat.width)).toBeLessThan(2);
+    const preview = (await page.getByTestId('home-trending-preview').first().boundingBox())!;
+    expect(preview.height).toBeGreaterThanOrEqual(120);
   } else {
     expect(chat.width).toBeGreaterThan(vw - 40);
+    expect(Math.abs(grid.width - chat.width)).toBeLessThan(2);
   }
   // No big blank panel before the first question.
-  expect(chat.height).toBeLessThan(info.project.name.startsWith('desktop') ? 360 : 520);
+  expect(chat.height).toBeLessThan(desktop ? 360 : 520);
+  await expect(page.getByTestId('home-see-all')).toBeVisible();
+  await expect(page.getByText('Trending mountains')).toBeVisible();
 });
 
 test('greeting streams in (dots, type-in, chips) without blocking the input', async ({ page }) => {

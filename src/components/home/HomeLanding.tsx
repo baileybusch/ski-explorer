@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { MenuIcon } from 'lucide-react';
+import { MenuIcon, SnowflakeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
 import { FullList, TrendingCards } from '@/components/home/TrendingCards';
@@ -50,10 +50,11 @@ export function HomeLanding({
           </Button>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-5 px-3 pb-8 min-[840px]:gap-7 min-[840px]:px-6">
-        {/* Centered chat column (ChatGPT/Claude-style) on desktop; full width on mobile. */}
-        <div ref={chatRef} className="mx-auto w-full max-w-[720px] scroll-mt-3 min-[840px]:pt-6" data-testid="home-chat-column">
-          <h1 className="mb-4 hidden text-center font-display text-3xl leading-tight min-[720px]:block" data-testid="home-chat-heading">
+      {/* One centered column for everything (Claude-style), ~840px on desktop. */}
+      <div className="mx-auto flex w-full max-w-[840px] flex-1 flex-col px-3 pb-8 min-[880px]:px-0" data-testid="home-column">
+        <div ref={chatRef} className="scroll-mt-3 pt-6 min-[720px]:pt-[9vh]" data-testid="home-chat-column">
+          <h1 className="mb-6 flex items-center justify-center gap-2.5 text-center font-display text-[2rem] leading-none min-[720px]:mb-7 min-[720px]:text-[2.6rem]" data-testid="home-chat-heading">
+            <SnowflakeIcon className="size-6 text-[var(--ice)] min-[720px]:size-8" aria-hidden strokeWidth={2.25} />
             Where&rsquo;s the snow good?
           </h1>
           <AgentChat
@@ -66,13 +67,13 @@ export function HomeLanding({
             topNames={top.map(x => x.r.name)}
           />
         </div>
-        <section className="flex flex-col gap-3" data-testid="home-starters">
+        <section className="mt-12 flex flex-col gap-3 min-[720px]:mt-20" data-testid="home-starters">
           <div className="flex items-baseline justify-between gap-3 px-0.5">
-            <h2 className="text-sm font-medium text-muted-foreground">Getting the most snow · tap to ask</h2>
+            <h2 className="text-sm text-muted-foreground">Trending mountains</h2>
             {rows.length > TOP ? (
               <button
                 type="button"
-                className="min-h-9 rounded-full px-3 text-sm text-muted-foreground ring-1 ring-foreground/12 hover:text-foreground"
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 data-testid="home-see-all"
                 aria-expanded={expanded}
                 onClick={() => setExpanded(v => !v)}
@@ -91,7 +92,9 @@ export function HomeLanding({
             </>
           ) : null}
         </section>
+        <div className="mt-12">
         <SiteFooter />
+        </div>
       </div>
     </div>
   );

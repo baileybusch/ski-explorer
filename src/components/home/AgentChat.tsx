@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
-import { ArrowUpIcon, SquareIcon } from 'lucide-react';
+import { ArrowUpIcon, SnowflakeIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { GhostPrompt } from '@/components/GhostPrompt';
@@ -115,45 +115,65 @@ function Composer({
   busy: boolean;
   onStop?: () => void;
   showGhost: boolean;
-  inputRef?: RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const typing = input.length > 0;
   return (
-    <form className="border-t border-foreground/8 px-3 pt-2.5 pb-3" onSubmit={onSubmit} data-testid="home-chat-composer">
-      <InputGroup className="h-12 rounded-full">
-        <div className="relative min-w-0 flex-1">
-          {showGhost && !typing ? (
-            <GhostPrompt
-              lines={HOME_GHOSTS}
-              paused={typing}
-              testid="home-chat-ghost"
-              className="ghost-prompt pointer-events-none absolute inset-y-0 left-4 right-12 flex min-w-0 items-center truncate text-[15px] text-muted-foreground"
-            />
-          ) : null}
-          <InputGroupInput
-            ref={inputRef as any}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            aria-label={`Ask ${BRAND.name}`}
-            className="h-12 pl-4 text-base"
-            autoComplete="off"
-            enterKeyHint="send"
-            maxLength={400}
-            placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+    // Claude-style input card: text at top-left, controls along the bottom.
+    <form
+      className="flex min-h-[8.25rem] flex-col rounded-2xl bg-card px-4 pt-3.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0/0.25),0_8px_24px_-12px_rgb(0_0_0/0.45)] ring-1 ring-foreground/12 transition-shadow focus-within:ring-foreground/25"
+      onSubmit={onSubmit}
+      data-testid="home-chat-composer"
+    >
+      <div className="relative min-w-0 flex-1">
+        {showGhost && !typing ? (
+          <GhostPrompt
+            lines={HOME_GHOSTS}
+            paused={typing}
+            testid="home-chat-ghost"
+            className="ghost-prompt ghost-prompt-wrap pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground"
           />
-        </div>
-        <InputGroupAddon align="inline-end">
-          {busy && onStop ? (
-            <InputGroupButton type="button" size="icon-sm" variant="outline" className="rounded-full" aria-label="Stop" onClick={onStop}>
-              <SquareIcon />
-            </InputGroupButton>
-          ) : (
-            <InputGroupButton type="submit" size="icon-sm" variant="outline" className="rounded-full" aria-label="Send" data-testid="home-chat-send" disabled={!input.trim()}>
-              <ArrowUpIcon />
-            </InputGroupButton>
-          )}
-        </InputGroupAddon>
-      </InputGroup>
+        ) : null}
+        <textarea
+          ref={inputRef as any}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+          aria-label={`Ask ${BRAND.name}`}
+          rows={2}
+          className="block h-full min-h-12 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground"
+          autoComplete="off"
+          enterKeyHint="send"
+          maxLength={400}
+          placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+        />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
+          <SnowflakeIcon className="size-3.5" aria-hidden />
+          Live snow data · Ikon &amp; Epic
+        </span>
+        {busy && onStop ? (
+          <button type="button" className="grid size-9 place-items-center rounded-full ring-1 ring-foreground/20 hover:bg-foreground/5" aria-label="Stop" onClick={onStop}>
+            <SquareIcon className="size-3.5" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="grid size-9 place-items-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-25"
+            aria-label="Send"
+            data-testid="home-chat-send"
+            disabled={!input.trim()}
+          >
+            <ArrowUpIcon className="size-4" />
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -269,7 +289,7 @@ function EveChat({
   const [shownData, setShownData] = useState<Set<string>>(() => new Set());
   const lastQ = useRef('');
   const scroller = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const handledAsk = useRef<number | null>(null);
   const busy = rawBusy && !failed;
   // Progress signature: changes whenever tokens or tool parts arrive.
@@ -344,8 +364,9 @@ function EveChat({
 
   return (
     <>
-      <div ref={scroller} className="min-h-0 flex-auto overflow-y-auto overscroll-contain px-3.5 pt-4 pb-4 min-[720px]:px-5" data-testid="home-chat-scroll">
-        {messages.length ? (
+      {messages.length ? (
+      <div ref={scroller} className="max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain px-1 pt-1 pb-2" data-testid="home-chat-scroll">
+        {(
           <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
             {messages.map((m: any) => {
               if (m.role === 'user') {
@@ -401,11 +422,11 @@ function EveChat({
               </li>
             ) : null}
           </ol>
-        ) : (
-          <EmptyState onPick={q => void ask(q)} />
         )}
       </div>
+      ) : null}
       <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} inputRef={inputRef} />
+      {!messages.length ? <EmptyState onPick={q => void ask(q)} /> : null}
     </>
   );
 }
@@ -454,11 +475,11 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   const done = typed >= GREETING.length;
   const phase = !typing ? 'dots' : done ? 'done' : 'typing';
   return (
-    <div className="flex flex-col gap-3" data-testid="home-chat-empty-state" data-greeting={phase}>
+    <div className="flex flex-col gap-2.5 pt-1" data-testid="home-chat-empty-state" data-greeting={phase}>
       {phase === 'dots' ? (
         <TypingBubble />
       ) : (
-        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-empty" aria-label={GREETING}>
+        <div className="px-1 text-[15px] leading-relaxed text-foreground/80" data-testid="home-chat-empty" aria-label={GREETING}>
           {/* Invisible full text reserves the bubble's final size, so nothing jumps while typing. */}
           <span className="grid">
             <span className="invisible col-start-1 row-start-1" aria-hidden>{GREETING}</span>
@@ -559,12 +580,12 @@ export function AgentChat({
 
   return (
     <div
-      // Content-sized: compact while empty, grows with the thread up to a cap,
-      // then the thread scrolls inside. The fallback Ask panel needs a fixed height.
-      className={`flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 ${
+      // Claude-style: no outer panel. Thread above, input card, greeting below.
+      // The fallback Ask panel keeps a fixed-height card.
+      className={`flex flex-col gap-3 ${
         mode === 'fallback' && askOpen
-          ? 'h-[min(34rem,68dvh)] min-[720px]:h-[min(38rem,62vh)]'
-          : 'max-h-[min(34rem,72dvh)] min-[720px]:max-h-[min(40rem,68vh)]'
+          ? 'h-[min(34rem,68dvh)] overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]'
+          : ''
       }`}
       data-testid="home-chat"
       data-mode={mode}
@@ -595,10 +616,8 @@ export function AgentChat({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-auto overflow-y-auto px-3.5 pt-4 pb-4 min-[720px]:px-5">
-            <EmptyState onPick={askFallback} />
-          </div>
           <Composer input={input} setInput={setInput} onSubmit={submitFallback} busy={false} showGhost />
+          <EmptyState onPick={askFallback} />
         </>
       )}
     </div>

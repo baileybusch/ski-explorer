@@ -215,6 +215,13 @@ input::placeholder {
   white-space: nowrap;
   transition: opacity 320ms ease, transform 320ms ease;
 }
+/* Input-card ghost prompt may wrap to two lines (Claude-style card). */
+.ghost-prompt-wrap > span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 .ghost-prompt > [data-state="out"] {
   opacity: 0;
   transform: translateY(-5px);
