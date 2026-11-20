@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
-import { ArrowUpIcon, SquareIcon } from 'lucide-react';
+import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { buildFollowups } from '@/lib/chatFollowups.js';
+import { regionScopeContext, regionStarters } from '../../../lib/homeRegions.js';
+import { ArrowUpIcon, SnowflakeIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { GhostPrompt } from '@/components/GhostPrompt';
 import { HOME_GHOSTS } from '@/lib/ghosts';
 import { BRAND } from '@/lib/brand';
@@ -15,6 +16,7 @@ import { WebLookupCard } from '@/components/home/WebLookupCard';
 import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 import { ChatMarkdown } from '@/components/home/ChatMarkdown';
+import { prefersReducedMotion } from '@/lib/motion';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -114,51 +116,77 @@ function Composer({
   busy: boolean;
   onStop?: () => void;
   showGhost: boolean;
-  inputRef?: RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const typing = input.length > 0;
+  const scope = useContext(ScopeCtx);
+  const ghosts = scope ? [`Ask about ${scope.name}, e.g. "${regionStarters(scope.name, scope.topName)[0]}"`] : HOME_GHOSTS;
   return (
-    <form className="border-t border-foreground/8 px-3 pt-2.5 pb-3" onSubmit={onSubmit} data-testid="home-chat-composer">
-      <InputGroup className="h-12 rounded-full">
-        <div className="relative min-w-0 flex-1">
-          {showGhost && !typing ? (
-            <GhostPrompt
-              lines={HOME_GHOSTS}
-              paused={typing}
-              testid="home-chat-ghost"
-              className="ghost-prompt pointer-events-none absolute inset-y-0 left-4 right-12 flex min-w-0 items-center truncate text-[15px] text-muted-foreground"
-            />
-          ) : null}
-          <InputGroupInput
-            ref={inputRef as any}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            aria-label={`Ask ${BRAND.name}`}
-            className="h-12 pl-4 text-base"
-            autoComplete="off"
-            enterKeyHint="send"
-            maxLength={400}
-            placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+    // Claude-style input card: text at top-left, controls along the bottom.
+    <form
+      className="flex min-h-[8.25rem] flex-col rounded-2xl bg-card px-4 pt-3.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0/0.25),0_8px_24px_-12px_rgb(0_0_0/0.45)] ring-1 ring-foreground/12 transition-shadow focus-within:ring-foreground/25"
+      onSubmit={onSubmit}
+      data-testid="home-chat-composer"
+    >
+      <div className="relative min-w-0 flex-1">
+        {showGhost && !typing ? (
+          <GhostPrompt
+            lines={ghosts}
+            paused={typing}
+            testid="home-chat-ghost"
+            className="ghost-prompt ghost-prompt-wrap pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground"
           />
-        </div>
-        <InputGroupAddon align="inline-end">
-          {busy && onStop ? (
-            <InputGroupButton type="button" size="icon-sm" variant="outline" className="rounded-full" aria-label="Stop" onClick={onStop}>
-              <SquareIcon />
-            </InputGroupButton>
-          ) : (
-            <InputGroupButton type="submit" size="icon-sm" variant="outline" className="rounded-full" aria-label="Send" data-testid="home-chat-send" disabled={!input.trim()}>
-              <ArrowUpIcon />
-            </InputGroupButton>
-          )}
-        </InputGroupAddon>
-      </InputGroup>
+        ) : null}
+        <textarea
+          ref={inputRef as any}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+          aria-label={`Ask ${BRAND.name}`}
+          rows={2}
+          className="block h-full min-h-12 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground"
+          autoComplete="off"
+          enterKeyHint="send"
+          maxLength={400}
+          placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+        />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
+          <SnowflakeIcon className="size-3.5" aria-hidden />
+          Live snow data · Ikon &amp; Epic
+        </span>
+        {busy && onStop ? (
+          <button type="button" className="grid size-9 place-items-center rounded-full ring-1 ring-foreground/20 hover:bg-foreground/5" aria-label="Stop" onClick={onStop}>
+            <SquareIcon className="size-3.5" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="grid size-9 place-items-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-25"
+            aria-label="Send"
+            data-testid="home-chat-send"
+            disabled={!input.trim()}
+          >
+            <ArrowUpIcon className="size-4" />
+          </button>
+        )}
+      </div>
     </form>
   );
 }
 
 /** No tokens or tool output for this long while busy = treat the turn as failed. */
 const CHAT_STALL_MS = 40_000;
+
+/** Region-scoped chat (region view): greeting, starters and model context follow the region. */
+export type ChatScope = { id: string; name: string; topName?: string | null };
+const ScopeCtx = createContext<ChatScope | null>(null);
 
 export const STARTER_PROMPTS = [
   "Where's it dumping right now?",
@@ -227,26 +255,7 @@ function followupsFor(messages: any[], idx: number): Followup[] {
   const own = cardsOf(messages[idx]);
   let main = own[0];
   for (let i = idx - 1; !main && i >= 0; i--) main = cardsOf(messages[i])[0];
-  const asked = userTextBefore(messages, idx).toLowerCase();
-  const askedWhy = /\bwhy\b|walk me through/.test(asked);
-  const askedData = /numbers|data/.test(asked);
-  const data: Followup | null = own.length
-    ? { label: 'Show the data', toggleData: true }
-    : askedData ? null : { label: 'Show the numbers', send: 'Show me the key numbers.' };
-  const why: Followup | null = askedWhy ? null : { label: 'Why?', send: 'Why? Walk me through it.' };
-  const out: (Followup | null)[] = [];
-  if (!main) {
-    out.push({ label: "Where's it dumping?", send: "Where's it dumping right now?" }, { label: "How's Mammoth?", send: "How's Mammoth looking?" });
-  } else if (main.kind === 'compare') {
-    out.push(why, data, { label: 'Which has better snow?', send: 'Which one has the better snow quality?' });
-  } else if (main.kind === 'rank') {
-    const top = main.rows?.[0]?.name;
-    out.push(askedWhy ? null : { label: 'Why there?', send: 'Why there? Walk me through it.' }, data, top ? { label: `How's ${top}?`, send: `How's ${top} looking?` } : null);
-  } else {
-    const name = main.resort?.name || main.name || 'there';
-    out.push(why, data, { label: 'Where else is good?', send: `Where else should I go instead of ${name}?` });
-  }
-  return out.filter(Boolean).slice(0, 3) as Followup[];
+  return buildFollowups({ asked: userTextBefore(messages, idx), main: main || null, hasOwnData: own.length > 0 });
 }
 
 function EveChat({
@@ -261,6 +270,7 @@ function EveChat({
   topNames: string[];
 }) {
   const agent = useEveAgent({ prewarm: true });
+  const scope = useContext(ScopeCtx);
   const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
   const messages = agent.messages || [];
   const [failed, setFailed] = useState(false);
@@ -268,7 +278,7 @@ function EveChat({
   const [shownData, setShownData] = useState<Set<string>>(() => new Set());
   const lastQ = useRef('');
   const scroller = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const handledAsk = useRef<number | null>(null);
   const busy = rawBusy && !failed;
   // Progress signature: changes whenever tokens or tool parts arrive.
@@ -303,7 +313,7 @@ function EveChat({
     setFailed(false);
     setSent(false);
     try {
-      await agent.send(q);
+      await agent.send(q, scope ? { clientContext: regionScopeContext(scope.name) } : undefined);
       setSent(true);
     } catch {
       setFailed(true);
@@ -343,8 +353,9 @@ function EveChat({
 
   return (
     <>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 pt-4 pb-4 min-[720px]:px-5" data-testid="home-chat-scroll">
-        {messages.length ? (
+      {messages.length ? (
+      <div ref={scroller} className="max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain px-1 pt-1 pb-2" data-testid="home-chat-scroll">
+        {(
           <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
             {messages.map((m: any) => {
               if (m.role === 'user') {
@@ -400,33 +411,104 @@ function EveChat({
               </li>
             ) : null}
           </ol>
-        ) : (
-          <EmptyState onPick={q => void ask(q)} />
         )}
       </div>
+      ) : null}
       <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} inputRef={inputRef} />
+      {!messages.length ? <EmptyState onPick={q => void ask(q)} /> : null}
     </>
   );
 }
 
+const HOME_STARTERS = STARTER_PROMPTS;
+export const GREETING = "Hey! Ask me where to ski, or how a mountain's looking.";
+
+const HOME_GREETING = GREETING;
+
+/** Greeting timeline (ms from first mount): typing dots, then type-in, then chips stagger in. */
+export const GREETING_TIMING = { dots: 450, type: 1150, chipStagger: 90, chipFade: 260 };
+
+// Module-level so the boot -> eve remount continues the animation instead of restarting it.
+let greetingT0: number | null = null;
+
+function useGreetingClock() {
+  const reduce = typeof window === 'undefined' || prefersReducedMotion();
+  const total = GREETING_TIMING.dots + GREETING_TIMING.type + GREETING_TIMING.chipStagger * STARTER_PROMPTS.length + GREETING_TIMING.chipFade;
+  const [elapsed, setElapsed] = useState(() => {
+    if (reduce) return Infinity;
+    if (greetingT0 == null) greetingT0 = performance.now();
+    return performance.now() - greetingT0;
+  });
+  useEffect(() => {
+    if (reduce || elapsed >= total) return;
+    let raf = 0;
+    const tick = () => {
+      const e = performance.now() - (greetingT0 ?? performance.now());
+      setElapsed(e);
+      if (e < total) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return elapsed;
+}
+
+/**
+ * Empty chat: the greeting "streams in" like a live agent message (client-side,
+ * no model call). Typing dots, then the text types in over ~1.15s, then the
+ * starter chips stagger in. Reduced motion shows everything at once. The input
+ * below is usable the whole time.
+ */
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+  const scope = useContext(ScopeCtx);
+  const GREETING = scope ? `Ask me where's best in ${scope.name}, or how any mountain there is looking.` : HOME_GREETING;
+  const STARTER_PROMPTS = scope ? regionStarters(scope.name, scope.topName) : HOME_STARTERS;
+  const t = useGreetingClock();
+  const { dots, type, chipStagger } = GREETING_TIMING;
+  const typing = t >= dots;
+  const typed = t === Infinity ? GREETING.length : Math.max(0, Math.min(GREETING.length, Math.round(((t - dots) / type) * GREETING.length)));
+  const done = typed >= GREETING.length;
+  const phase = !typing ? 'dots' : done ? 'done' : 'typing';
   return (
-    <div className="flex h-full flex-col justify-end gap-3" data-testid="home-chat-empty-state">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-empty">
-        Hey! Ask me where to ski, how a mountain&rsquo;s looking, or who&rsquo;s getting the most snow. I&rsquo;ll give you a straight answer.
-      </div>
+    <div className="flex flex-col gap-2.5 pt-1" data-testid="home-chat-empty-state" data-greeting={phase}>
+      {phase === 'dots' ? (
+        <TypingBubble />
+      ) : (
+        <div className="px-1 text-[15px] leading-relaxed text-foreground/80" data-testid="home-chat-empty" aria-label={GREETING}>
+          {/* Invisible full text reserves the bubble's final size, so nothing jumps while typing. */}
+          <span className="grid">
+            <span className="invisible col-start-1 row-start-1" aria-hidden>{GREETING}</span>
+            <span className="col-start-1 row-start-1" aria-hidden>
+              {GREETING.slice(0, typed)}
+              {!done ? <span className="chat-caret" /> : null}
+            </span>
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2" data-testid="home-chat-starters">
-        {STARTER_PROMPTS.map(q => (
-          <Chip key={q} testid="home-chat-starter" onClick={() => onPick(q)}>{q}</Chip>
-        ))}
+        {STARTER_PROMPTS.map((q, i) => {
+          const shown = t === Infinity || t >= dots + type + chipStagger * i;
+          return (
+            <span
+              key={q}
+              className="transition-[opacity,transform] duration-[260ms] ease-out motion-reduce:transition-none"
+              style={{ opacity: shown ? 1 : 0, transform: shown ? 'none' : 'translateY(4px)' }}
+              data-shown={shown ? '1' : '0'}
+            >
+              <Chip testid="home-chat-starter" onClick={() => onPick(q)}>{q}</Chip>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 export function AgentChat({
-  units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [],
+  units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [], scope = null,
 }: {
+  /** Scope the chat to one region (region view). */
+  scope?: ChatScope | null;
   units: SnowUnits;
   catalog: any;
   onOpen: (id: string) => void;
@@ -494,8 +576,15 @@ export function AgentChat({
   }
 
   return (
+    <ScopeCtx.Provider value={scope}>
     <div
-      className="flex h-[min(34rem,68dvh)] min-h-[20rem] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]"
+      // Claude-style: no outer panel. Thread above, input card, greeting below.
+      // The fallback Ask panel keeps a fixed-height card.
+      className={`flex flex-col gap-3 ${
+        mode === 'fallback' && askOpen
+          ? 'h-[min(34rem,68dvh)] overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]'
+          : ''
+      }`}
       data-testid="home-chat"
       data-mode={mode}
     >
@@ -525,12 +614,11 @@ export function AgentChat({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-4 pb-4 min-[720px]:px-5">
-            <EmptyState onPick={askFallback} />
-          </div>
           <Composer input={input} setInput={setInput} onSubmit={submitFallback} busy={false} showGhost />
+          <EmptyState onPick={askFallback} />
         </>
       )}
     </div>
+    </ScopeCtx.Provider>
   );
 }

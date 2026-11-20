@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react';
-import { MenuIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { MenuIcon, SnowflakeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
 import { FullList, TrendingCards } from '@/components/home/TrendingCards';
 import { AgentChat } from '@/components/home/AgentChat';
+import { RegionTiles, RegionView } from '@/components/home/RegionView';
+import { explorePath, parseExplorePath } from '../../../lib/homeRegions.js';
 import { SiteFooter } from '@/components/SiteFooter';
 import { BOARD_LAYOUT } from '@/lib/boardLayout';
 import type { SnowUnits } from '@/lib/format';
@@ -28,7 +30,32 @@ export function HomeLanding({
   const [ask, setAsk] = useState<{ text: string; n: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+  const [regionId, setRegionId] = useState<string | null>(() => parseExplorePath(location.pathname));
+  const region = regionId ? (catalog.regions || []).find((g: any) => g.id === regionId) : null;
   const top = rows.slice(0, TOP);
+
+  // Region view lives at /explore/<id>; back/forward re-syncs from the path.
+  useEffect(() => {
+    const onPop = () => setRegionId(parseExplorePath(location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    if (region) document.title = `${region.name} snow · ask SkiScope`;
+  }, [region]);
+
+  function openRegion(id: string) {
+    history.pushState({ ss: 'home', region: id }, '', explorePath(id) + location.search);
+    setRegionId(id);
+    window.scrollTo({ top: 0 });
+  }
+  function closeRegion() {
+    if (history.state?.region) history.back();
+    else {
+      history.replaceState({ ss: 'home' }, '', '/' + location.search);
+      setRegionId(null);
+    }
+  }
   const rest = rows.slice(TOP, INLINE_MAX);
 
   // Card click = ask the chat about that resort (chat is the focus).
@@ -50,8 +77,18 @@ export function HomeLanding({
           </Button>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-5 px-3 pb-8 min-[840px]:gap-7 min-[840px]:px-6">
-        <div ref={chatRef} className="scroll-mt-3">
+      {region ? (
+        <>
+          <RegionView region={region} catalog={catalog} units={units} onOpen={onOpen} onShowBoard={onShowBoard} onBack={closeRegion} />
+          <SiteFooter />
+        </>
+      ) : (
+      <div className="mx-auto flex w-full max-w-[840px] flex-1 flex-col px-3 pb-8 min-[880px]:px-0" data-testid="home-column">
+        <div ref={chatRef} className="scroll-mt-3 pt-6 min-[720px]:pt-[9vh]" data-testid="home-chat-column">
+          <h1 className="mb-6 flex items-center justify-center gap-2.5 text-center font-display text-[2rem] leading-none min-[720px]:mb-7 min-[720px]:text-[2.6rem]" data-testid="home-chat-heading">
+            <SnowflakeIcon className="size-6 text-[var(--ice)] min-[720px]:size-8" aria-hidden strokeWidth={2.25} />
+            Where&rsquo;s the snow good?
+          </h1>
           <AgentChat
             units={units}
             catalog={catalog}
@@ -62,13 +99,13 @@ export function HomeLanding({
             topNames={top.map(x => x.r.name)}
           />
         </div>
-        <section className="flex flex-col gap-3" data-testid="home-starters">
+        <section className="mt-12 flex flex-col gap-3 min-[720px]:mt-20" data-testid="home-starters">
           <div className="flex items-baseline justify-between gap-3 px-0.5">
-            <h2 className="text-sm font-medium text-muted-foreground">Getting the most snow · tap to ask</h2>
+            <h2 className="text-sm text-muted-foreground">Trending mountains</h2>
             {rows.length > TOP ? (
               <button
                 type="button"
-                className="min-h-9 rounded-full px-3 text-sm text-muted-foreground ring-1 ring-foreground/12 hover:text-foreground"
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 data-testid="home-see-all"
                 aria-expanded={expanded}
                 onClick={() => setExpanded(v => !v)}
@@ -87,8 +124,12 @@ export function HomeLanding({
             </>
           ) : null}
         </section>
+        <RegionTiles catalog={catalog} units={units} onPick={openRegion} />
+        <div className="mt-6">
         <SiteFooter />
+        </div>
       </div>
+      )}
     </div>
   );
 }
