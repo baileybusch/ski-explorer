@@ -1,11 +1,12 @@
 import '../../lib/eve/embeddedData';
+import { ensureLiveData } from '../../lib/eve/liveData.js';
 import { defineTool } from 'eve/tools';
 import { json, searchForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
 import { searchResorts } from '../../lib/eve/skiTools.js';
 
 export default defineTool({
-  description: 'Find resorts in the SkiScope catalog by name, region, country, state, or pass. Returns last 72h (SNWD depth-rise or model est., not recorded snowfall) and next 7d forecast.',
+  description: 'Find resorts in the SkiScope catalog by name, region, country, state, or pass. Returns last 72h (new snow at snow-depth stations or model est., not recorded snowfall) and next 7d forecast.',
   inputSchema: z.object({
     query: z.string().optional().describe('Name, region, or place, e.g. Mammoth, Utah, Japan'),
     pass: z.enum(['ikon', 'epic', 'all']).optional(),
@@ -14,7 +15,8 @@ export default defineTool({
     state: z.string().optional(),
     limit: z.number().int().min(1).max(16).optional(),
   }),
-  execute(input) {
+  async execute(input) {
+    await ensureLiveData();
     return searchResorts(input);
   },
   // Model sees a compact gist; UI cards still get the full output.

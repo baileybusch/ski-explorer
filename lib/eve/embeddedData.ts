@@ -27,8 +27,9 @@ import tetonsNorthernRockiesMd from '../../agent/skills/regional-snow-climates/r
 import utahWasatchMd from '../../agent/skills/regional-snow-climates/regions/utah-wasatch.md?raw';
 import { buildCatalog, setCatalog } from '../skiscope-tools/catalog.js';
 import { setRegionGuides } from './climateRegions.js';
+import { setBaseRaw } from './liveData.js';
 
-setCatalog(buildCatalog({
+const embeddedRaw = {
   resorts: JSON.parse(resortsRaw),
   snow: JSON.parse(snowRaw),
   observed: JSON.parse(observedRaw),
@@ -36,7 +37,10 @@ setCatalog(buildCatalog({
   typical: JSON.parse(typicalRaw),
   history: JSON.parse(historyRaw),
   climatology: JSON.parse(climatologyRaw),
-}));
+};
+// Embedded snapshot = fallback; tools refresh observed rows live (lib/eve/liveData.js).
+setBaseRaw(embeddedRaw);
+setCatalog(buildCatalog({ ...embeddedRaw, snow: { ...embeddedRaw.snow } }));
 
 setRegionGuides({
   'alaska': alaskaMd,
