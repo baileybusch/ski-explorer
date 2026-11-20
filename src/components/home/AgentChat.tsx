@@ -15,6 +15,7 @@ import { WebLookupCard } from '@/components/home/WebLookupCard';
 import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 import { ChatMarkdown } from '@/components/home/ChatMarkdown';
+import { prefersReducedMotion } from '@/lib/motion';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -343,7 +344,7 @@ function EveChat({
 
   return (
     <>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 pt-4 pb-4 min-[720px]:px-5" data-testid="home-chat-scroll">
+      <div ref={scroller} className="min-h-0 flex-auto overflow-y-auto overscroll-contain px-3.5 pt-4 pb-4 min-[720px]:px-5" data-testid="home-chat-scroll">
         {messages.length ? (
           <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
             {messages.map((m: any) => {
@@ -409,16 +410,79 @@ function EveChat({
   );
 }
 
+export const GREETING = "Hey! Ask me where to ski, or how a mountain's looking.";
+
+/** Greeting timeline (ms from first mount): typing dots, then type-in, then chips stagger in. */
+export const GREETING_TIMING = { dots: 450, type: 1150, chipStagger: 90, chipFade: 260 };
+
+// Module-level so the boot -> eve remount continues the animation instead of restarting it.
+let greetingT0: number | null = null;
+
+function useGreetingClock() {
+  const reduce = typeof window === 'undefined' || prefersReducedMotion();
+  const total = GREETING_TIMING.dots + GREETING_TIMING.type + GREETING_TIMING.chipStagger * STARTER_PROMPTS.length + GREETING_TIMING.chipFade;
+  const [elapsed, setElapsed] = useState(() => {
+    if (reduce) return Infinity;
+    if (greetingT0 == null) greetingT0 = performance.now();
+    return performance.now() - greetingT0;
+  });
+  useEffect(() => {
+    if (reduce || elapsed >= total) return;
+    let raf = 0;
+    const tick = () => {
+      const e = performance.now() - (greetingT0 ?? performance.now());
+      setElapsed(e);
+      if (e < total) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return elapsed;
+}
+
+/**
+ * Empty chat: the greeting "streams in" like a live agent message (client-side,
+ * no model call). Typing dots, then the text types in over ~1.15s, then the
+ * starter chips stagger in. Reduced motion shows everything at once. The input
+ * below is usable the whole time.
+ */
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+  const t = useGreetingClock();
+  const { dots, type, chipStagger } = GREETING_TIMING;
+  const typing = t >= dots;
+  const typed = t === Infinity ? GREETING.length : Math.max(0, Math.min(GREETING.length, Math.round(((t - dots) / type) * GREETING.length)));
+  const done = typed >= GREETING.length;
+  const phase = !typing ? 'dots' : done ? 'done' : 'typing';
   return (
-    <div className="flex h-full flex-col justify-end gap-3" data-testid="home-chat-empty-state">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-empty">
-        Hey! Ask me where to ski, how a mountain&rsquo;s looking, or who&rsquo;s getting the most snow. I&rsquo;ll give you a straight answer.
-      </div>
+    <div className="flex flex-col gap-3" data-testid="home-chat-empty-state" data-greeting={phase}>
+      {phase === 'dots' ? (
+        <TypingBubble />
+      ) : (
+        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-empty" aria-label={GREETING}>
+          {/* Invisible full text reserves the bubble's final size, so nothing jumps while typing. */}
+          <span className="grid">
+            <span className="invisible col-start-1 row-start-1" aria-hidden>{GREETING}</span>
+            <span className="col-start-1 row-start-1" aria-hidden>
+              {GREETING.slice(0, typed)}
+              {!done ? <span className="chat-caret" /> : null}
+            </span>
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2" data-testid="home-chat-starters">
-        {STARTER_PROMPTS.map(q => (
-          <Chip key={q} testid="home-chat-starter" onClick={() => onPick(q)}>{q}</Chip>
-        ))}
+        {STARTER_PROMPTS.map((q, i) => {
+          const shown = t === Infinity || t >= dots + type + chipStagger * i;
+          return (
+            <span
+              key={q}
+              className="transition-[opacity,transform] duration-[260ms] ease-out motion-reduce:transition-none"
+              style={{ opacity: shown ? 1 : 0, transform: shown ? 'none' : 'translateY(4px)' }}
+              data-shown={shown ? '1' : '0'}
+            >
+              <Chip testid="home-chat-starter" onClick={() => onPick(q)}>{q}</Chip>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -495,7 +559,13 @@ export function AgentChat({
 
   return (
     <div
-      className="flex h-[min(34rem,68dvh)] min-h-[20rem] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]"
+      // Content-sized: compact while empty, grows with the thread up to a cap,
+      // then the thread scrolls inside. The fallback Ask panel needs a fixed height.
+      className={`flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 ${
+        mode === 'fallback' && askOpen
+          ? 'h-[min(34rem,68dvh)] min-[720px]:h-[min(38rem,62vh)]'
+          : 'max-h-[min(34rem,72dvh)] min-[720px]:max-h-[min(40rem,68vh)]'
+      }`}
       data-testid="home-chat"
       data-mode={mode}
     >
@@ -525,7 +595,7 @@ export function AgentChat({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-4 pb-4 min-[720px]:px-5">
+          <div className="min-h-0 flex-auto overflow-y-auto px-3.5 pt-4 pb-4 min-[720px]:px-5">
             <EmptyState onPick={askFallback} />
           </div>
           <Composer input={input} setInput={setInput} onSubmit={submitFallback} busy={false} showGhost />

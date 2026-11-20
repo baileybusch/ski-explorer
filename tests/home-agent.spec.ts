@@ -76,3 +76,41 @@ test('clicking a thought-starter card asks the chat about that resort', async ({
   await card.click();
   await expect(page.getByTestId('home-chat')).toContainText(name, { timeout: 40_000 });
 });
+
+test('chat box is a centered column on desktop, full width on mobile, compact while empty', async ({ page }, info) => {
+  await page.goto('/');
+  await expect(page.getByTestId('home-trending-card')).toHaveCount(3, { timeout: 30_000 });
+  const vw = page.viewportSize()!.width;
+  const chat = (await page.getByTestId('home-chat').boundingBox())!;
+  if (info.project.name.startsWith('desktop')) {
+    expect(chat.width).toBeLessThanOrEqual(760);
+    expect(Math.abs(chat.x + chat.width / 2 - vw / 2)).toBeLessThan(4);
+  } else {
+    expect(chat.width).toBeGreaterThan(vw - 40);
+  }
+  // No big blank panel before the first question.
+  expect(chat.height).toBeLessThan(info.project.name.startsWith('desktop') ? 360 : 520);
+});
+
+test('greeting streams in (dots, type-in, chips) without blocking the input', async ({ page }) => {
+  await page.goto('/');
+  const state = page.getByTestId('home-chat-empty-state');
+  await expect(state).toBeVisible({ timeout: 30_000 });
+  // Input is usable while the greeting animates.
+  const input = page.getByLabel('Ask SkiScope', { exact: true }).last();
+  await input.fill('typing early');
+  await expect(input).toHaveValue('typing early');
+  await expect(state).toHaveAttribute('data-greeting', 'done', { timeout: 5_000 });
+  await expect(page.getByTestId('home-chat-empty')).toHaveAttribute('aria-label', "Hey! Ask me where to ski, or how a mountain's looking.");
+  await expect(page.getByTestId('home-chat-empty')).toContainText("Hey! Ask me where to ski, or how a mountain's looking.");
+  await expect(page.locator('[data-testid=home-chat-starters] > [data-shown="1"]')).toHaveCount(4, { timeout: 2_000 });
+});
+
+test('reduced motion shows the greeting and chips instantly', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const state = page.getByTestId('home-chat-empty-state');
+  await expect(state).toBeVisible({ timeout: 30_000 });
+  await expect(state).toHaveAttribute('data-greeting', 'done');
+  await expect(page.locator('[data-testid=home-chat-starters] > [data-shown="0"]')).toHaveCount(0);
+});

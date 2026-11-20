@@ -271,3 +271,16 @@ input::placeholder {
 @media (prefers-reduced-motion: reduce) {
   .chat-dot { animation: none; opacity: 0.5; }
 }
+
+/* Greeting type-in caret */
+@keyframes chat-caret { 50% { opacity: 0; } }
+.chat-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  opacity: 0.6;
+  animation: chat-caret 0.8s steps(1) infinite;
+}

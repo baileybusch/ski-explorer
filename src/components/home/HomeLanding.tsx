@@ -51,7 +51,11 @@ export function HomeLanding({
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-5 px-3 pb-8 min-[840px]:gap-7 min-[840px]:px-6">
-        <div ref={chatRef} className="scroll-mt-3">
+        {/* Centered chat column (ChatGPT/Claude-style) on desktop; full width on mobile. */}
+        <div ref={chatRef} className="mx-auto w-full max-w-[720px] scroll-mt-3 min-[840px]:pt-6" data-testid="home-chat-column">
+          <h1 className="mb-4 hidden text-center font-display text-3xl leading-tight min-[720px]:block" data-testid="home-chat-heading">
+            Where&rsquo;s the snow good?
+          </h1>
           <AgentChat
             units={units}
             catalog={catalog}
