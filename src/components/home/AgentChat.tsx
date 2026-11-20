@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { buildFollowups } from '@/lib/chatFollowups.js';
 import { ArrowUpIcon, SnowflakeIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { GhostPrompt } from '@/components/GhostPrompt';
 import { HOME_GHOSTS } from '@/lib/ghosts';
 import { BRAND } from '@/lib/brand';
@@ -248,26 +248,7 @@ function followupsFor(messages: any[], idx: number): Followup[] {
   const own = cardsOf(messages[idx]);
   let main = own[0];
   for (let i = idx - 1; !main && i >= 0; i--) main = cardsOf(messages[i])[0];
-  const asked = userTextBefore(messages, idx).toLowerCase();
-  const askedWhy = /\bwhy\b|walk me through/.test(asked);
-  const askedData = /numbers|data/.test(asked);
-  const data: Followup | null = own.length
-    ? { label: 'Show the data', toggleData: true }
-    : askedData ? null : { label: 'Show the numbers', send: 'Show me the key numbers.' };
-  const why: Followup | null = askedWhy ? null : { label: 'Why?', send: 'Why? Walk me through it.' };
-  const out: (Followup | null)[] = [];
-  if (!main) {
-    out.push({ label: "Where's it dumping?", send: "Where's it dumping right now?" }, { label: "How's Mammoth?", send: "How's Mammoth looking?" });
-  } else if (main.kind === 'compare') {
-    out.push(why, data, { label: 'Which has better snow?', send: 'Which one has the better snow quality?' });
-  } else if (main.kind === 'rank') {
-    const top = main.rows?.[0]?.name;
-    out.push(askedWhy ? null : { label: 'Why there?', send: 'Why there? Walk me through it.' }, data, top ? { label: `How's ${top}?`, send: `How's ${top} looking?` } : null);
-  } else {
-    const name = main.resort?.name || main.name || 'there';
-    out.push(why, data, { label: 'Where else is good?', send: `Where else should I go instead of ${name}?` });
-  }
-  return out.filter(Boolean).slice(0, 3) as Followup[];
+  return buildFollowups({ asked: userTextBefore(messages, idx), main: main || null, hasOwnData: own.length > 0 });
 }
 
 function EveChat({
