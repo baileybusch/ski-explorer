@@ -1,10 +1,12 @@
 /**
- * Agent Admin-style model config. Cheap/fast AI Gateway ids, same fallback
- * family as lib/ask/server.js. Override with EVE_MODEL / ASK_MODEL / AI_GATEWAY_MODEL.
+ * Agent Admin-style model config. Override with EVE_MODEL / ASK_MODEL / AI_GATEWAY_MODEL.
+ *
+ * Default is a cheap, fast open-weight model that the AI Gateway free tier
+ * serves (gpt-5.4-mini 403s on the free tier). Prod sets EVE_MODEL to the same.
  */
-import { ASK_MODEL_DEFAULT, ASK_MODEL_SUBSTITUTES } from '../ask/server.js';
+import { ASK_MODEL_SUBSTITUTES } from '../ask/server.js';
 
-export const EVE_MODEL_DEFAULT = ASK_MODEL_DEFAULT as string;
+export const EVE_MODEL_DEFAULT = 'openai/gpt-oss-120b';
 
 export const EVE_MODEL_FALLBACKS = ASK_MODEL_SUBSTITUTES as readonly string[];
 

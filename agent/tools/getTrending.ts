@@ -1,5 +1,6 @@
 import '../../lib/eve/embeddedData';
 import { defineTool } from 'eve/tools';
+import { json, rankForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
 import { getTrending } from '../../lib/eve/skiTools.js';
 
@@ -13,5 +14,9 @@ export default defineTool({
   }),
   execute(input) {
     return getTrending(input);
+  },
+  // Model sees a compact gist; UI cards still get the full output.
+  toModelOutput(output) {
+    return json(rankForModel(output));
   },
 });

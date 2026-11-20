@@ -577,7 +577,7 @@ export default function App() {
           catalog={catalog}
           units={units}
           pass={pass}
-          rows={rankBoard(catalog.resorts, catalog.snow, { pass: 'all', sort: 'actual72' }).slice(0, 2).map((r: any) => ({
+          rows={rankBoard(catalog.resorts, catalog.snow, { pass: 'all', sort: 'actual72' }).map((r: any) => ({
             r,
             dump: dumpParts(r, catalog.snow),
           }))}

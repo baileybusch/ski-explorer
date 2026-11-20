@@ -30,7 +30,7 @@ test('agent homepage + chat answer screenshots', async ({ page }, info) => {
 
   await page.goto('/');
   await expect(page.getByTestId('home-agent')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('home-trending-card')).toHaveCount(2);
+  await expect(page.getByTestId('home-trending-card')).toHaveCount(3);
   await expect(page.getByTestId('home-chat-ghost')).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${DIR}/homepage-${device}.png` });

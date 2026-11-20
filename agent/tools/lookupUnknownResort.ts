@@ -1,5 +1,6 @@
 import '../../lib/eve/embeddedData';
 import { defineTool } from 'eve/tools';
+import { json, lookupForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
 import { lookupUnknownResort } from '../../lib/eve/skiTools.js';
 
@@ -10,5 +11,9 @@ export default defineTool({
   }),
   async execute(input) {
     return lookupUnknownResort(input);
+  },
+  // Model sees a compact gist; UI cards still get the full output.
+  toModelOutput(output) {
+    return json(lookupForModel(output));
   },
 });

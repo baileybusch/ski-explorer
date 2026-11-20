@@ -1,5 +1,6 @@
 import '../../lib/eve/embeddedData';
 import { defineTool } from 'eve/tools';
+import { json, compareForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
 import { compareResorts } from '../../lib/eve/skiTools.js';
 
@@ -10,5 +11,9 @@ export default defineTool({
   }),
   execute(input) {
     return compareResorts(input);
+  },
+  // Model sees a compact gist; UI cards still get the full output.
+  toModelOutput(output) {
+    return json(compareForModel(output));
   },
 });
