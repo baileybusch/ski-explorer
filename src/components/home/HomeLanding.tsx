@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MenuIcon, SnowflakeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
 import { FullList, TrendingCards } from '@/components/home/TrendingCards';
 import { AgentChat } from '@/components/home/AgentChat';
+import { RegionTiles, RegionView } from '@/components/home/RegionView';
+import { explorePath, parseExplorePath } from '../../../lib/homeRegions.js';
 import { SiteFooter } from '@/components/SiteFooter';
 import { BOARD_LAYOUT } from '@/lib/boardLayout';
 import type { SnowUnits } from '@/lib/format';
@@ -28,7 +30,32 @@ export function HomeLanding({
   const [ask, setAsk] = useState<{ text: string; n: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+  const [regionId, setRegionId] = useState<string | null>(() => parseExplorePath(location.pathname));
+  const region = regionId ? (catalog.regions || []).find((g: any) => g.id === regionId) : null;
   const top = rows.slice(0, TOP);
+
+  // Region view lives at /explore/<id>; back/forward re-syncs from the path.
+  useEffect(() => {
+    const onPop = () => setRegionId(parseExplorePath(location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    if (region) document.title = `${region.name} snow · ask SkiScope`;
+  }, [region]);
+
+  function openRegion(id: string) {
+    history.pushState({ ss: 'home', region: id }, '', explorePath(id) + location.search);
+    setRegionId(id);
+    window.scrollTo({ top: 0 });
+  }
+  function closeRegion() {
+    if (history.state?.region) history.back();
+    else {
+      history.replaceState({ ss: 'home' }, '', '/' + location.search);
+      setRegionId(null);
+    }
+  }
   const rest = rows.slice(TOP, INLINE_MAX);
 
   // Card click = ask the chat about that resort (chat is the focus).
@@ -50,7 +77,12 @@ export function HomeLanding({
           </Button>
         </div>
       </header>
-      {/* One centered column for everything (Claude-style), ~840px on desktop. */}
+      {region ? (
+        <>
+          <RegionView region={region} catalog={catalog} units={units} onOpen={onOpen} onShowBoard={onShowBoard} onBack={closeRegion} />
+          <SiteFooter />
+        </>
+      ) : (
       <div className="mx-auto flex w-full max-w-[840px] flex-1 flex-col px-3 pb-8 min-[880px]:px-0" data-testid="home-column">
         <div ref={chatRef} className="scroll-mt-3 pt-6 min-[720px]:pt-[9vh]" data-testid="home-chat-column">
           <h1 className="mb-6 flex items-center justify-center gap-2.5 text-center font-display text-[2rem] leading-none min-[720px]:mb-7 min-[720px]:text-[2.6rem]" data-testid="home-chat-heading">
@@ -92,10 +124,12 @@ export function HomeLanding({
             </>
           ) : null}
         </section>
-        <div className="mt-12">
+        <RegionTiles catalog={catalog} units={units} onPick={openRegion} />
+        <div className="mt-6">
         <SiteFooter />
         </div>
       </div>
+      )}
     </div>
   );
 }

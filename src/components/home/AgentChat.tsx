@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { buildFollowups } from '@/lib/chatFollowups.js';
+import { regionScopeContext, regionStarters } from '../../../lib/homeRegions.js';
 import { ArrowUpIcon, SnowflakeIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import { GhostPrompt } from '@/components/GhostPrompt';
@@ -118,6 +119,8 @@ function Composer({
   inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const typing = input.length > 0;
+  const scope = useContext(ScopeCtx);
+  const ghosts = scope ? [`Ask about ${scope.name}, e.g. "${regionStarters(scope.name, scope.topName)[0]}"`] : HOME_GHOSTS;
   return (
     // Claude-style input card: text at top-left, controls along the bottom.
     <form
@@ -128,7 +131,7 @@ function Composer({
       <div className="relative min-w-0 flex-1">
         {showGhost && !typing ? (
           <GhostPrompt
-            lines={HOME_GHOSTS}
+            lines={ghosts}
             paused={typing}
             testid="home-chat-ghost"
             className="ghost-prompt ghost-prompt-wrap pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground"
@@ -180,6 +183,10 @@ function Composer({
 
 /** No tokens or tool output for this long while busy = treat the turn as failed. */
 const CHAT_STALL_MS = 40_000;
+
+/** Region-scoped chat (region view): greeting, starters and model context follow the region. */
+export type ChatScope = { id: string; name: string; topName?: string | null };
+const ScopeCtx = createContext<ChatScope | null>(null);
 
 export const STARTER_PROMPTS = [
   "Where's it dumping right now?",
@@ -263,6 +270,7 @@ function EveChat({
   topNames: string[];
 }) {
   const agent = useEveAgent({ prewarm: true });
+  const scope = useContext(ScopeCtx);
   const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
   const messages = agent.messages || [];
   const [failed, setFailed] = useState(false);
@@ -305,7 +313,7 @@ function EveChat({
     setFailed(false);
     setSent(false);
     try {
-      await agent.send(q);
+      await agent.send(q, scope ? { clientContext: regionScopeContext(scope.name) } : undefined);
       setSent(true);
     } catch {
       setFailed(true);
@@ -412,7 +420,10 @@ function EveChat({
   );
 }
 
+const HOME_STARTERS = STARTER_PROMPTS;
 export const GREETING = "Hey! Ask me where to ski, or how a mountain's looking.";
+
+const HOME_GREETING = GREETING;
 
 /** Greeting timeline (ms from first mount): typing dots, then type-in, then chips stagger in. */
 export const GREETING_TIMING = { dots: 450, type: 1150, chipStagger: 90, chipFade: 260 };
@@ -449,6 +460,9 @@ function useGreetingClock() {
  * below is usable the whole time.
  */
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+  const scope = useContext(ScopeCtx);
+  const GREETING = scope ? `Ask me where's best in ${scope.name}, or how any mountain there is looking.` : HOME_GREETING;
+  const STARTER_PROMPTS = scope ? regionStarters(scope.name, scope.topName) : HOME_STARTERS;
   const t = useGreetingClock();
   const { dots, type, chipStagger } = GREETING_TIMING;
   const typing = t >= dots;
@@ -491,8 +505,10 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
 }
 
 export function AgentChat({
-  units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [],
+  units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [], scope = null,
 }: {
+  /** Scope the chat to one region (region view). */
+  scope?: ChatScope | null;
   units: SnowUnits;
   catalog: any;
   onOpen: (id: string) => void;
@@ -560,6 +576,7 @@ export function AgentChat({
   }
 
   return (
+    <ScopeCtx.Provider value={scope}>
     <div
       // Claude-style: no outer panel. Thread above, input card, greeting below.
       // The fallback Ask panel keeps a fixed-height card.
@@ -602,5 +619,6 @@ export function AgentChat({
         </>
       )}
     </div>
+    </ScopeCtx.Provider>
   );
 }

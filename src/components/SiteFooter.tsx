@@ -1,51 +1,38 @@
-import { BrandLogo } from '@/components/BrandLogo';
-import { BRAND } from '@/lib/brand';
 import { withAlerts } from '@/lib/alertsUi';
+import { BRAND } from '@/lib/brand';
 import { affiliateConfigured } from '../../public/config.js';
 import { DNS_LINK_TEXT } from '../../lib/consentText.js';
-import { CATEGORY_LINKS } from '../../lib/categoryPages.js';
 
+/** Legal / minimal links only. Region links live in "Browse by region" on the home page. */
 const LINKS = [
-  { href: '/my-alerts', label: 'My alerts' },
-  { href: '/about', label: 'About' },
-  { href: '/privacy', label: 'Privacy' },
-  { href: '/terms', label: 'Terms' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/privacy', label: 'Privacy', testid: 'footer-privacy' },
+  { href: '/terms', label: 'Terms', testid: 'footer-terms' },
+  { href: '/manage', label: 'Unsubscribe', testid: 'footer-unsubscribe' },
+  { href: '/about', label: 'Data sources & credits', testid: 'footer-credits' },
 ];
 
 export function SiteFooter() {
   return (
-    <footer className="mx-auto mt-10 w-full max-w-xl px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]" data-testid="site-footer">
-      <a href={withAlerts('/')} className="flex items-center gap-2" aria-label={`${BRAND.name} home`}>
-        <BrandLogo size="footer" />
-      </a>
-      <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+    <footer
+      className="mx-auto mt-10 w-full max-w-[840px] border-t border-foreground/8 px-3 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] min-[880px]:px-0.5"
+      data-testid="site-footer"
+    >
+      <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Legal">
+        <span>© {new Date().getFullYear()} {BRAND.name}</span>
         {LINKS.map(l => (
-          <a key={l.href} href={withAlerts(l.href)} className="text-muted-foreground underline-offset-4 hover:underline">
+          <a key={l.href} href={withAlerts(l.href)} className="underline-offset-4 hover:text-foreground hover:underline" data-testid={l.testid}>
             {l.label}
           </a>
         ))}
         {affiliateConfigured() ? (
-          <a href={withAlerts('/disclosure')} className="text-muted-foreground underline-offset-4 hover:underline" data-testid="footer-disclosure">
+          <a href={withAlerts('/disclosure')} className="underline-offset-4 hover:text-foreground hover:underline" data-testid="footer-disclosure">
             Affiliate disclosure
           </a>
         ) : null}
-      </nav>
-      <nav className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label="Snow by region" data-testid="footer-categories">
-        {CATEGORY_LINKS.map(l => (
-          <a key={l.path} href={withAlerts(l.path)} className="underline-offset-4 hover:underline">{l.label}</a>
-        ))}
-      </nav>
-      <p className="mt-3 text-xs">
-        <a href={withAlerts('/do-not-sell')} className="text-muted-foreground underline underline-offset-4 hover:text-foreground" data-testid="footer-dns">
+        <a href={withAlerts('/do-not-sell')} className="underline-offset-4 hover:text-foreground hover:underline" data-testid="footer-dns">
           {DNS_LINK_TEXT}
         </a>
-      </p>
-      <p className="mt-3 text-xs text-muted-foreground" data-testid="footer-mcp">
-        Agents: <a href="https://skiscope.vercel.app/api/mcp" className="underline-offset-4 hover:underline">MCP</a>
-        {' · '}
-        <a href={withAlerts('/about')} className="underline-offset-4 hover:underline">docs</a>
-      </p>
+      </nav>
     </footer>
   );
 }

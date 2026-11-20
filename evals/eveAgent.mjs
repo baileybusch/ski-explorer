@@ -11,6 +11,8 @@ import { digestEmail } from '../api/_lib.js';
 import { startReportSubscription, CONSENT_VERSION } from '../lib/eve/subscribeReport.js';
 import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 import { buildFollowups, sameQuestion, isOpenEndedWhere } from '../src/lib/chatFollowups.js';
+import { HOME_REGIONS, regionTiles, regionRows, regionScopeContext, regionStarters, parseExplorePath, explorePath } from '../lib/homeRegions.js';
+import { vercelSpa } from '../lib/vercelSpa.js';
 
 function skill(name) {
   return readFileSync(new URL(`../agent/skills/${name}/SKILL.md`, import.meta.url), 'utf8');
@@ -169,6 +171,26 @@ export async function runEveAgentEvals() {
   }
   check('followups-never-repeat-question', echoes.length === 0, echoes.slice(0, 5).join(' | '));
   check('followups-repeat-detector', sameQuestion("Where's it dumping?", "Where's it dumping right now?") && !sameQuestion("How's Mammoth?", "Where's it dumping right now?"));
+
+  // Home "Browse by region" tiles + region-scoped chat view.
+  {
+    const gaz = JSON.parse(readFileSync(new URL('../public/data/gazetteer.json', import.meta.url), 'utf8'));
+    const cat = { ...catalog(), regions: gaz.regions || gaz };
+    const tiles = regionTiles(cat, HOME_REGIONS);
+    check('regions-tiles', tiles.length >= 6 && tiles.every(t => t.count > 0 && t.name && t.topName), JSON.stringify(tiles.map(t => [t.id, t.count])));
+    const utah = cat.regions.find(g => g.id === 'utah');
+    const rows = regionRows(utah, cat);
+    const trendUtah = getTrending({ region: utah.name, limit: 3 });
+    check('regions-rows-match-trending', rows.length > 0 && rows[0].r.id === trendUtah.data.rows[0].id && trendUtah.data.where === 'Utah', `${rows[0]?.r.id} vs ${trendUtah.data.rows[0]?.id}`);
+    const tileStatOk = tiles.find(t => t.id === 'utah')?.topName === rows[0].r.name;
+    check('regions-tile-stat', tileStatOk);
+    const ctx = regionScopeContext('Utah');
+    check('regions-scope-context', /getTrending with region "Utah"/.test(ctx) && /Scope every answer to Utah/.test(ctx));
+    check('regions-starters-scoped', regionStarters('Utah', 'Snowbird').every(q => /Utah|Snowbird/.test(q)));
+    check('regions-explore-path', parseExplorePath(explorePath('pacific-nw')) === 'pacific-nw' && parseExplorePath('/explore/../x') === null && parseExplorePath('/region/utah') === null);
+    check('regions-explore-rewrite', vercelSpa.rewrites.some(r => r.source === '/explore/:id' && r.destination === '/'));
+    check('regions-instructions', /Region pages \(page context\)/.test(persona) && /best \*\*in that region\*\*/.test(persona));
+  }
 
   // Compact model views: small, honest, and free of internal labels.
   const fullAlta = getResortConditions({ resort: 'alta' });

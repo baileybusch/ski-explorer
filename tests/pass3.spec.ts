@@ -28,9 +28,14 @@ test('Japan search shows interpretation chip and context CTA', async ({ page }) 
   await expect(page.getByTestId('alert-region-scope')).toBeVisible();
 });
 
-test('footer mentions MCP', async ({ page }) => {
+test('footer holds only legal / minimal links', async ({ page }) => {
   await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('site-footer').scrollIntoViewIfNeeded();
-  await expect(page.getByTestId('footer-mcp')).toBeVisible();
+  const footer = page.getByTestId('site-footer');
+  await footer.scrollIntoViewIfNeeded();
+  for (const id of ['footer-privacy', 'footer-terms', 'footer-unsubscribe', 'footer-credits', 'footer-dns']) {
+    await expect(page.getByTestId(id)).toBeVisible();
+  }
+  await expect(footer.locator('a[href*="/region/"]')).toHaveCount(0);
+  await expect(page.getByTestId('footer-categories')).toHaveCount(0);
 });
