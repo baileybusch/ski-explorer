@@ -1,80 +1,56 @@
-import { MenuIcon, SearchIcon, SparklesIcon } from 'lucide-react';
+import { ArrowLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BrandLogo } from '@/components/BrandLogo';
-import { GhostPrompt } from '@/components/GhostPrompt';
-import { BRAND } from '@/lib/brand';
-import { GHOSTS } from '@/lib/ghosts';
 
+/**
+ * Resorts page sub-header (under the app header, inside the list panel):
+ * page title + count, the active search chip, and "Back to all resorts" when scoped.
+ * The app header (logo · Resorts · account menu) is AppHeader.
+ */
 export function BoardChrome({
-  q, onOpenSearch, onMenu, onHome, onClearScope, scoped, loading, chip,
+  title, count, onClearScope, scoped, chip, showTitle = true,
 }: {
-  q: string;
-  onOpenSearch: () => void;
-  onMenu: () => void;
-  onHome: () => void;
+  title: string;
+  count: number;
   onClearScope: () => void;
   scoped?: boolean;
-  loading?: boolean;
   chip?: string;
+  /** Category pages render their own header block instead. */
+  showTitle?: boolean;
 }) {
+  if (!showTitle && !chip && !scoped) return null;
   return (
-    <header
-      className="mx-auto flex w-full flex-col gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] min-[840px]:px-6 min-[840px]:pt-4"
-      data-testid="board-chrome"
-    >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[840px]:grid-cols-[minmax(0,1fr)_minmax(0,34rem)_minmax(0,1fr)]">
-        <button
-          type="button"
-          className="col-start-1 row-start-1 flex min-h-11 min-w-0 items-center gap-2 justify-self-start rounded-full px-1 text-left"
-          aria-label={`${BRAND.name} home`}
-          data-testid="logo-home"
-          onClick={onHome}
-        >
-          <BrandLogo size="header" />
-        </button>
-        <button
-          type="button"
-          className="col-span-2 row-start-2 flex min-h-12 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left ring-1 ring-foreground/12 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring min-[840px]:col-span-1 min-[840px]:col-start-2 min-[840px]:row-start-1"
-          onClick={onOpenSearch}
-          data-testid="search-trigger"
-        >
-          {loading ? <SparklesIcon className="size-5 shrink-0 animate-pulse" /> : <SearchIcon className="size-5 shrink-0 opacity-70" />}
-          {q ? (
-            <span className="min-w-0 flex-1 truncate text-base text-muted-foreground">{q}</span>
-          ) : (
-            <GhostPrompt lines={GHOSTS} paused={!!q} />
-          )}
-        </button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="col-start-2 row-start-1 min-h-11 min-w-11 justify-self-end rounded-full min-[840px]:col-start-3"
-          aria-label="Menu"
-          data-testid="menu-button"
-          onClick={onMenu}
-        >
-          <MenuIcon />
-        </Button>
-      </div>
-      {chip ? (
-        <div className="flex flex-wrap items-center gap-2" data-testid="intent-chip">
-          <span className="rounded-full bg-card px-3 py-1.5 text-sm ring-1 ring-foreground/12">{chip}</span>
-          <Button type="button" variant="ghost" className="min-h-11 px-2 text-sm" data-testid="intent-clear" onClick={onClearScope}>
-            Clear
-          </Button>
+    <div className="flex flex-col gap-2 px-3 pt-3 min-[720px]:px-6 min-[720px]:pt-5" data-testid="board-scope-bar">
+      {showTitle ? (
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="font-display text-[1.9rem] leading-none tracking-wide min-[720px]:text-[2.25rem]" data-testid="board-title">{title}</h1>
+          <p className="shrink-0 text-xs text-muted-foreground min-[720px]:text-sm" data-testid="board-count">
+            {count} mountains · tap one to ask about it
+          </p>
         </div>
       ) : null}
-      {scoped ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="min-h-11 justify-start px-1 text-base"
-          data-testid="back-to-all"
-          onClick={onClearScope}
-        >
-          Back to all resorts
-        </Button>
+      {chip || scoped ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {scoped ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-10 gap-1.5 rounded-full px-3 text-sm"
+              data-testid="back-to-all"
+              onClick={onClearScope}
+            >
+              <ArrowLeftIcon className="size-4" /> Back to all resorts
+            </Button>
+          ) : null}
+          {chip ? (
+            <span className="flex items-center gap-1" data-testid="intent-chip">
+              <span className="rounded-full border border-[var(--surface-line)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm">{chip}</span>
+              <Button type="button" variant="ghost" className="min-h-10 px-2 text-sm" data-testid="intent-clear" onClick={onClearScope}>
+                Clear
+              </Button>
+            </span>
+          ) : null}
+        </div>
       ) : null}
-    </header>
+    </div>
   );
 }

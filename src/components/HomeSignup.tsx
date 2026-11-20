@@ -1,17 +1,22 @@
+import { BellIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConsentNote } from '@/components/ConsentNote';
+import { CtaCard } from '@/components/CtaCard';
 
-export function HomeSignup({ onStart }: { onStart: () => void }) {
+export function HomeSignup({ onStart, className = 'mt-8' }: { onStart: () => void; className?: string }) {
   return (
-    <section className="mx-auto mt-8 w-full max-w-xl px-3" data-testid="home-signup">
-      <h2 className="font-display text-4xl tracking-wide">Monitor your home resort</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Pick one mountain. We email you when it actually snows or a storm is lining up.
-      </p>
-      <Button type="button" className="mt-4 min-h-12 w-full px-5 text-base" data-testid="home-signup-submit" onClick={onStart}>
-        Monitor your home resort
-      </Button>
-      <ConsentNote compact className="mt-2 text-xs" testId="signup-consent" />
-    </section>
+    <CtaCard
+      testid="home-signup"
+      className={className}
+      icon={<BellIcon className="size-5" />}
+      title="Monitor your home resort"
+      body="Pick one mountain. We email you when it actually snows or a storm is lining up."
+      action={(
+        <Button type="button" className="min-h-12 w-full px-5 text-base" data-testid="home-signup-submit" onClick={onStart}>
+          Monitor your home resort
+        </Button>
+      )}
+      note={<ConsentNote compact className="text-xs" testId="signup-consent" />}
+    />
   );
 }

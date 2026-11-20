@@ -174,7 +174,7 @@ export function ResortProfile({
         >
           <div className={wrap} style={{ maxWidth: BOARD_LAYOUT.maxWidth }}>
             <section
-              className="grid gap-4 rounded-[var(--radius-card)] bg-card p-5 ring-1 ring-foreground/10 min-[840px]:grid-cols-[minmax(0,1fr)_14rem] min-[840px]:items-center min-[840px]:gap-10 min-[840px]:p-6"
+              className="cta-card grid gap-4 p-5 min-[840px]:grid-cols-[minmax(0,1fr)_15rem] min-[840px]:items-center min-[840px]:gap-10 min-[840px]:p-6"
               aria-label="Storm status"
               data-testid="tile-storm-status"
             >
@@ -203,7 +203,7 @@ export function ResortProfile({
               ) : null}
             </section>
 
-            <div className="mt-8 grid gap-x-10 gap-y-10 min-[840px]:mt-10 min-[840px]:grid-cols-12">
+            <div className="mt-6 grid gap-4 min-[840px]:mt-6 min-[840px]:grid-cols-12 min-[840px]:gap-5">
               <Block
                 title="Next 7 days"
                 note={isLive ? 'Live from Open-Meteo.' : 'From the morning snapshot until live weather loads.'}
@@ -321,7 +321,7 @@ function Block({
   children: ReactNode;
 }) {
   return (
-    <section className={`min-w-0 border-t border-foreground/12 pt-4 ${className}`} data-testid={testId}>
+    <section className={`surface-card min-w-0 p-5 min-[840px]:p-6 ${className}`} data-testid={testId}>
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       {note ? <p className="mt-0.5 text-sm text-muted-foreground">{note}</p> : null}
       <div className="mt-5">{children}</div>

@@ -55,7 +55,7 @@ Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬
 - **Columns never move.** Changing Rank by re-ranks rows (280ms FLIP, off under reduced motion) but the column template is fixed. The active column gets the bright number and bright header with the sort arrow; inactive numbers drop to 55% and their stakes to 45%.
 - **Headers are sticky and tappable.** On phones the Last 72h header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
 - **#1 is only lightly featured**: 7% tint and semibold name, same row height as everyone else so re-rank FLIP does not jump. It shares the template so its numbers sit in the same columns.
-- **Desktop Ask is a docked side panel** (≥1100px, `role="complementary"`, no close X). The search box focuses its input instead of opening a sheet.
+- **Resorts page chat is a docked side panel** (≥1024px) under the app header, beside the list; below 1024px a sticky "Ask SkiScope…" bar opens it as a sheet under the header. The header has no search box; rows ask the chat and a trailing chevron opens the resort page. See the design-pass section below.
 - Resort page uses the same 1200px column: hero (name left, two-stat right), storm status as the only raised panel (with Alert me), then ruled sections on a 12-column grid: Next 7 days (7) | Today on the mountain (5), Radar (7) | Mountain Facts (5), Snow history (12).
 
 ## Shape
@@ -109,3 +109,35 @@ Everything brand-facing reads `lib/brand.js`: name, both wordmarks, logo mark id
 - Tried: 4-column card grid on desktop (pass 5). Rejected: zigzag rank order, no column alignment.
 - Tried: 2-up phone cards (pass 9). Rejected: numbers didn't line up between cards, and the sort column couldn't stay put.
 - Tried: uppercase micro-labels on stats. Rejected: template tell, and they truncated at 320px.
+
+## Navy surfaces + chat-first resorts page (Nov 2026 design pass)
+
+Supersedes the pure-black "Ink" ground and the docked-Ask notes above. Bailey asked for clearer containment: where the chat starts and ends, and where each section begins.
+
+Defined in `src/index.css` under `.dark`. Components use these through Tailwind
+(`bg-card`, `text-muted-foreground`) or as `var(--token)`; avoid raw colors.
+
+| Token | Use |
+| --- | --- |
+| `--background` | Page. Deep navy slate (~#111a27), not pure black. |
+| `--card` / `--surface` | Sections, list panel, cards. Lighter and a bit more saturated than the page. |
+| `--surface-raised` | Chips, active nav pill, nested blocks. |
+| `--surface-line` | Visible 1px borders around contained surfaces. |
+| `--header-bg` | Sticky app header (blurred). |
+| `--ice` / `--ring` / `--accent` | Ice-blue accent tied to the snowflake mark: send button, focus rings, icons, eyebrow text. |
+| `--chat-panel`, `--chat-panel-line` | The chat's own tinted surface (`.chat-surface`). |
+| `--chat-input` | Chat composer field. |
+| `--bubble-user(-fg)` | User message bubble (ice-blue, white text). |
+| `--bubble-agent(-fg)` | Agent message bubble (raised slate). |
+| `--cta-bg`, `--cta-line` | CTA / promo container (`.cta-card`, `CtaCard`). |
+
+Utility classes (`@layer components`): `.surface-card`, `.chat-surface`, `.cta-card`.
+
+Layout pieces:
+- `AppHeader`: logo · Resorts · account menu (top right). Used on home, region view, resorts page.
+- `ChatDock`: one chat instance, docked side panel (≥1024px) or a sheet that opens from a sticky
+  "Ask SkiScope…" bar and starts below the header.
+- `CtaCard`: every signup/alert/promo block. Fills its column, copy left, action right.
+
+Contrast: `node scripts/check-contrast.mjs` checks every text/surface pair against WCAG AA
+(4.5:1 text, 3:1 accent/UI).

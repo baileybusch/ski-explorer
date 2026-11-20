@@ -21,7 +21,7 @@ test('board rows show last 72h and next 7 days as equal stat columns', async ({ 
 test('resort hero and storm status split actual vs forecast', async ({ page }) => {
   await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('block').first().click();
+  await page.getByTestId('row-open').first().click();
   await expect(page.getByTestId('profile-hero')).toBeVisible({ timeout: 20_000 });
   const hero = page.getByTestId('profile-hero');
   await expect(hero.getByTestId('snow-actual-label')).toHaveText(/Last 72h/i);

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftIcon, MessageCircleIcon, XIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeftIcon } from 'lucide-react';
+import { ChatDock } from '@/components/ChatDock';
 import { AgentChat } from '@/components/home/AgentChat';
 import { FullList } from '@/components/home/TrendingCards';
 import { snowAmount, type SnowUnits } from '@/lib/format';
@@ -27,7 +28,7 @@ export function RegionTiles({
           <button
             key={t.id}
             type="button"
-            className="flex min-h-[4.25rem] flex-col justify-between gap-1 rounded-xl bg-card px-3 py-2.5 text-left ring-1 ring-foreground/12 outline-offset-2 transition-shadow hover:ring-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
+            className="flex min-h-[4.25rem] flex-col justify-between gap-1 rounded-xl border border-[var(--surface-line)] bg-card px-3 py-2.5 text-left outline-offset-2 transition-colors hover:border-[var(--ice)]/45 hover:bg-[var(--surface-raised)] focus-visible:outline-2 focus-visible:outline-ring"
             data-testid="home-region-tile"
             data-region={t.id}
             aria-label={`${t.name}: ${t.count} resorts, top ${snowAmount(t.topCm, units)} in the last 72 hours`}
@@ -64,24 +65,13 @@ export function RegionView({
   const [ask, setAsk] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const scope = useMemo(() => ({ id: region.id, name: region.name, topName: rows[0]?.r.name || null }), [region, rows]);
-  const sheet = !wide && chatOpen;
-
-  useEffect(() => {
-    if (!sheet) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setChatOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
-  }, [sheet]);
-
   function askAbout(r: { id: string; name: string }) {
     setAsk({ text: `How's ${r.name} looking?`, n: Date.now() });
     if (!wide) setChatOpen(true);
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-3 pb-24 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_400px] min-[1024px]:gap-8 min-[1024px]:px-6 min-[1024px]:pb-10" data-testid="region-view" data-region={region.id}>
+    <div className="mx-auto w-full max-w-[1440px] px-3 pb-24 min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_400px] min-[1024px]:gap-8 min-[1024px]:px-6 min-[1024px]:pb-10" data-testid="region-view" data-region={region.id}>
       <div className="min-w-0">
         <button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground" data-testid="region-back" onClick={onBack}>
           <ArrowLeftIcon className="size-4" /> All regions
@@ -102,27 +92,22 @@ export function RegionView({
         </a>
       </div>
 
-      {/* One chat instance: side panel on desktop, full-screen sheet on mobile. */}
-      <aside
-        className={wide
-          ? 'sticky top-4 mt-4 flex max-h-[calc(100dvh-2rem)] flex-col self-start overflow-y-auto'
-          : sheet
-            ? 'fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-            : 'hidden'}
-        data-testid="region-chat"
-        data-open={wide || sheet ? '1' : '0'}
-        aria-label={`Chat about ${region.name}`}
+      {/* One chat instance: docked panel on desktop, sheet under the header on mobile. */}
+      <ChatDock
+        wide={wide}
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        title={`Ask about ${region.name}`}
+        subtitle={`${rows.length} resorts · live snow`}
+        barLabel={`Ask about ${region.name}…`}
+        className="sticky top-[calc(var(--app-header-h)+1rem)] mt-4 h-[calc(100dvh-var(--app-header-h)-2rem)] self-start"
+        testid="region-chat"
+        barTestid="region-chat-bar"
+        closeTestid="region-chat-close"
       >
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm text-muted-foreground">Ask about {region.name}</h2>
-          {!wide ? (
-            <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-foreground/5" aria-label="Close chat" data-testid="region-chat-close" onClick={() => setChatOpen(false)}>
-              <XIcon className="size-5" />
-            </button>
-          ) : null}
-        </div>
         <AgentChat
           key={region.id}
+          layout="panel"
           units={units}
           catalog={catalog}
           onOpen={onOpen}
@@ -132,21 +117,7 @@ export function RegionView({
           topNames={rows.slice(0, 3).map(x => x.r.name)}
           scope={scope}
         />
-      </aside>
-
-      {!wide && !chatOpen ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-background via-background/95 to-transparent">
-          <button
-            type="button"
-            className="flex min-h-12 w-full items-center gap-2.5 rounded-2xl bg-card px-4 text-left text-[15px] text-muted-foreground shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] ring-1 ring-foreground/15"
-            data-testid="region-chat-bar"
-            onClick={() => setChatOpen(true)}
-          >
-            <MessageCircleIcon className="size-4 shrink-0" />
-            <span className="truncate">Ask about {region.name}…</span>
-          </button>
-        </div>
-      ) : null}
+      </ChatDock>
     </div>
   );
 }

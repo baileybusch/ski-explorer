@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { openBoardChat } from './helpers/chat';
 
 const DIR = '/opt/cursor/artifacts/screenshots';
 
@@ -28,7 +29,7 @@ test('?brand=powtracker swaps name, mark, title, favicon and keeps the param', a
   await expect(mark).toHaveAttribute('data-variant', 'caps');
   await expect(mark).toHaveText('POWTRACKER');
   await expect(page.getByTestId('logo-home')).toHaveAccessibleName('PowTracker home');
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   await expect(page.getByLabel('Ask PowTracker', { exact: true }).last()).toBeVisible();
   await expect(page.getByLabel('Ask SkiScope', { exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape');
