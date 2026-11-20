@@ -1,3 +1,4 @@
+import '../../lib/eve/embeddedData';
 import { defineSchedule } from 'eve/schedules';
 import { sendDueReports } from '../../lib/eve/sendReports.js';
 

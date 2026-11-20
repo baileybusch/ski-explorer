@@ -1,3 +1,4 @@
+import '../../lib/eve/embeddedData';
 import { defineTool } from 'eve/tools';
 import { z } from 'zod';
 import { startReportSubscription } from '../../lib/eve/subscribeReport.js';

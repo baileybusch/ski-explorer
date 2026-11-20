@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { getTrending, getResortConditions, compareResorts, lookupUnknownResort, powderFlag, parseMeteoExtras, catalog, assertClimateRegions } from '../lib/eve/skiTools.js';
 import { readdirSync } from 'node:fs';
 import { powderDayCall } from '../lib/eve/powderDayCall.js';
+import { resortForModel, compareForModel, rankForModel, snowLevelWords } from '../lib/eve/modelView.js';
 import { presentingShortReport } from '../lib/eve/reportEmail.js';
 import { digestEmail } from '../api/_lib.js';
 import { startReportSubscription, CONSENT_VERSION } from '../lib/eve/subscribeReport.js';
@@ -142,6 +143,21 @@ export async function runEveAgentEvals() {
   const persona = readFileSync(new URL('../agent/instructions.md', import.meta.url), 'utf8');
   check('persona', /not recorded snowfall/i.test(persona));
   check('persona-skills', /presenting-snow-conditions/.test(persona) && /regional-snow-climates/.test(persona));
+  check('persona-chat-voice', /friend who knows snow/i.test(persona) && /Never say internal names/i.test(persona) && /Never "not reached base"/i.test(persona));
+  check('skill-presenting-chat-usage', /## Chat usage/.test(presenting) && /Go deeper only on request/i.test(presenting));
+
+  // Compact model views: small, honest, and free of internal labels.
+  const fullAlta = getResortConditions({ resort: 'alta' });
+  const viewAlta = resortForModel(fullAlta);
+  const viewAltaText = JSON.stringify(viewAlta);
+  check('model-view-small', viewAltaText.length < 2500 && viewAltaText.length < JSON.stringify(fullAlta).length / 2, String(viewAltaText.length));
+  check('model-view-honesty', /not recorded snowfall/i.test(viewAlta.honesty || '') && viewAlta.observed === true);
+  check('model-view-no-internal-names', !/powder-day-call|SNWD|mountain-wide"/i.test(viewAltaText), viewAltaText.slice(0, 200));
+  check('model-view-compare', compareForModel(compareResorts({ ids: ['alta', 'snowbird'] })).rows.length === 2);
+  check('model-view-rank', rankForModel(getTrending({ limit: 8 })).rows.length <= 8);
+  const below = snowLevelWords({ meanFt: 5000, baseFt: 8000, rainAtBase: false });
+  const rainy = snowLevelWords({ meanFt: 9500, baseFt: 8000, rainAtBase: true });
+  check('snow-level-plain-words', /stays below the base/.test(below) && /Rain likely at the base/.test(rainy) && !/not reached/i.test(below + rainy + snowLevelWords(null, null)));
   check('consent-version', CONSENT_VERSION === 'ss-consent-4');
 
   const copy = presentingShortReport({

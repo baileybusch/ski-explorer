@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { ArrowUpIcon, SquareIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
@@ -14,6 +14,7 @@ import { ExpertSnowMeta } from '@/components/ask/ExpertSnowMeta';
 import { WebLookupCard } from '@/components/home/WebLookupCard';
 import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
+import { ChatMarkdown } from '@/components/home/ChatMarkdown';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -105,7 +106,7 @@ function ToolCards({
 }
 
 function Composer({
-  input, setInput, onSubmit, busy, onStop, showGhost,
+  input, setInput, onSubmit, busy, onStop, showGhost, inputRef,
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -113,6 +114,7 @@ function Composer({
   busy: boolean;
   onStop?: () => void;
   showGhost: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const typing = input.length > 0;
   return (
@@ -128,6 +130,7 @@ function Composer({
             />
           ) : null}
           <InputGroupInput
+            ref={inputRef as any}
             value={input}
             onChange={e => setInput(e.target.value)}
             aria-label={`Ask ${BRAND.name}`}
@@ -135,7 +138,7 @@ function Composer({
             autoComplete="off"
             enterKeyHint="send"
             maxLength={400}
-            placeholder={showGhost && !typing ? '' : `Ask ${BRAND.name}`}
+            placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
           />
         </div>
         <InputGroupAddon align="inline-end">
@@ -154,77 +157,292 @@ function Composer({
   );
 }
 
+/** No tokens or tool output for this long while busy = treat the turn as failed. */
+const CHAT_STALL_MS = 40_000;
+
+export const STARTER_PROMPTS = [
+  "Where's it dumping right now?",
+  "How's Mammoth looking?",
+  'Compare Alta and Snowbird',
+  'Is it a powder day at Palisades?',
+];
+
+const TOOL_LABEL: Record<string, string> = {
+  getResortConditions: 'Checking the snow',
+  getSnowForecast: 'Reading the forecast',
+  compareResorts: 'Comparing mountains',
+  getTrending: "Finding who's getting dumped on",
+  searchResorts: 'Looking that up',
+  lookupUnknownResort: 'Running a quick web lookup',
+  startReportSubscription: 'Setting up your report',
+};
+
+function Chip({ children, onClick, testid, active }: { children: ReactNode; onClick: () => void; testid: string; active?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      className={`min-h-9 rounded-full px-3.5 py-1.5 text-[13px] leading-tight ring-1 transition-colors outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${active ? 'bg-foreground/[0.08] ring-foreground/25' : 'ring-foreground/15 hover:bg-foreground/[0.05]'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TypingBubble({ label }: { label?: string }) {
+  return (
+    <div className="flex items-center gap-2" data-testid="home-chat-typing" aria-live="polite" aria-label={label || 'Thinking'}>
+      <span className="inline-flex items-center gap-1 rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3 py-2.5">
+        <span className="chat-dot" />
+        <span className="chat-dot [animation-delay:150ms]" />
+        <span className="chat-dot [animation-delay:300ms]" />
+      </span>
+      {label ? <span className="text-xs text-muted-foreground">{label}…</span> : null}
+    </div>
+  );
+}
+
+type Followup = { label: string; send?: string; toggleData?: boolean };
+
+const CARD_KINDS = ['resort', 'compare', 'rank', 'forecast', 'web-lookup'];
+
+function cardsOf(m: any) {
+  return (m?.parts || []).filter((p: any) => p.type === 'tool' && p.output).map((p: any) => unwrap(p.output))
+    .filter((d: any) => d && CARD_KINDS.includes(d.kind));
+}
+
+function userTextBefore(messages: any[], idx: number) {
+  for (let i = idx - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return (messages[i].parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
+  }
+  return '';
+}
+
+/**
+ * 2–3 follow-up chips. Context comes from this answer's tool output, or from
+ * the latest earlier answer that had one (e.g. after a "Why?" deep dive).
+ */
+function followupsFor(messages: any[], idx: number): Followup[] {
+  const own = cardsOf(messages[idx]);
+  let main = own[0];
+  for (let i = idx - 1; !main && i >= 0; i--) main = cardsOf(messages[i])[0];
+  const asked = userTextBefore(messages, idx).toLowerCase();
+  const askedWhy = /\bwhy\b|walk me through/.test(asked);
+  const askedData = /numbers|data/.test(asked);
+  const data: Followup | null = own.length
+    ? { label: 'Show the data', toggleData: true }
+    : askedData ? null : { label: 'Show the numbers', send: 'Show me the key numbers.' };
+  const why: Followup | null = askedWhy ? null : { label: 'Why?', send: 'Why? Walk me through it.' };
+  const out: (Followup | null)[] = [];
+  if (!main) {
+    out.push({ label: "Where's it dumping?", send: "Where's it dumping right now?" }, { label: "How's Mammoth?", send: "How's Mammoth looking?" });
+  } else if (main.kind === 'compare') {
+    out.push(why, data, { label: 'Which has better snow?', send: 'Which one has the better snow quality?' });
+  } else if (main.kind === 'rank') {
+    const top = main.rows?.[0]?.name;
+    out.push(askedWhy ? null : { label: 'Why there?', send: 'Why there? Walk me through it.' }, data, top ? { label: `How's ${top}?`, send: `How's ${top} looking?` } : null);
+  } else {
+    const name = main.resort?.name || main.name || 'there';
+    out.push(why, data, { label: 'Where else is good?', send: `Where else should I go instead of ${name}?` });
+  }
+  return out.filter(Boolean).slice(0, 3) as Followup[];
+}
+
 function EveChat({
-  units, onOpen, onShowBoard, input, setInput,
+  units, onOpen, onShowBoard, input, setInput, askRequest, topNames,
 }: {
   units: SnowUnits;
   onOpen: (id: string) => void;
   onShowBoard: (out: RankOutput) => void;
   input: string;
   setInput: (v: string) => void;
+  askRequest: { text: string; n: number } | null;
+  topNames: string[];
 }) {
   const agent = useEveAgent({ prewarm: true });
-  const busy = agent.status === 'busy' || agent.status === 'resuming';
+  const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
   const messages = agent.messages || [];
+  const [failed, setFailed] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [shownData, setShownData] = useState<Set<string>>(() => new Set());
+  const lastQ = useRef('');
+  const scroller = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handledAsk = useRef<number | null>(null);
+  const busy = rawBusy && !failed;
+  // Progress signature: changes whenever tokens or tool parts arrive.
+  const progress = messages.reduce((n: number, m: any) => n + JSON.stringify(m.parts || []).length, messages.length);
+  const last: any = messages[messages.length - 1];
+
+  useEffect(() => {
+    if (agent.error && sent) setFailed(true);
+  }, [agent.error, sent]);
+
+  useEffect(() => {
+    if (!rawBusy || failed) return;
+    const t = window.setTimeout(() => {
+      setFailed(true);
+      agent.cancel().catch(() => {});
+    }, CHAT_STALL_MS);
+    return () => window.clearTimeout(t);
+  }, [rawBusy, failed, progress]);
+
+  useEffect(() => {
+    if (sent && !rawBusy && last?.role === 'user') setFailed(true);
+  }, [sent, rawBusy, last?.role, last?.id]);
+
+  // Auto-scroll the thread as tokens stream in.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [progress, busy, failed]);
+
+  async function ask(q: string) {
+    lastQ.current = q;
+    setFailed(false);
+    setSent(false);
+    try {
+      await agent.send(q);
+      setSent(true);
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  // Questions from outside the chat (thought-starter cards).
+  useEffect(() => {
+    if (!askRequest || handledAsk.current === askRequest.n) return;
+    if (rawBusy && !failed) return;
+    handledAsk.current = askRequest.n;
+    void ask(askRequest.text);
+  }, [askRequest, rawBusy, failed]);
 
   async function send(e: FormEvent) {
     e.preventDefault();
     const q = input.trim().slice(0, 400);
     if (!q || busy) return;
     setInput('');
-    await agent.send(q);
+    await ask(q);
   }
+
+  function toggleData(id: string) {
+    setShownData(s => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // What the typing indicator says: the running tool, else nothing.
+  const lastAssistant = last?.role === 'assistant' ? last : null;
+  const lastText = lastAssistant ? (lastAssistant.parts || []).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('').trim() : '';
+  const runningTool = lastAssistant ? [...(lastAssistant.parts || [])].reverse().find((p: any) => p.type === 'tool' && p.state !== 'completed' && !p.output) : null;
+  const showTyping = busy && (!lastAssistant || !lastText || !!runningTool);
+  const typingLabel = runningTool ? (TOOL_LABEL[runningTool.name] || 'Checking the snow') : undefined;
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 pt-4 pb-4 min-[720px]:px-5" data-testid="home-chat-scroll">
         {messages.length ? (
-          <ol className="flex flex-col gap-6" data-testid="home-ask-thread">
+          <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
             {messages.map((m: any) => {
               if (m.role === 'user') {
                 const text = (m.parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
                 return (
                   <li key={m.id} className="flex justify-end" data-testid="home-ask-user">
-                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-card px-3.5 py-2 text-[15px] leading-snug ring-1 ring-foreground/12">{text}</p>
+                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-[15px] leading-snug text-primary-foreground">{text}</p>
                   </li>
                 );
               }
               const text = (m.parts || []).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n\n').trim();
-              const tools = (m.parts || []).filter((p: any) => p.type === 'tool');
+              const tools = (m.parts || []).filter((p: any) => p.type === 'tool' && p.output);
+              const isLast = m.id === last?.id;
+              const chips = isLast && !busy && !failed && text ? followupsFor(messages, messages.indexOf(m)) : [];
+              const dataOpen = shownData.has(m.id);
+              if (!text && !dataOpen) return null;
               return (
-                <li key={m.id} className="flex flex-col gap-3" data-testid="home-ask-answer">
-                  {text ? <p className="max-w-[62ch] text-[15px] leading-relaxed whitespace-pre-line">{text}</p> : null}
-                  {tools.length ? <ToolCards parts={tools} units={units} onOpen={onOpen} onShowBoard={onShowBoard} /> : null}
+                <li key={m.id} className="flex flex-col items-start gap-2" data-testid="home-ask-answer">
+                  {text ? (
+                    <div className="max-w-[min(92%,62ch)] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-bubble">
+                      <ChatMarkdown text={text} />
+                    </div>
+                  ) : null}
+                  {dataOpen && tools.length ? (
+                    <div className="flex w-full max-w-[62ch] flex-col gap-3" data-testid="home-chat-data">
+                      <ToolCards parts={tools} units={units} onOpen={onOpen} onShowBoard={onShowBoard} />
+                    </div>
+                  ) : null}
+                  {chips.length ? (
+                    <div className="flex flex-wrap gap-2 pt-0.5" data-testid="home-chat-followups">
+                      {chips.map(c => (
+                        <Chip
+                          key={c.label}
+                          testid="home-chat-followup"
+                          active={c.toggleData && dataOpen}
+                          onClick={() => (c.toggleData ? toggleData(m.id) : c.send ? void ask(c.send) : undefined)}
+                        >
+                          {c.toggleData && dataOpen ? 'Hide the data' : c.label}
+                        </Chip>
+                      ))}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
-            {busy ? <li><PartPending label="Checking the snow" /></li> : null}
+            {showTyping ? <li><TypingBubble label={typingLabel} /></li> : null}
+            {failed ? (
+              <li className="flex flex-wrap items-center gap-3 rounded-xl bg-card px-3.5 py-3 text-sm ring-1 ring-foreground/10" data-testid="home-chat-error" role="alert">
+                <span>Sorry, the snow desk didn&rsquo;t answer. Try again in a moment.</span>
+                <button type="button" className="rounded-full px-3 py-1 text-sm font-medium ring-1 ring-foreground/20 hover:bg-foreground/5" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
+                  Retry
+                </button>
+              </li>
+            ) : null}
           </ol>
         ) : (
-          <p className="max-w-[40ch] text-[15px] leading-snug text-muted-foreground" data-testid="home-chat-empty">
-            Ask about any Ikon or Epic mountain, or a peak we do not list yet.
-          </p>
+          <EmptyState onPick={q => void ask(q)} />
         )}
       </div>
-      <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} />
+      <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} inputRef={inputRef} />
     </>
   );
 }
 
+function EmptyState({ onPick }: { onPick: (q: string) => void }) {
+  return (
+    <div className="flex h-full flex-col justify-end gap-3" data-testid="home-chat-empty-state">
+      <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-empty">
+        Hey! Ask me where to ski, how a mountain&rsquo;s looking, or who&rsquo;s getting the most snow. I&rsquo;ll give you a straight answer.
+      </div>
+      <div className="flex flex-wrap gap-2" data-testid="home-chat-starters">
+        {STARTER_PROMPTS.map(q => (
+          <Chip key={q} testid="home-chat-starter" onClick={() => onPick(q)}>{q}</Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AgentChat({
-  units, catalog, onOpen, onShowBoard, board,
+  units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [],
 }: {
   units: SnowUnits;
   catalog: any;
   onOpen: (id: string) => void;
   onShowBoard: (out: RankOutput) => void;
   board: { pass: 'ikon' | 'epic' | 'all'; regionId: string | null; observedOnly: boolean };
+  /** A question sent from outside the chat (e.g. a thought-starter card). */
+  externalAsk?: { text: string; n: number } | null;
+  /** Trending resort names, for follow-up chips like "vs Alta". */
+  topNames?: string[];
 }) {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'boot' | 'eve' | 'fallback'>('boot');
   const [askOpen, setAskOpen] = useState(false);
   const [pendingQ, setPendingQ] = useState<string | null>(null);
   const [askRequest, setAskRequest] = useState<{ text: string; n: number } | null>(null);
+  const handledExternal = useRef<number | null>(null);
 
   useEffect(() => {
     let gone = false;
@@ -253,20 +471,44 @@ export function AgentChat({
     setPendingQ(null);
   }, [askOpen, pendingQ]);
 
-  function submitFallback(e: FormEvent) {
-    e.preventDefault();
-    const q = input.trim().slice(0, 400);
-    if (!q) return;
-    setInput('');
+  // Fallback mode: route outside questions into the deterministic Ask panel.
+  useEffect(() => {
+    if (mode !== 'fallback' || !externalAsk || handledExternal.current === externalAsk.n) return;
+    handledExternal.current = externalAsk.n;
+    setAskOpen(true);
+    setPendingQ(externalAsk.text);
+  }, [mode, externalAsk]);
+
+  function askFallback(q: string) {
     setMode(m => (m === 'eve' ? m : 'fallback'));
     setAskOpen(true);
     setPendingQ(q);
   }
 
+  function submitFallback(e: FormEvent) {
+    e.preventDefault();
+    const q = input.trim().slice(0, 400);
+    if (!q) return;
+    setInput('');
+    askFallback(q);
+  }
+
   return (
-    <div className="flex min-h-[11rem] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:min-h-[22rem]" data-testid="home-chat" data-mode={mode}>
+    <div
+      className="flex h-[min(34rem,68dvh)] min-h-[20rem] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]"
+      data-testid="home-chat"
+      data-mode={mode}
+    >
       {mode === 'eve' ? (
-        <EveChat units={units} onOpen={onOpen} onShowBoard={onShowBoard} input={input} setInput={setInput} />
+        <EveChat
+          units={units}
+          onOpen={onOpen}
+          onShowBoard={onShowBoard}
+          input={input}
+          setInput={setInput}
+          askRequest={externalAsk}
+          topNames={topNames}
+        />
       ) : mode === 'fallback' && askOpen ? (
         <AskPanel
           open
@@ -283,10 +525,8 @@ export function AgentChat({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
-            <p className="max-w-[40ch] text-[15px] leading-snug text-muted-foreground" data-testid="home-chat-empty">
-              Ask about any Ikon or Epic mountain, or a peak we do not list yet.
-            </p>
+          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-4 pb-4 min-[720px]:px-5">
+            <EmptyState onPick={askFallback} />
           </div>
           <Composer input={input} setInput={setInput} onSubmit={submitFallback} busy={false} showGhost />
         </>
