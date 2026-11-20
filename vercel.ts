@@ -5,9 +5,9 @@ import { vercelSpa } from './lib/vercelSpa.js';
  * Compose the Vite SPA + existing /api functions with the eve agent service.
  * vercel.json cannot coexist with vercel.ts.
  *
- * withEve prepends /eve/v1/* to the generated agent service. The /api/*
- * serverless functions are built by the web service, so /api must route to web
- * (a plain-string destination or an /api exclusion leaves them unreachable: 404).
+ * withEve prepends /eve/v1/* to the generated agent service. With services
+ * configured, Vercel does not build the zero-config api/ directory, so the
+ * handlers ship as the `api` service (api/index.js dispatches by path).
  *
  * Vercel Services cannot mix top-level `framework` / `buildCommand` /
  * `outputDirectory` / `functions` with `services` (SERVICES_AND_TOP_LEVEL_BUILD_SETTINGS).
@@ -27,16 +27,23 @@ export default await withEve({
       root: '.',
       buildCommand: 'npm run build',
       outputDirectory: 'dist',
-      functions: vercelSpa.functions,
-      // Service-scoped: run after ingress picks `web`, so /api/observed ->
-      // /api/headless?surface=observed etc. resolve to this service's functions.
-      rewrites: vercelSpa.rewrites,
+      // SPA deep-link rewrites only; /api/* belongs to the `api` service.
+      rewrites: (vercelSpa.rewrites || []).filter(r => !String(r.source).startsWith('/api')),
+    },
+    // With services configured Vercel skips the zero-config api/ directory, so
+    // the existing handlers ship as one function that dispatches by path.
+    api: {
+      root: '.',
+      entrypoint: 'api/index.js',
+      functions: {
+        'api/index.js': { includeFiles: 'public/data/**', maxDuration: 300 },
+      },
     },
   },
-  // withEve prepends ^/eve/v1/(.*)$ -> eve. Everything else (SPA + /api/*
-  // serverless functions, which live in the web service) goes to web.
-  // Routing into a service is final, so /api must not be excluded here.
+  // withEve prepends ^/eve/v1/(.*)$ -> eve. /api/* -> api service; the rest
+  // (SPA) -> web. Routing into a service is final, so order matters.
   routes: [
+    { src: '^/api(?:/.*)?$', destination: { type: 'service', service: 'api' } },
     { src: '^/(.*)$', destination: { type: 'service', service: 'web' } },
   ],
 });
