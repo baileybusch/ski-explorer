@@ -1,6 +1,6 @@
 import { ForbiddenError, localDev, none, vercelOidc } from 'eve/channels/auth';
 import { eveChannel, eveVercelOidc, type EveAuthFn } from 'eve/channels/eve';
-import { createLimiter, RATE_LIMITED_CODE, RATE_LIMITED_MESSAGE } from '../../lib/eve/rateLimit.js';
+import { createLimiter, ipOf, RATE_LIMITED_CODE, RATE_LIMITED_MESSAGE } from '../../lib/eve/rateLimit.js';
 
 // Questions: 20 per 10 min per IP. Session setup + stream reconnects: a separate,
 // much looser bucket (see lib/eve/rateLimit.js), so idle tabs don't eat the budget.
@@ -15,7 +15,7 @@ const publicChat: EveAuthFn = async (request) => {
   const verdict = limiter.check(request);
   // TEMP diagnostics (remove before merge): which instance counted what.
   seen++;
-  const ipTag = [...(request.headers.get('x-forwarded-for') || 'none')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
+  const ipTag = [ipOf(request)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
   console.log(`[rl] inst=${INSTANCE} seen=${seen} kind=${verdict.kind} ok=${verdict.ok} ip#${ipTag} ${request.method} ${new URL(request.url).pathname.replace(/wrun_\w+/, 'wrun_X')}`);
   if (!verdict.ok) {
     throw new ForbiddenError({ code: RATE_LIMITED_CODE, message: RATE_LIMITED_MESSAGE });
