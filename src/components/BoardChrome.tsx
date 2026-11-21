@@ -24,7 +24,7 @@ export function BoardChrome({
         <div className="flex items-baseline justify-between gap-3">
           <h1 className="font-display text-[1.9rem] leading-none tracking-wide min-[720px]:text-[2.25rem]" data-testid="board-title">{title}</h1>
           <p className="shrink-0 text-xs text-muted-foreground min-[720px]:text-sm" data-testid="board-count">
-            {count} mountains · tap one to ask about it
+            {count} mountains · tap one for its snow
           </p>
         </div>
       ) : null}

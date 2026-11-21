@@ -1,3 +1,4 @@
+import { trackAgentCalls, expectNoQuestionSent } from './helpers/chat';
 import { expect, test, type Page } from '@playwright/test';
 
 const isDesktop = (name: string) => name.startsWith('desktop');
@@ -95,7 +96,7 @@ test('iPhone 13 shows at least 8 resorts on the first screen', async ({ page }, 
   expect(visible).toBeGreaterThanOrEqual(8);
 });
 
-test('desktop: chat docks under the header beside the list; menu is top-right; rows ask the chat', async ({ page }, info) => {
+test('desktop: chat docks under the header beside the list; menu is top-right; rows show data, then ask', async ({ page }, info) => {
   test.skip(!isDesktop(info.project.name), 'docked panel is desktop only');
   await openBoard(page);
   await expect(page.getByTestId('nav-resorts')).toHaveText('Resorts');
@@ -119,10 +120,13 @@ test('desktop: chat docks under the header beside the list; menu is top-right; r
   // The list scrolls on its own; the chat stays put.
   await page.getByTestId('board-b').evaluate(el => { el.scrollTop = 600; });
   expect((await dock.boundingBox())!.y).toBe(d.y);
-  // Row tap asks the chat (board stays); chevron opens the resort page.
+  // Row tap shows that resort's data in the dock (board stays); its Ask button asks the chat; chevron opens the resort page.
   const first = page.getByTestId('block').first();
   const name = (await first.getAttribute('aria-label'))!.split(':')[0];
   await first.click();
+  await expect(dock.getByTestId('resort-peek-name')).toHaveText(name.split(',')[0]);
+  await expect(dock.getByTestId('ask-user')).toHaveCount(0);
+  await dock.getByTestId('resort-peek-ask').click();
   await expect(dock.getByTestId('ask-user').last()).toContainText(name.split(' ')[0], { timeout: 15_000 });
   await expect(page.getByTestId('board-b')).toBeVisible();
   await page.getByTestId('row-open').first().click();
@@ -148,8 +152,39 @@ test('mobile: sticky Ask bar opens the chat sheet below the header; menu stays r
   await page.keyboard.press('Escape');
   await page.getByTestId('board-chat-close').click();
   await expect(sheet).toHaveAttribute('data-open', '0');
-  // Row tap opens the sheet and asks about that resort.
+  // Row tap opens the sheet with that resort's data; nothing is sent until a prompt is tapped.
+  const calls = trackAgentCalls(page);
   await page.getByTestId('block').first().click();
   await expect(sheet).toHaveAttribute('data-open', '1');
-  await expect(sheet.getByTestId('ask-user').last()).toBeVisible({ timeout: 15_000 });
+  await expect(sheet.getByTestId('resort-peek')).toBeVisible();
+  await page.waitForTimeout(800);
+  await expectNoQuestionSent(page, sheet);
+  expect(calls).toHaveLength(0);
+  await sheet.getByTestId('resort-peek-ask').click();
+  await expect(sheet.getByTestId('resort-peek')).toHaveCount(0);
+  await expect(sheet.locator('[data-testid=home-ask-user], [data-testid=ask-user]').last()).toBeVisible({ timeout: 15_000 });
+});
+
+test('mountain click shows its data first and spends no agent call (desktop dock)', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'desktop dock');
+  const calls = trackAgentCalls(page);
+  await page.goto('/?ss=board');
+  const row = page.getByTestId('block').first();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  const id = await row.getAttribute('data-resort');
+  await row.click();
+  const dock = page.getByTestId('board-chat');
+  const peek = dock.getByTestId('resort-peek');
+  await expect(peek).toBeVisible();
+  if (id) await expect(peek).toHaveAttribute('data-resort', id);
+  await expect(peek.getByTestId('resort-peek-snow')).toBeVisible();
+  await expect(peek.getByTestId('resort-peek-status')).not.toBeEmpty();
+  await expect(peek.getByTestId('resort-peek-now')).toContainText(/Today/);
+  await expect(peek.getByTestId('resort-peek-forecast').locator('li')).toHaveCount(5);
+  await expect(peek.getByTestId('resort-peek-prompt')).toHaveCount(2);
+  await page.waitForTimeout(1000);
+  await expectNoQuestionSent(page, dock);
+  expect(calls).toHaveLength(0);
+  await peek.getByTestId('resort-peek-close').click();
+  await expect(peek).toHaveCount(0);
 });

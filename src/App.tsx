@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
@@ -6,6 +6,8 @@ import { AppHeader } from '@/components/AppHeader';
 import { ChatDock } from '@/components/ChatDock';
 import { AgentChat } from '@/components/home/AgentChat';
 import { AskPanel } from '@/components/ask/AskPanel';
+import { ResortPeek } from '@/components/ResortPeek';
+import { scrollAppToTop } from '@/lib/scrollTop';
 import { BlockBoard } from '@/components/BlockBoard';
 import type { RankOutput } from '@/lib/askTypes';
 import { TripOnboarding } from '@/components/TripOnboarding';
@@ -142,6 +144,7 @@ export default function App() {
   const [focusResort, setFocusResort] = useState<{ id: string; name: string } | null>(null);
   const [boardAsk, setBoardAsk] = useState<{ text: string; n: number } | null>(null);
   const [boardChatOpen, setBoardChatOpen] = useState(false);
+  const [boardPeek, setBoardPeek] = useState<string | null>(null);
 
   const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId);
 
@@ -436,11 +439,19 @@ export default function App() {
   const askDocked = wide && view === 'board' && !!catalog;
   const askVisible = searchOpen && view !== 'board';
 
+  /** Row click shows that mountain's data in the chat panel; nothing is sent to the agent until a prompt is tapped. */
+  const boardPeekResort = boardPeek && catalog ? catalog.resorts.find((x: any) => x.id === boardPeek) || null : null;
   function askBoard(r: { id: string; name: string }) {
-    setBoardAsk({ text: `How's ${r.name} looking?`, n: Date.now() });
+    setBoardPeek(r.id);
     if (!wide) setBoardChatOpen(true);
   }
+  function sendBoard(text: string) {
+    setBoardPeek(null);
+    setBoardAsk({ text, n: Date.now() });
+  }
   useEffect(() => { if (askVisible) setAskMounted(true); }, [askVisible]);
+  // Route changes (home ↔ resorts ↔ resort page ↔ category pages) open at the top.
+  useLayoutEffect(() => { scrollAppToTop(); }, [view, selectedId, landing?.kind, landing?.id]);
 
   const rowsAll = useMemo(() => {
     if (!catalog) return [];
@@ -525,7 +536,7 @@ export default function App() {
   ) : null;
 
   return (
-    <div className={`relative h-full min-h-dvh w-full bg-background ${view === 'home' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+    <div data-app-scroller className={`relative h-full min-h-dvh w-full bg-background ${view === 'home' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       {catalog ? (
         <GlobeMap
           ref={globe}
@@ -743,6 +754,22 @@ export default function App() {
             barTestid="search-trigger"
             closeTestid="board-chat-close"
           >
+            {boardPeekResort ? (
+              <ResortPeek
+                key={boardPeekResort.id}
+                resort={boardPeekResort}
+                snow={catalog.snow}
+                units={units}
+                tempUnits={tempUnits}
+                onAsk={sendBoard}
+                onOpen={id => openResort(id)}
+                onClose={() => setBoardPeek(null)}
+                className="min-h-0 flex-1"
+                showInput
+              />
+            ) : null}
+            {/* Kept mounted (conversation survives) but hidden while a mountain summary shows. */}
+            <div className={boardPeekResort ? 'hidden' : 'contents'} data-testid="board-chat-thread">
             <AgentChat
               layout="panel"
               units={units}
@@ -768,6 +795,7 @@ export default function App() {
               topNames={rowsAll.slice(0, 3).map(x => x.r.name)}
               scope={facets.regionId && facets.regionName ? { id: facets.regionId, name: facets.regionName, topName: rowsAll[0]?.r.name || null } : null}
             />
+            </div>
           </ChatDock>
           </div>
         </div>

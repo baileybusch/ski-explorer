@@ -15,8 +15,11 @@ import { HOME_REGIONS, regionTiles, regionRows, regionScopeContext, regionStarte
 import { vercelSpa } from '../lib/vercelSpa.js';
 import { ensureLiveData, resetLiveData, liveOrigin, LIVE_TTL_MS } from '../lib/eve/liveData.js';
 import { loadRaw, buildCatalog, setCatalog } from '../lib/skiscope-tools/catalog.js';
-import { weekendIdx, weekendSnow } from '../lib/skiscope-tools/weekend.js';
-import { voiceIssues, isWeekendQuestion } from '../lib/eve/voiceLint.js';
+import { weekendIdx, weekendSnow, weekendFromDays, weekendWindowIdx } from '../lib/skiscope-tools/weekend.js';
+import { dumpParts } from '../lib/dumpScore.js';
+import { newSnowWords } from '../lib/eve/modelView.js';
+import { normalizeChatText } from '../src/lib/chatText.js';
+import { voiceIssues, isWeekendQuestion, answerOrderIssues, isResortLookQuestion } from '../lib/eve/voiceLint.js';
 import { json as modelJson, BANNED_MODEL_PHRASES } from '../lib/eve/modelView.js';
 
 function skill(name) {
@@ -175,6 +178,10 @@ export async function runEveAgentEvals() {
     for (const c of buildFollowups({ asked, main, hasOwnData })) if (sameQuestion(c.send || c.label, asked) || sameQuestion(c.label, asked)) echoes.push(`${main?.kind || 'none'}: ${asked} -> ${c.label}`);
   }
   check('followups-never-repeat-question', echoes.length === 0, echoes.slice(0, 5).join(' | '));
+  {
+    const chips = buildFollowups({ asked: "How's June looking?", main: { kind: 'resort', resort: { name: 'June Mountain' } }, hasOwnData: true }).map(c => c.label);
+    check('followups-resort-peel-back', chips[0] === 'Why?' && chips.includes('Tell me more about the snow') && chips.includes("Where's better?"), JSON.stringify(chips));
+  }
   check('followups-repeat-detector', sameQuestion("Where's it dumping?", "Where's it dumping right now?") && !sameQuestion("How's Mammoth?", "Where's it dumping right now?"));
 
   // Home "Browse by region" tiles + region-scoped chat view.
@@ -280,6 +287,50 @@ export async function runEveAgentEvals() {
       && voiceIssues('Stevens Pass: about 24 in over the next 7 days.', { weekend: true }).includes('weekend-uses-7-day'));
     check('voice-lint-passes-good', voiceIssues('Snowbasin is the call: about 22 inches in three days. Alta is close behind.').length === 0
       && voiceIssues('Hakuba for Sat–Sun: about 14 inches forecast. Les 3 Vallées gets about 11.', { weekend: true }).length === 0);
+    // Regression (Sat Nov 21 2026): the weekend window and Next 7 days start on the same day
+    // (tomorrow), so a big snow day today can't make the weekend exceed the week.
+    {
+      const dates = Array.from({ length: 17 }, (_, i) => new Date(Date.UTC(2026, 10, 14 + i)).toISOString().slice(0, 10));
+      const sf = dates.map(() => 0);
+      sf[7] = 24.1; sf[8] = 1.2; sf[13] = 3; sf[14] = 4; // Sat 21 (today) heavy, Sun 22 light, Fri 27/Sat 28 later
+      const r = { id: 'pin' };
+      const sat = { dates, today: 7, resorts: { pin: { sf } } };
+      const sun = { dates, today: 8, resorts: { pin: { sf } } };
+      const wSat = weekendSnow(r, sat), wSun = weekendSnow(r, sun);
+      const n7Sat = dumpParts(r, sat).next7Cm, n7Sun = dumpParts(r, sun).next7Cm;
+      check('weekend-saturday-pinned', dates[7] === '2026-11-21' && JSON.stringify(wSat.days) === '["2026-11-22"]' && wSat.cm === 1.2 && wSat.cm <= n7Sat && dumpParts(r, sat).past24Cm === 24.1,
+        JSON.stringify({ wSat, n7Sat }));
+      check('weekend-sunday-pinned', JSON.stringify(wSun.days) === '["2026-11-28","2026-11-29"]' && wSun.cm <= n7Sun && JSON.stringify(weekendWindowIdx(sun)) === '[14,15]',
+        JSON.stringify({ wSun, n7Sun }));
+      const live = [{ date: '2026-11-21', snowCm: 24.1 }, { date: '2026-11-22', snowCm: 1.2 }, { date: '2026-11-23', snowCm: 0 }];
+      check('weekend-live-days-skip-today', weekendFromDays(live, { today: '2026-11-21' }).snowIn === 0.5 && weekendFromDays(live, { today: '2026-11-21' }).label === 'Sun Nov 22',
+        JSON.stringify(weekendFromDays(live, { today: '2026-11-21' })));
+      const allCat = catalog();
+      const over = allCat.resorts.filter(x => weekendSnow(x, allCat.snow).cm > dumpParts(x, allCat.snow).next7Cm + 0.05).map(x => x.id);
+      check('weekend-never-above-next7-all-resorts', over.length === 0, over.slice(0, 5).join());
+    }
+    check('voice-lint-flags-fell', voiceIssues('Mammoth: about 35" fell in the last three days.').includes('fell')
+      && voiceIssues('Mammoth has about 35" of new snow in three days, estimated.').length === 0);
+    check('new-snow-words-estimated', newSnowWords({ actual72In: 34.6, estimated: false, method: 'swe-slr' }) === 'about 35" of new snow in three days, estimated'
+      && newSnowWords({ actual72In: 10, estimated: false, method: 'snwd-peak' }) === 'about 10" of new snow in three days'
+      && newSnowWords({ actual72In: 3, estimated: true }) === 'about 3" of new snow in three days, estimated');
+    check('chat-text-bullets-normalized', normalizeChatText('Go.\n\n- Last\u201172\u202Fh: \u224835\u202F\u2033 new snow\n-\u00A0Base: 17\u202F\u2033\n\u2022 Next 7 days: 0.6\u2033 at 10:30')
+      === 'Go.\n\n- Last 72h: \u224835\u2033 new snow\n- Base: 17\u2033\n- Next 7 days: 0.6\u2033 at 10:30', JSON.stringify(normalizeChatText('- Last\u201172\u202Fh: \u224835\u202F\u2033')));
+    // "How's X looking?": context first (what happened → now → coming), "My take:" last.
+    check('answer-order-instructions', /context first and the call last/i.test(persona) && /What just happened/.test(persona) && /Current conditions/.test(persona) && /What's coming/.test(persona) && /starting with "My take:"/.test(persona) && /Don't open with a verdict/.test(persona));
+    check('answer-order-skill', /context first, the call last/i.test(presenting) && /My take:/.test(presenting) && /Never open with a verdict/.test(presenting));
+    {
+      const ex = persona.match(/User: How's Mammoth looking\?\nYou: ([^\n]+)/)?.[1] || '';
+      check('answer-order-persona-example', ex && answerOrderIssues(ex).length === 0, JSON.stringify(answerOrderIssues(ex)));
+      const skillEx = [...presenting.matchAll(/\*\*SkiScope:\*\* ([^\n]+)/g)].map(m => m[1]);
+      check('answer-order-skill-examples', skillEx.length >= 2 && skillEx.every(x => answerOrderIssues(x).length === 0), JSON.stringify(skillEx.map(answerOrderIssues)));
+    }
+    check('answer-order-flags-verdict-first', answerOrderIssues("June's a no. It got 22\" but nothing is coming.").includes('verdict-first')
+      && answerOrderIssues('Mammoth is the call right now. About 35" of new snow, estimated. My take: go.').includes('verdict-first')
+      && answerOrderIssues('There was just a storm, about 22" of new snow, estimated. Today is cold. Nothing is coming this week.').includes('take-missing'));
+    check('answer-order-passes-good', answerOrderIssues('There was just a storm: about 22" of new snow in three days, estimated. Today\'s dry and cold, and the snow is heavy. Nothing much is coming this week. My take: it\'s not the one to pick right now.').length === 0);
+    check('answer-order-question-detector', isResortLookQuestion("How's June looking?") && isResortLookQuestion('how is Alta looking this weekend') && !isResortLookQuestion("Where's it dumping right now?"));
+    check('answer-order-model-view', /My take:/.test(resortForModel(getResortConditions({ resort: 'june' })).howToAnswer || ''));
     check('voice-weekend-detector', isWeekendQuestion('Where should I ski this weekend?') && !isWeekendQuestion("Where's it dumping right now?"));
   }
 

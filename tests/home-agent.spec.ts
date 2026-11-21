@@ -1,3 +1,4 @@
+import { trackAgentCalls, expectNoQuestionSent } from './helpers/chat';
 import { expect, test } from '@playwright/test';
 
 test('homepage leads with chat, then 3 thought-starter cards and a rotating ghost', async ({ page }) => {
@@ -67,13 +68,20 @@ test('See all expands the full list with aligned Actual and Forecast columns', a
   await expect(page.getByTestId('home-full-board')).toBeVisible();
 });
 
-test('clicking a thought-starter card asks the chat about that resort', async ({ page }) => {
+test('clicking a thought-starter card shows its data; a prompt then asks the chat', async ({ page }) => {
   test.setTimeout(60_000);
+  const calls = trackAgentCalls(page);
   await page.goto('/');
   await expect(page.getByTestId('home-chat')).toHaveAttribute('data-mode', /eve|fallback/, { timeout: 15_000 });
   const card = page.getByTestId('home-trending-card').first();
   const name = (await card.getByTestId('home-trending-name').innerText()).trim();
   await card.click();
+  const peek = page.getByTestId('resort-peek');
+  await expect(peek.getByTestId('resort-peek-name')).toHaveText(name);
+  await page.waitForTimeout(800);
+  await expectNoQuestionSent(page);
+  expect(calls).toHaveLength(0);
+  await peek.getByTestId('resort-peek-ask').click();
   await expect(page.getByTestId('home-chat')).toContainText(name, { timeout: 40_000 });
 });
 

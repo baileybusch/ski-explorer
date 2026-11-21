@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { scrollAppToTop } from '@/lib/scrollTop';
 import { SnowflakeIcon } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { FullList, TrendingCards } from '@/components/home/TrendingCards';
 import { AgentChat } from '@/components/home/AgentChat';
+import { ResortPeek } from '@/components/ResortPeek';
 import { RegionTiles, RegionView } from '@/components/home/RegionView';
 import { explorePath, parseExplorePath } from '../../../lib/homeRegions.js';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -46,8 +48,13 @@ export function HomeLanding({
   function openRegion(id: string) {
     history.pushState({ ss: 'home', region: id }, '', explorePath(id) + location.search);
     setRegionId(id);
-    window.scrollTo({ top: 0 });
   }
+  // Entering or leaving a region (tile tap, back/forward) opens at the top.
+  const firstRender = useRef(true);
+  useLayoutEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    scrollAppToTop();
+  }, [regionId]);
   function closeRegion() {
     if (history.state?.region) history.back();
     else {
@@ -57,10 +64,16 @@ export function HomeLanding({
   }
   const rest = rows.slice(TOP, INLINE_MAX);
 
-  // Card click = ask the chat about that resort (chat is the focus).
+  // Card click shows that mountain's data above the chat; the agent is asked only when a prompt is tapped.
+  const [peek, setPeek] = useState<string | null>(null);
+  const peekResort = peek ? (catalog.resorts || []).find((x: any) => x.id === peek) || null : null;
   function askAbout(r: { id: string; name: string }) {
-    setAsk({ text: `How's ${r.name} looking?`, n: Date.now() });
+    setPeek(r.id);
     chatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function sendPeek(text: string) {
+    setPeek(null);
+    setAsk({ text, n: Date.now() });
   }
 
   return (
@@ -78,6 +91,18 @@ export function HomeLanding({
             <SnowflakeIcon className="size-6 text-[var(--ice)] min-[720px]:size-8" aria-hidden strokeWidth={2.25} />
             Where&rsquo;s the snow good?
           </h1>
+          {peekResort ? (
+            <ResortPeek
+              key={peekResort.id}
+              resort={peekResort}
+              snow={catalog.snow}
+              units={units}
+              onAsk={sendPeek}
+              onOpen={onOpen}
+              onClose={() => setPeek(null)}
+              className="mb-4"
+            />
+          ) : null}
           <AgentChat
             units={units}
             catalog={catalog}
