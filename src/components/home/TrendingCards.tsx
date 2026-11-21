@@ -10,9 +10,10 @@ const RANK_LABEL = ['Most new snow', 'Runner-up', 'Third'];
 
 /** Soft tints for the preview area (Claude "recent artifacts" style), dark-theme friendly. */
 const TINTS = [
-  'color-mix(in oklch, oklch(0.72 0.09 235) 16%, transparent)',
-  'color-mix(in oklch, oklch(0.74 0.08 190) 14%, transparent)',
-  'color-mix(in oklch, oklch(0.72 0.08 285) 15%, transparent)',
+  // iOS blue only, stepping down with rank (Muse palette: one accent).
+  'color-mix(in srgb, var(--ice) 22%, var(--card))',
+  'color-mix(in srgb, var(--ice) 12%, var(--card))',
+  'color-mix(in srgb, var(--ice) 6%, var(--card))',
 ];
 
 /**
@@ -39,7 +40,7 @@ export function TrendingCards({
           <button
             key={r.id}
             type="button"
-            className="group flex flex-col overflow-hidden rounded-xl bg-card text-left ring-1 ring-foreground/12 outline-offset-2 transition-shadow hover:ring-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
+            className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left ring-1 ring-[var(--surface-line)] outline-offset-2 transition-shadow hover:ring-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
             data-testid="home-trending-card"
             data-resort={r.id}
             data-estimated={d.estimated ? '1' : '0'}
@@ -82,7 +83,7 @@ export function FullList({
   const parts = rows.map(row => row.dump || dumpParts(row.r, snow));
   const max = stakeMax(parts.flatMap(d => [d.past72Cm, d.next7Cm]));
   return (
-    <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10" data-testid="home-full-list">
+    <section className="overflow-hidden rounded-2xl bg-card ring-1 ring-[var(--surface-line)]" data-testid="home-full-list">
       <div className={`grid ${COLS} gap-x-3 px-3.5 pt-3 pb-1.5 text-[11px] text-muted-foreground`} aria-hidden>
         <span />
         <span />

@@ -217,7 +217,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
         </a>
       </header>
 
-      <main className="mx-auto flex w-full max-w-lg flex-col gap-8 px-3 py-8">
+      <main className="mx-auto flex w-full max-w-lg flex-col gap-4 px-3 py-8">
         <div>
           <h1 className="font-display text-5xl tracking-wide" data-testid="manage-title">{alertsFirst ? 'My alerts' : 'Preferences'}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -226,7 +226,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
         </div>
 
         {screen === 'out' ? (
-          <section className="flex flex-col gap-3" data-testid="manage-signed-out">
+          <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-signed-out">
             <p className="text-sm text-muted-foreground">Your email is your account. Enter it and we&apos;ll send you a sign-in link; no password.</p>
             <Input
               type="email"
@@ -251,7 +251,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
         ) : null}
 
         {screen === 'check' ? (
-          <section className="flex flex-col gap-3" data-testid="manage-check-email">
+          <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-check-email">
             <p className="text-base">Check {email || 'your inbox'} for a sign-in link.</p>
             <p className="text-sm text-muted-foreground">
               {preview ? 'Sending is paused. Use the preview shortcut below.' : 'The link expires in 30 minutes.'}
@@ -271,14 +271,14 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
         ) : null}
 
         {screen === 'in' ? (
-          <section className="flex flex-col gap-8" data-testid="manage-signed-in">
+          <section className="flex flex-col gap-4" data-testid="manage-signed-in">
             {alertsFirst ? (
-              <section className="flex flex-col gap-3" data-testid="my-alerts-section">
+              <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="my-alerts-section">
                 <h2 className="text-base font-medium">Watching</h2>
                 {alertsList}
               </section>
             ) : null}
-            <section className="flex flex-col gap-3" data-testid="manage-email-section">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-email-section">
               <h2 className="text-base font-medium">Email</h2>
               <p className="text-lg font-medium" data-testid="manage-session-email">{session}</p>
               <p className="text-xs text-muted-foreground" data-testid="manage-status">
@@ -289,7 +289,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               </Button>
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-storm">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-storm">
               <h2 className="text-base font-medium">Storm alerts</h2>
               <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 ring-1 ring-foreground/12">
                 <span>Storm alerts</span>
@@ -309,7 +309,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               {alertsFirst ? null : alertsList}
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-recap">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-recap">
               <h2 className="text-base font-medium">Weekly recap</h2>
               <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 ring-1 ring-foreground/12">
                 <span>Weekly recap</span>
@@ -325,7 +325,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               </Field>
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-sponsor">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-sponsor">
               <h2 className="text-base font-medium">Sponsored content</h2>
               <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 ring-1 ring-foreground/12">
                 <span>Sponsor / partner content</span>
@@ -333,7 +333,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               </label>
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-privacy">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-privacy">
               <h2 className="text-base font-medium">Privacy</h2>
               <label className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 py-2 ring-1 ring-foreground/12">
                 <span className="text-sm">{DNS_LINK_TEXT}</span>
@@ -344,7 +344,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               </p>
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-quiet">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-quiet">
               <h2 className="text-base font-medium">Quiet hours</h2>
               <p className="text-sm text-muted-foreground">We won&apos;t send storm alerts in this window. Recaps still go on recap day.</p>
               <div className="grid grid-cols-2 gap-3">
@@ -359,7 +359,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
               </div>
             </section>
 
-            <section className="flex flex-col gap-3" data-testid="manage-units">
+            <section className="surface-card flex flex-col gap-3 p-4 min-[640px]:p-5" data-testid="manage-units">
               <h2 className="text-base font-medium">Units</h2>
               <Field>
                 <FieldLabel>Snow</FieldLabel>
@@ -396,7 +396,7 @@ export function ManagePage({ focus = 'prefs' }: { focus?: 'prefs' | 'alerts' }) 
 
       {deleteOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4" data-testid="manage-delete-confirm">
-          <div className="w-full max-w-sm rounded-2xl bg-background p-5 ring-1 ring-foreground/12">
+          <div className="w-full max-w-sm rounded-2xl bg-popover p-5 ring-1 ring-[var(--surface-line)]">
             <h2 className="font-display text-3xl tracking-wide">Delete my data?</h2>
             <p className="mt-2 text-sm text-muted-foreground">Removes alerts and preferences on this device. Live deletes also drop the subscriber record.</p>
             <div className="mt-5 flex flex-col gap-2">

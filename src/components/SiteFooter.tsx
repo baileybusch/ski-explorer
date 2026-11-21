@@ -11,10 +11,11 @@ const LINKS = [
   { href: '/about', label: 'Data sources & credits', testid: 'footer-credits' },
 ];
 
-export function SiteFooter() {
+/** `fluid`: span the parent column (resorts list) instead of the 840px home column. */
+export function SiteFooter({ fluid = false }: { fluid?: boolean } = {}) {
   return (
     <footer
-      className="mx-auto mt-10 w-full max-w-[840px] border-t border-foreground/8 px-3 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] min-[880px]:px-0.5"
+      className={`mx-auto mt-10 w-full border-t border-[var(--surface-line)] pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] ${fluid ? 'px-1' : 'max-w-[840px] px-3 min-[880px]:px-0.5'}`}
       data-testid="site-footer"
     >
       <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Legal">

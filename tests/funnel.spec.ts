@@ -48,6 +48,7 @@ test('Ask offers alerts inline once per session and can be dismissed', async ({ 
   await page.goto('/?alerts=1');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   if (!desktop(page)) await page.getByTestId('search-trigger').click();
+  else await expect(page.getByTestId('board-chat')).toHaveAttribute('data-presentation', 'docked');
   const box = page.getByRole('textbox', { name: /Ask/ }).last();
   await box.fill('hi');
   await box.press('Enter');

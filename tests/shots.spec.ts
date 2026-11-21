@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { openBoardChat } from './helpers/chat';
 
 function shotDir() {
   for (const dir of [
@@ -73,7 +74,7 @@ test('design screenshots: home + resort per device', async ({ page }, info) => {
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${DIR}/leaderboard-default-${device}.png` });
 
-  await page.getByTestId('block').first().click();
+  await page.getByTestId('row-open').first().click();
   await expect(page.getByTestId('profile-hero')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('tile-storm-status')).toBeVisible();
   await expect(page.getByTestId('tile-trip')).toHaveCount(0);
@@ -95,7 +96,7 @@ test('ux pass screenshots: home, empty chat, resort chat, synopsis, map layers',
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${DIR}/ux-home-${device}.png` });
 
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   await expect(page.getByTestId('ask-empty')).toBeVisible();
   await expect(page.getByTestId('ask-suggestion')).toHaveCount(3);
   await page.waitForTimeout(300);
@@ -104,7 +105,7 @@ test('ux pass screenshots: home, empty chat, resort chat, synopsis, map layers',
   if (await close.count()) await close.click({ force: true }).catch(() => {});
   await page.keyboard.press('Escape');
 
-  await page.getByTestId('block').first().click();
+  await page.getByTestId('row-open').first().click();
   await expect(page.getByTestId('tile-storm-status')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${DIR}/ux-storm-synopsis-${device}.png` });

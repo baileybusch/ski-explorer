@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openBoardChat } from './helpers/chat';
 
 async function openBoard(page: Page) {
   await page.goto('/?ss=board');
@@ -8,7 +9,7 @@ async function openBoard(page: Page) {
 
 async function openFirstResort(page: Page) {
   await openBoard(page);
-  await page.getByTestId('block').first().click();
+  await page.getByTestId('row-open').first().click();
   await expect(page.getByTestId('resort-profile')).toBeVisible({ timeout: 20_000 });
 }
 
@@ -37,36 +38,29 @@ test('sort reorders stable row identities without dropping resorts', async ({ pa
   await expect(page.getByTestId('block').first()).toHaveAttribute('data-resort', first!);
 });
 
-test('reduced motion skips board FLIP and freezes ghost text', async ({ page }) => {
+test('reduced motion skips board FLIP', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openBoard(page);
-  const ghost = page.getByTestId('search-ghost');
-  await expect(ghost).toBeVisible();
-  const i = await ghost.getAttribute('data-ghost-index');
-  await page.waitForTimeout(4500);
-  await expect(ghost).toHaveAttribute('data-ghost-index', i || '0');
   await page.getByTestId('board-sort').selectOption('forecast7d');
   await expect(page.locator('[data-flip="1"]')).toHaveCount(0);
 });
 
-test('home ghost prompt rotates with a fade, and pauses once the field has a query', async ({ page }) => {
+test('resorts header has no search box; chat answers in its own panel and the list stays put', async ({ page }) => {
   await openBoard(page);
-  const ghost = page.getByTestId('search-ghost');
-  await expect(ghost).toBeVisible();
-  await expect.poll(async () => ghost.getAttribute('data-ghost-index'), { timeout: 12_000 }).not.toBe('0');
-  await page.getByTestId('search-trigger').click();
+  await expect(page.getByTestId('search-ghost')).toHaveCount(0);
+  await expect(page.getByTestId('nav-resorts')).toHaveAttribute('aria-current', 'page');
+  await openBoardChat(page);
   await expect(page.getByTestId('search')).toBeVisible();
   await page.getByLabel('Ask SkiScope', { exact: true }).last().fill('Utah');
   await page.getByLabel('Ask SkiScope', { exact: true }).last().press('Enter');
-  await expect(page.getByTestId('ask-answer')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('board-chat').getByTestId('ask-answer')).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('search-trigger')).toContainText(/Utah/i);
-  await expect(page.getByTestId('search-ghost')).toHaveCount(0);
+  await expect(page.getByTestId('board-b')).toBeVisible();
 });
 
 test('empty chat is compact: few prompts, no board filter wall', async ({ page }) => {
   await openBoard(page);
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   await expect(page.getByTestId('search')).toBeVisible();
   await expect(page.getByTestId('ask-empty')).toBeVisible();
   await expect(page.getByTestId('ask-suggestion')).toHaveCount(3);

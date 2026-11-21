@@ -1,7 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
+import { AppHeader } from '@/components/AppHeader';
+import { ChatDock } from '@/components/ChatDock';
+import { AgentChat } from '@/components/home/AgentChat';
+import { AskPanel } from '@/components/ask/AskPanel';
 import { BlockBoard } from '@/components/BlockBoard';
 import type { RankOutput } from '@/lib/askTypes';
 import { TripOnboarding } from '@/components/TripOnboarding';
@@ -21,7 +25,7 @@ import { stormForResort } from '../lib/storms.js';
 import { fetchListWeather } from '../lib/weather.js';
 import { fetchNwsWinterAlerts } from '@/lib/nwsAlerts';
 import { BOARD_MORE, BOARD_PAGE, dumpParts, rankBoard, regionResortIds } from '@/lib/board';
-import { BOARD_LAYOUT, isBoardSort, type BoardSortId } from '@/lib/boardLayout';
+import { isBoardSort, type BoardSortId } from '@/lib/boardLayout';
 import { AlertOnboarding, type AlertContext } from '@/components/AlertOnboarding';
 import { HomeSignup } from '@/components/HomeSignup';
 import { CategoryFooterCta, CategoryHeader } from '@/components/CategoryHeader';
@@ -37,10 +41,11 @@ import { snowAmount } from '@/lib/format';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
-const AskPanel = lazy(() => import('@/components/ask/AskPanel').then(m => ({ default: m.AskPanel })));
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
-const ASK_DOCK_MIN = 1100;
+/** Resorts page: chat docks beside the list at this width; below it, a sticky bar opens a sheet. */
+const ASK_DOCK_MIN = 1024;
+const APP_MAX_W = 1440;
 type View = 'home' | 'board' | 'profile' | 'map';
 
 function initialView(): View {
@@ -134,6 +139,8 @@ export default function App() {
     return isBoardSort(stored) ? stored : 'actual72';
   });
   const [focusResort, setFocusResort] = useState<{ id: string; name: string } | null>(null);
+  const [boardAsk, setBoardAsk] = useState<{ text: string; n: number } | null>(null);
+  const [boardChatOpen, setBoardChatOpen] = useState(false);
 
   const scoped = !!(activeIds || stormsOn || facets.regionId || facets.resortId);
 
@@ -181,6 +188,8 @@ export default function App() {
       const askParam = new URLSearchParams(location.search).get('ask');
       if (askParam && !deep.resort) {
         setAskRequest({ text: askParam.slice(0, 400), n: Date.now() });
+        setBoardAsk({ text: askParam.slice(0, 400), n: Date.now() });
+        setBoardChatOpen(true);
         setSearchOpen(true);
       }
     }).catch(err => toast(`Could not load resorts: ${err.message}`));
@@ -352,8 +361,27 @@ export default function App() {
     });
   }
 
+  /** "Resorts" nav / Back to all: stay on the resorts page, drop any region or search scope. */
+  function resetToAllResorts() {
+    if (landing) {
+      setLanding(null);
+      history.replaceState(history.state, '', '/' + location.search);
+    }
+    setActiveIds(null);
+    setStormsOn(false);
+    setSelectedId(null);
+    setFacets({});
+    setParsedIntent(null);
+    setView('board');
+    writeURL({ resort: null, region: null, ss: 'board' });
+    requestAnimationFrame(() => {
+      if (boardScroll.current) boardScroll.current.scrollTop = 0;
+    });
+  }
+
   function showOnBoard(out: RankOutput) {
     if (!catalog) return;
+    if (!wide) setBoardChatOpen(false);
     const nextPass = (out.pass as typeof PASSES[number]) || 'all';
     if (nextPass !== pass) setPass(nextPass);
     setBoardSort(ASK_TO_BOARD_SORT[out.sort] || 'actual72');
@@ -403,9 +431,14 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, [view, catalog]);
 
-  /** Desktop: the Ask panel stays docked beside the board instead of opening on demand. */
+  /** The resorts page has its own docked chat (ChatDock); the overlay Ask panel serves home deep links and the resort page. */
   const askDocked = wide && view === 'board' && !!catalog;
-  const askVisible = searchOpen || askDocked;
+  const askVisible = searchOpen && view !== 'board';
+
+  function askBoard(r: { id: string; name: string }) {
+    setBoardAsk({ text: `How's ${r.name} looking?`, n: Date.now() });
+    if (!wide) setBoardChatOpen(true);
+  }
   useEffect(() => { if (askVisible) setAskMounted(true); }, [askVisible]);
 
   const rowsAll = useMemo(() => {
@@ -592,18 +625,33 @@ export default function App() {
       ) : null}
 
       {catalog && win && view === 'board' ? (
-        <div className={`flex h-full min-h-dvh flex-col ${askVisible ? 'min-[1100px]:pr-[30rem]' : ''}`} data-ask-open={askVisible ? '1' : '0'} data-ask-docked={askDocked ? '1' : '0'}>
+        <div className="flex h-full min-h-dvh flex-col" data-ask-open={askDocked || boardChatOpen ? '1' : '0'} data-ask-docked={askDocked ? '1' : '0'}>
+          <AppHeader
+            testid="board-chrome"
+            active="resorts"
+            maxWidth={APP_MAX_W}
+            onHome={resetHome}
+            onResorts={() => {
+              if (scoped || landing) resetToAllResorts();
+              else if (boardScroll.current) boardScroll.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onMenu={() => setMenuOpen(true)}
+          />
           <div
-            className="mx-auto flex min-h-0 w-full flex-1 flex-col"
-            style={{ maxWidth: BOARD_LAYOUT.maxWidth }}
+            className="mx-auto flex min-h-0 w-full flex-1 gap-4 min-[1024px]:px-6 min-[1024px]:py-4"
+            style={{ maxWidth: APP_MAX_W }}
             data-testid="board-shell"
           >
+          <section
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden min-[1024px]:rounded-[var(--radius-card)] min-[1024px]:border min-[1024px]:border-[var(--surface-line)] min-[1024px]:bg-card min-[1024px]:[--list-bg:var(--card)]"
+            data-testid="board-list-panel"
+            aria-label="Resorts"
+          >
           <BoardChrome
-            q={lastAsk}
-            onOpenSearch={() => (askDocked ? setAskFocus(n => n + 1) : setSearchOpen(true))}
-            onMenu={() => setMenuOpen(true)}
-            onHome={resetHome}
-            onClearScope={resetHome}
+            title={facets.regionName ? `${facets.regionName} resorts` : 'Resorts'}
+            count={rowsAll.length}
+            showTitle={!categoryHeader}
+            onClearScope={resetToAllResorts}
             scoped={scoped}
             chip={parsedIntent ? intentChip(parsedIntent) : ''}
           />
@@ -620,6 +668,7 @@ export default function App() {
             hasMore={shown < rowsAll.length}
             onMore={() => setShown(n => Math.min(rowsAll.length, n === BOARD_PAGE ? BOARD_PAGE + BOARD_MORE : rowsAll.length))}
             onOpen={id => openResort(id)}
+            onAsk={askBoard}
             scrollerRef={boardScroll}
             restoreTop={restoreTop}
             tight={scoped}
@@ -675,10 +724,50 @@ export default function App() {
                     setAlertOpen(true);
                   }} />
                 )}
-                <SiteFooter />
+                <SiteFooter fluid />
+                {!wide ? <div className="h-20" aria-hidden /> : null}
               </>
             )}
           />
+          </section>
+          <ChatDock
+            wide={wide}
+            open={boardChatOpen}
+            onOpenChange={setBoardChatOpen}
+            title={`Ask ${BRAND.name}`}
+            subtitle={facets.regionName ? `${facets.regionName} · ${rowsAll.length} resorts` : `All ${rowsAll.length} resorts · live snow`}
+            barLabel={`Ask ${BRAND.name}…`}
+            className="w-[400px] shrink-0 min-[1280px]:w-[420px]"
+            testid="board-chat"
+            barTestid="search-trigger"
+            closeTestid="board-chat-close"
+          >
+            <AgentChat
+              layout="panel"
+              units={units}
+              catalog={catalog}
+              onOpen={id => openResort(id)}
+              onShowBoard={showOnBoard}
+              board={{ pass, regionId: facets.regionId || null, observedOnly: false }}
+              fallbackBoard={{
+                pass,
+                regionId: facets.regionId || null,
+                observedOnly: false,
+                sort: boardSort,
+                focusResortId: null,
+                focusResortName: null,
+              }}
+              onAsked={setLastAsk}
+              onAlertSignup={() => {
+                setEditRule(null);
+                setAlertCtx({ source: 'chat', type: 'resort', pass });
+                setAlertOpen(true);
+              }}
+              externalAsk={boardAsk}
+              topNames={rowsAll.slice(0, 3).map(x => x.r.name)}
+              scope={facets.regionId && facets.regionName ? { id: facets.regionId, name: facets.regionName, topName: rowsAll[0]?.r.name || null } : null}
+            />
+          </ChatDock>
           </div>
         </div>
       ) : null}
@@ -710,10 +799,9 @@ export default function App() {
       ) : null}
 
       {askMounted ? (
-      <Suspense fallback={null}>
       <AskPanel
         open={askVisible}
-        docked={askDocked}
+        docked={false}
         focusTick={askFocus}
         onClose={() => setSearchOpen(false)}
         units={units}
@@ -736,7 +824,6 @@ export default function App() {
           focusResortName: focusResort?.name || null,
         }}
       />
-      </Suspense>
       ) : null}
 
       <TripOnboarding

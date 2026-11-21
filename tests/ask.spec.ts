@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { openBoardChat } from './helpers/chat';
 
 const JAPAN = /niseko|furano|rusutsu|kiroro|tomamu|larch|zao|hakuba|shiga|appi|arai|madarao|mt-t|myoko|nekoma|happo|naeba|nozawa|gala|lotte|kagura|tsugaike|cortina-japan|iwatake|sahoro|teine|kokusai|annupuri|moiwa|hanazono|niseko|asahidake|tazawako|geto|hachimantai|kiroro|akakura|suginohara|ikenotaira/i;
 
@@ -18,7 +19,7 @@ function shotDir() {
 async function openAsk(page: Page) {
   await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   await expect(page.getByTestId('search')).toBeVisible({ timeout: 15_000 });
 }
 
@@ -87,7 +88,7 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
   const board = await settledBoardTop(page);
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   const answer = await ask(page, 'Which resort is getting the most snow right now?');
   const chat = await askTop(answer);
   expect(chat.length).toBeGreaterThanOrEqual(5);
@@ -99,7 +100,7 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   await page.getByTestId('board-region').selectOption('utah');
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'actual24');
   const scopedBoard = await settledBoardTop(page);
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   const scopedAnswer = await ask(page, 'Most snow in the last 24 hours');
   const scoped = await askTop(scopedAnswer);
   expect(scoped.length).toBeGreaterThanOrEqual(3);
@@ -111,7 +112,7 @@ test('chat ranking is the board ranking: same snapshot, scope, order, and est.',
   await page.getByTestId('board-sort').selectOption('forecast7d');
   await expect(page.getByTestId('board-b')).toHaveAttribute('data-sort', 'forecast7d');
   const forecastBoard = await settledBoardTop(page);
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   const forecastAnswer = await ask(page, 'Who is getting the most snow?');
   const forecastChat = await askTop(forecastAnswer);
   expect(forecastChat).toEqual(forecastBoard.slice(0, forecastChat.length));

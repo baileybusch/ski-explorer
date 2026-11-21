@@ -31,7 +31,7 @@ test('home board is monotonic by 72h observed, featured is #1', async ({ page })
 test('resort page has Alert me and no trip card', async ({ page }) => {
   await page.goto('/?ss=board');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('block').first().click();
+  await page.getByTestId('row-open').first().click();
   await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('profile-alert-me')).toBeVisible();
   await expect(page.getByTestId('tile-trip')).toHaveCount(0);

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
+import { ChevronRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { dumpParts, relativeUpdated } from '@/lib/board';
 import { BOARD_LAYOUT, boardDensity, layoutPadX, stakeMax, type BoardDensity, type BoardSortId } from '@/lib/boardLayout';
@@ -7,13 +8,18 @@ import { dumpAria, statNum, Unit } from '@/components/SnowSplit';
 import { SnowStake } from '@/components/SnowStake';
 import { BoardToolbar } from '@/components/BoardToolbar';
 
+/** Trailing column for the row's open-resort chevron. */
+const OPEN_W = 44;
+
 type Row = { r: any; m: any; storm?: any; wx?: any; dump?: ReturnType<typeof dumpParts> };
 type Parts = ReturnType<typeof dumpParts>;
 
 export function BlockBoard({
-  rows, units, snow, onOpen, scrollerRef, restoreTop, hasMore, onMore, before, after, tight,
+  rows, units, snow, onOpen, onAsk, scrollerRef, restoreTop, hasMore, onMore, before, after, tight,
   sort, onSort, regionId, regions, onRegion,
 }: {
+  /** Row tap asks the chat about the resort; a trailing chevron opens the resort page. */
+  onAsk?: (r: { id: string; name: string }) => void;
   rows: Row[];
   units: SnowUnits;
   tempUnits?: TempUnits;
@@ -84,7 +90,7 @@ export function BlockBoard({
           No resorts match this filter. Choose All regions.
         </p>
       ) : (
-        <BoardList rows={rows} parts={parts} units={units} scale={scale} sort={sort} onSort={onSort} onOpen={onOpen} density={density} updated={density === 'compact' ? updated : null} />
+        <BoardList rows={rows} parts={parts} units={units} scale={scale} sort={sort} onSort={onSort} onOpen={onOpen} onAsk={onAsk} density={density} updated={density === 'compact' ? updated : null} />
       )}
       {hasMore && rows.length ? (
         <div className="flex justify-center pt-4">
@@ -180,8 +186,9 @@ function useReorderMotion(order: string) {
 }
 
 function BoardList({
-  rows, parts, units, scale, sort, onSort, onOpen, density, updated,
+  rows, parts, units, scale, sort, onSort, onOpen, onAsk, density, updated,
 }: {
+  onAsk?: (r: { id: string; name: string }) => void;
   rows: Row[];
   parts: Parts[];
   units: SnowUnits;
@@ -202,8 +209,8 @@ function BoardList({
   return (
     <div className="w-full min-w-0" data-testid="board-list">
       <div
-        className={`sticky top-0 z-10 grid items-end border-b border-foreground/15 bg-background ${pad} ${gap} pt-1.5 pb-2 text-xs text-muted-foreground`}
-        style={{ gridTemplateColumns: t.columns }}
+        className={`sticky top-0 z-10 grid items-end border-b border-[var(--surface-line)] bg-[var(--list-bg,var(--background))] ${pad} ${gap} pt-1.5 pb-2 text-xs text-muted-foreground`}
+        style={{ gridTemplateColumns: t.columns, paddingRight: onAsk ? OPEN_W : undefined }}
         data-testid="board-list-head"
       >
         <span><span className="sr-only">Rank</span></span>
@@ -228,14 +235,15 @@ function BoardList({
           const d = parts[i];
           const lead = i === 0;
           return (
-            <li key={row.r.id} ref={refFor(row.r.id)} data-testid="board-row" className={lead ? '' : 'border-b border-foreground/8'}>
+            <li key={row.r.id} ref={refFor(row.r.id)} data-testid="board-row" className={`relative ${lead ? '' : 'border-b border-[var(--surface-line)]'}`}>
               <button
                 type="button"
                 {...rowAttrs(row, d, i + 1, units)}
                 data-featured={lead ? '1' : undefined}
-                className={`grid w-full min-w-0 items-center text-left outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-ring ${pad} ${gap} ${lead ? 'rounded-lg bg-foreground/[0.07] hover:bg-foreground/[0.1]' : 'hover:bg-foreground/[0.04]'}`}
-                style={{ gridTemplateColumns: t.columns, height: lead ? t.leadH : t.rowH }}
-                onClick={() => onOpen(row.r.id)}
+                className={`grid w-full min-w-0 items-center text-left outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-ring ${pad} ${gap} ${lead ? 'rounded-lg bg-[var(--ice)]/[0.09] hover:bg-[var(--ice)]/[0.14]' : 'hover:bg-foreground/[0.04]'}`}
+                style={{ gridTemplateColumns: t.columns, height: lead ? t.leadH : t.rowH, paddingRight: onAsk ? OPEN_W : undefined }}
+                data-action={onAsk ? 'ask' : 'open'}
+                onClick={() => (onAsk ? onAsk({ id: row.r.id, name: row.r.name }) : onOpen(row.r.id))}
               >
                 <span className={`tabular text-right text-sm ${lead ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{i + 1}</span>
                 <span className="flex min-w-0 flex-col">
@@ -257,6 +265,18 @@ function BoardList({
                   />
                 ))}
               </button>
+              {onAsk ? (
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-0 grid size-10 -translate-y-1/2 place-items-center rounded-full text-muted-foreground outline-offset-[-2px] hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                  aria-label={`Open ${row.r.name}`}
+                  data-testid="row-open"
+                  data-resort={row.r.id}
+                  onClick={() => onOpen(row.r.id)}
+                >
+                  <ChevronRightIcon className="size-5" />
+                </button>
+              ) : null}
             </li>
           );
         })}

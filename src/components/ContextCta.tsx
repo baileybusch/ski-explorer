@@ -1,4 +1,6 @@
+import { BellIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CtaCard } from '@/components/CtaCard';
 import { ctaLabel } from '../../lib/intent.js';
 
 export function ContextCta({
@@ -9,11 +11,17 @@ export function ContextCta({
 }) {
   if (!parsed) return null;
   return (
-    <section className="mx-auto mt-6 w-full max-w-xl px-3" data-testid="context-cta">
-      <Button type="button" className="min-h-12 w-full text-base" data-testid="context-cta-btn" onClick={onAlert}>
-        {ctaLabel(parsed)}
-      </Button>
-      <p className="mt-2 text-xs text-muted-foreground">Same signup as home — one email when the situation moves.</p>
-    </section>
+    <CtaCard
+      testid="context-cta"
+      className="mt-6"
+      icon={<BellIcon className="size-5" />}
+      title="Get pinged when this moves"
+      body="Same signup as home — one email when the situation moves."
+      action={(
+        <Button type="button" className="min-h-12 w-full text-base" data-testid="context-cta-btn" onClick={onAlert}>
+          {ctaLabel(parsed)}
+        </Button>
+      )}
+    />
   );
 }

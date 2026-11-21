@@ -55,7 +55,7 @@ Resort Updated 3h  ↓Last 72h  Next 7d   ▒1 APPI Resort    0.1  est 8.6▬▬
 - **Columns never move.** Changing Rank by re-ranks rows (280ms FLIP, off under reduced motion) but the column template is fixed. The active column gets the bright number and bright header with the sort arrow; inactive numbers drop to 55% and their stakes to 45%.
 - **Headers are sticky and tappable.** On phones the Last 72h header taps 72h ↔ 24h; on desktop each column header sorts. Right-aligned headers put the arrow on the left so the label's right edge meets the numbers.
 - **#1 is only lightly featured**: 7% tint and semibold name, same row height as everyone else so re-rank FLIP does not jump. It shares the template so its numbers sit in the same columns.
-- **Desktop Ask is a docked side panel** (≥1100px, `role="complementary"`, no close X). The search box focuses its input instead of opening a sheet.
+- **Resorts page chat is a docked side panel** (≥1024px) under the app header, beside the list; below 1024px a sticky "Ask SkiScope…" bar opens it as a sheet under the header. The header has no search box; rows ask the chat and a trailing chevron opens the resort page. See the design-pass section below.
 - Resort page uses the same 1200px column: hero (name left, two-stat right), storm status as the only raised panel (with Alert me), then ruled sections on a 12-column grid: Next 7 days (7) | Today on the mountain (5), Radar (7) | Mountain Facts (5), Snow history (12).
 
 ## Shape
@@ -109,3 +109,44 @@ Everything brand-facing reads `lib/brand.js`: name, both wordmarks, logo mark id
 - Tried: 4-column card grid on desktop (pass 5). Rejected: zigzag rank order, no column alignment.
 - Tried: 2-up phone cards (pass 9). Rejected: numbers didn't line up between cards, and the sort column couldn't stay put.
 - Tried: uppercase micro-labels on stats. Rejected: template tell, and they truncated at 320px.
+
+## iOS / Muse palette + chat-first resorts page (Nov 2026)
+
+Supersedes the pure-black "Ink" mono palette above and the short-lived navy pass. Bailey wanted
+SkiScope to feel like the Muse iOS chat app (iMessage-style dark mode): true black, iOS system
+grays, one iOS-blue accent, glassy round controls, system font.
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--background` | `#000000` | Page and chat surface. |
+| `--card` / `--surface` / `--cta-bg` / `--chat-input` | `#1C1C1E` | Sections, list panel, cards, CTAs, message bar. |
+| `--surface-raised` / `--bubble-agent` / `--accent` | `#2C2C2E` | Agent bubbles, chips, hover, nested blocks. |
+| `--surface-line` / `--border` / `--chat-panel-line` | `#38383A` | iOS separator: borders and hairlines. |
+| `--ice` / `--ring` | `#0A84FF` | iOS blue for icons, focus rings and accents on black. |
+| `--link` | `#409CFF` | Text links (AA on every surface). |
+| `--primary` / `--bubble-user` | `#0B6FE8` | Filled buttons + user bubbles with white text (4.72:1; `#0A84FF` with white is only 3.65:1). |
+| `--muted-foreground` | `#A1A1A6` | Secondary text (≥5.4:1 on every surface). |
+| `--glass-bg`, `--glass-line` | `rgb(44 44 46 / .62)`, `rgb(255 255 255 / .14)` | Frosted round/pill controls (`.glass`, 20px blur). |
+
+Type: `-apple-system` / SF first (Sora as the non-Apple fallback). Snow numbers stay in Barlow
+Condensed 800 with the solid (actual) vs hatched (forecast) stakes at equal billing.
+
+Chat (iMessage / Muse):
+- User: right-aligned `#0B6FE8` bubble, white 16px text, 20px radius with a 6px tail corner.
+- Agent: left-aligned `#2C2C2E` bubble, white text, 20px radius, 6px tail corner.
+- Typing: three 8px gray (`#8E8E93`) dots pulsing in a `#2C2C2E` pill.
+- Docked/sheet panels: one rounded `#1C1C1E` pill message bar ("Message") with a blue round send
+  button. The home hero keeps the larger rounded input box (28px radius) Bailey picked earlier.
+- Dock header: snowflake avatar in a blue circle, bold name, live status on a frosted pill
+  ("Checking the snow…", "Reading the forecast…", "Typing…"), else the scope line.
+
+Utility classes (`@layer components`): `.surface-card`, `.chat-surface`, `.cta-card`, `.glass`.
+
+Layout pieces:
+- `AppHeader`: logo · Resorts (frosted pill) · account menu (frosted round button, top right).
+- `ChatDock`: one chat instance, docked side panel (≥1024px) or a sheet that opens from a sticky
+  "Ask SkiScope…" pill and starts below the header. Provides `ChatStatusCtx` for the status line.
+- `CtaCard`: every signup/alert/promo block. Fills its column, copy left, action right.
+
+Contrast: `node scripts/check-contrast.mjs` checks every text/surface pair against WCAG AA
+(reads hex or oklch tokens from `.dark`).
