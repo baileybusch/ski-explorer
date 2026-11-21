@@ -47,12 +47,12 @@ const cases = [
       kind: 'Building',
       includes: [
         'Alta is lining up a storm',
-        '9″ estimated in the last 72 hours',
+        'About 9″ of new snow in 3 days (est.)',
         'About 14″ is forecast',
         'heaviest Sunday',
         'well below freezing',
       ],
-      excludes: ['Storm status:', 'light, dry powder'],
+      excludes: ['Storm status:', 'light, dry powder', 'SNOTEL', 'CDEC', 'snow-depth', 'water equivalent', 'model elevation'],
     },
   },
   {
@@ -69,7 +69,8 @@ const cases = [
     resort: { id: 'wind', name: 'Windham' },
     expect: {
       kind: 'Winding down',
-      includes: ['just came through a storm', '9″ estimated in the last 72 hours', 'Only'],
+      includes: ['Windham just got about 9″ of new snow in 3 days (est.).', 'Only about'],
+      excludes: ['SNOTEL', 'snow-depth', 'still on the forecast'],
     },
   },
   {
@@ -77,7 +78,7 @@ const cases = [
     resort: { id: 'peak', name: 'Peak Resort' },
     expect: {
       kind: 'Peaking',
-      includes: ['in the heart of it', 'Heaviest Friday'],
+      includes: ['in the heart of a storm', 'Heaviest snow Friday'],
     },
   },
   {
@@ -85,7 +86,7 @@ const cases = [
     resort: { id: 'active', name: 'Active Mountain' },
     expect: {
       kind: 'Active',
-      includes: ['is in a live cycle'],
+      includes: ['is in a storm cycle', 'more coming'],
     },
   },
   {
@@ -95,6 +96,20 @@ const cases = [
       kind: 'Building',
       includes: ['Warm Springs is lining up a storm', 'above freezing'],
       excludes: ['heavy snow or rain at base'],
+    },
+  },
+  {
+    id: 'winding-down-dry-plain',
+    resort: { id: 'alta', name: 'Alta' },
+    snow: {
+      ...snow,
+      resorts: { ...snow.resorts, alta: { ...snow.resorts.alta, sf: [0, 30, 20, 5.9, 0, 0, 0, 0] } },
+      observed: { alta: { snow72hCm: 55.9, snow24hCm: 0, source: 'snotel:846:CA:SNTL', method: 'snwd-peak' } },
+    },
+    expect: {
+      kind: 'Winding down',
+      includes: ['Alta just got about 22″ of new snow in 3 days. No more snow in the forecast.'],
+      excludes: ['SNOTEL', 'snow-depth', 'Only 0″'],
     },
   },
   {
@@ -113,8 +128,8 @@ const cases = [
     },
     expect: {
       kind: 'Building',
-      includes: ['from SNOTEL water equivalent in the last 72 hours'],
-      excludes: ['measured in the last 72 hours', 'estimated in the last 72 hours', 'recorded snowfall'],
+      includes: ['About 9″ of new snow in 3 days (est.)'],
+      excludes: ['SNOTEL', 'water equivalent', 'measured', 'recorded snowfall'],
       source: 'Last 72h is SNOTEL SWE (WTEQ) converted at 12:1 — not recorded snowfall. Next 7 days is an Open-Meteo forecast.',
     },
   },
@@ -129,8 +144,8 @@ const cases = [
     },
     expect: {
       kind: 'Building',
-      includes: ['of SNOTEL snow-depth rise in the last 72 hours'],
-      excludes: ['measured in the last 72 hours', 'recorded snowfall', 'estimated in the last 72 hours'],
+      includes: ['About 9″ of new snow in 3 days.'],
+      excludes: ['SNOTEL', 'snow-depth', 'measured', 'recorded snowfall', '(est.)'],
       source: 'Last 72h is SNOTEL snow-depth (SNWD) peak-rise, not recorded snowfall. Next 7 days is an Open-Meteo forecast.',
     },
   },

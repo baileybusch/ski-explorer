@@ -24,6 +24,8 @@ export function normalizeChatText(text = '') {
     // marker does; leave numbers alone. Tidy unit spacing.
     .replace(/(\d) +(″|"|”|in\b|cm\b)/g, (m, d, u) => (u === 'in' || u === 'cm' ? `${d} ${u}` : `${d}${u}`))
     .replace(/(\d) h\b/g, '$1h')
+    // Doubled units: '0.4" inches' / '0.4″ in' → '0.4"'
+    .replace(/(\d(?:\.\d+)?)(″|"|”) ?(?:inches|inch|in\b\.?)/g, '$1$2')
     .replace(/\b(Last|Next)-(\d+)(h|d)\b/g, '$1 $2$3')
     // "≈35" stays; make sure there's a space after a colon before a number/≈
     .replace(/:(?=[≈~\d])/g, (m, off, s) => (/\d$/.test(s.slice(0, off)) ? m : ': '));

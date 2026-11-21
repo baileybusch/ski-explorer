@@ -1,8 +1,12 @@
 import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { MessageCircleIcon, SnowflakeIcon, XIcon } from 'lucide-react';
+import { MessageCircleIcon, SnowflakeIcon, SquarePenIcon, XIcon } from 'lucide-react';
 
 /** Chat reports what it is doing ("Checking the snow…"); the dock header shows it like Muse's status line. */
 export const ChatStatusCtx = createContext<((status: string | null) => void) | null>(null);
+
+/** The chat registers its "start over" action (or null when there's nothing to clear); the header shows a New chat button. */
+type NewChatHandler = (() => void) | null;
+export const NewChatCtx = createContext<((fn: NewChatHandler) => void) | null>(null);
 
 /** SkiScope's chat avatar: the snowflake in an iOS-blue circle. */
 export function ChatAvatar({ size = 'md' }: { size?: 'sm' | 'md' }) {
@@ -43,6 +47,8 @@ export function ChatDock({
   const sheet = !wide && open;
   const [status, setStatusState] = useState<string | null>(null);
   const setStatus = useCallback((s: string | null) => setStatusState(s), []);
+  const [newChat, setNewChatState] = useState<NewChatHandler>(null);
+  const registerNewChat = useCallback((fn: NewChatHandler) => setNewChatState(() => fn), []);
 
   useEffect(() => {
     if (!sheet) return;
@@ -82,6 +88,18 @@ export function ChatDock({
           >
             {status ? `${status}…` : subtitle}
           </p>
+          {newChat ? (
+            <button
+              type="button"
+              className="glass absolute top-3 left-3 grid size-11 place-items-center rounded-full text-foreground"
+              aria-label="New chat"
+              title="New chat"
+              data-testid="home-chat-new"
+              onClick={newChat}
+            >
+              <SquarePenIcon className="size-[18px]" />
+            </button>
+          ) : null}
           {!wide ? (
             <button
               type="button"
@@ -95,7 +113,9 @@ export function ChatDock({
           ) : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <ChatStatusCtx.Provider value={setStatus}>{children}</ChatStatusCtx.Provider>
+          <ChatStatusCtx.Provider value={setStatus}>
+            <NewChatCtx.Provider value={registerNewChat}>{children}</NewChatCtx.Provider>
+          </ChatStatusCtx.Provider>
         </div>
       </aside>
 

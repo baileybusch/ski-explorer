@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { buildFollowups } from '@/lib/chatFollowups.js';
 import { regionScopeContext, regionStarters } from '../../../lib/homeRegions.js';
-import { ArrowUpIcon, SnowflakeIcon, SquareIcon } from 'lucide-react';
+import { ArrowUpIcon, SnowflakeIcon, SquareIcon, SquarePenIcon } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
+import { idle, openInteractions } from 'eve/events';
+import { CHAT_ERROR_COPY, chatErrorKind, isCapInteraction } from '@/lib/chatErrors.js';
 import { GhostPrompt } from '@/components/GhostPrompt';
 import { HOME_GHOSTS } from '@/lib/ghosts';
 import { BRAND } from '@/lib/brand';
@@ -17,7 +19,7 @@ import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 import { ChatMarkdown } from '@/components/home/ChatMarkdown';
 import { prefersReducedMotion } from '@/lib/motion';
-import { ChatStatusCtx } from '@/components/ChatDock';
+import { ChatStatusCtx, NewChatCtx } from '@/components/ChatDock';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -109,8 +111,7 @@ function ToolCards({
 }
 
 function Composer({
-  input, setInput, onSubmit, busy, onStop, showGhost, inputRef,
-}: {
+  input, setInput, onSubmit, busy, onStop, showGhost, inputRef, onWarm }: {
   input: string;
   setInput: (v: string) => void;
   onSubmit: (e: FormEvent) => void;
@@ -118,6 +119,8 @@ function Composer({
   onStop?: () => void;
   showGhost: boolean;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
+  /** First sign of use (focus / tap): lets the chat open its session just in time. */
+  onWarm?: () => void;
 }) {
   const typing = input.length > 0;
   const scope = useContext(ScopeCtx);
@@ -131,6 +134,8 @@ function Composer({
         ? 'flex min-h-12 items-end gap-2 rounded-[24px] bg-[var(--chat-input)] py-1.5 pr-1.5 pl-4 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'
         : 'flex min-h-[8.25rem] flex-col rounded-[28px] bg-[var(--chat-input)] px-5 pt-4 pb-3 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'}
       onSubmit={onSubmit}
+      onFocusCapture={onWarm}
+      onPointerDownCapture={onWarm}
       data-testid="home-chat-composer"
     >
       <div className={`relative min-w-0 flex-1 ${panel ? 'self-center py-1.5' : ''}`}>
@@ -190,6 +195,49 @@ function Composer({
 
 /** No tokens or tool output for this long while busy = treat the turn as failed. */
 const CHAT_STALL_MS = 40_000;
+
+type ChatErrorKind = 'rate' | 'cap' | 'generic';
+
+/** Follow the stream only while a turn is live (not idle, not paused on the usage cap). */
+function keepFollowing(view: any) {
+  if (!view) return false;
+  if (openInteractions(view).some(isCapInteraction)) return false;
+  return !idle(view);
+}
+
+const CHAT_SIM_KEY = 'skiscope:chat-sim';
+
+/** One-shot QA override: localStorage "skiscope:chat-sim" = "rate" | "cap". */
+function takeChatSim(): ChatErrorKind | null {
+  try {
+    const v = window.localStorage.getItem(CHAT_SIM_KEY);
+    if (v !== 'rate' && v !== 'cap') return null;
+    window.localStorage.removeItem(CHAT_SIM_KEY);
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+function needsFreshSession(err: any) {
+  const code = err?.code;
+  return code === 'session_expired' || code === 'session_stranded' || code === 'session_not_active';
+}
+
+export function NewChatButton({ onClick, className = '' }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="home-chat-new"
+      aria-label="New chat"
+      className={`glass inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-foreground ${className}`}
+    >
+      <SquarePenIcon className="size-4" aria-hidden />
+      New chat
+    </button>
+  );
+}
 
 /** Region-scoped chat (region view): greeting, starters and model context follow the region. */
 export type ChatScope = { id: string; name: string; topName?: string | null };
@@ -278,12 +326,20 @@ function EveChat({
   askRequest: { text: string; n: number } | null;
   topNames: string[];
 }) {
-  const agent = useEveAgent({ prewarm: true });
+  // No session or stream on page load: the session opens on first use (focus,
+  // tap or send), and the stream closes once a turn settles instead of
+  // reconnecting every minute in idle tabs.
+  const [warm, setWarm] = useState(false);
+  const agent = useEveAgent({ prewarm: warm, followWhile: keepFollowing });
   const scope = useContext(ScopeCtx);
   const panel = useContext(PanelCtx);
-  const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
+  const capped = !!agent.view && openInteractions(agent.view).some(isCapInteraction);
+  const rawBusy = (agent.status === 'busy' || agent.status === 'resuming') && !capped;
   const messages = agent.messages || [];
-  const [failed, setFailed] = useState(false);
+  const [errorKind, setErrorKind] = useState<ChatErrorKind | null>(null);
+  const failed = errorKind != null;
+  const setFailed = (on: boolean, kind: ChatErrorKind = 'generic') => setErrorKind(on ? kind : null);
+  const warmUp = () => { if (!warm) setWarm(true); };
   const [sent, setSent] = useState(false);
   const [shownData, setShownData] = useState<Set<string>>(() => new Set());
   const lastQ = useRef('');
@@ -296,8 +352,17 @@ function EveChat({
   const last: any = messages[messages.length - 1];
 
   useEffect(() => {
-    if (agent.error && sent) setFailed(true);
+    if (!agent.error) return;
+    const kind = chatErrorKind(agent.error) as ChatErrorKind;
+    // A rate-limit hit shows even before the send settles; other errors only after a send.
+    if (sent || kind === 'rate') setFailed(true, kind);
   }, [agent.error, sent]);
+
+  // Usage cap: eve pauses the session on a "budget" approval. Public chat never
+  // approves it; show the reason and offer a fresh chat instead of stalling.
+  useEffect(() => {
+    if (capped) setFailed(true, 'cap');
+  }, [capped]);
 
   useEffect(() => {
     if (!rawBusy || failed) return;
@@ -309,8 +374,8 @@ function EveChat({
   }, [rawBusy, failed, progress]);
 
   useEffect(() => {
-    if (sent && !rawBusy && last?.role === 'user') setFailed(true);
-  }, [sent, rawBusy, last?.role, last?.id]);
+    if (sent && !rawBusy && !capped && last?.role === 'user') setFailed(true);
+  }, [sent, rawBusy, capped, last?.role, last?.id]);
 
   // Auto-scroll the thread as tokens stream in.
   useEffect(() => {
@@ -318,17 +383,55 @@ function EveChat({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [progress, busy, failed]);
 
-  async function ask(q: string) {
+  async function ask(q: string, fresh = false) {
     lastQ.current = q;
+    const sim = takeChatSim();
+    if (sim) {
+      // QA hook (localStorage "skiscope:chat-sim" = rate | cap): show that state without a server call.
+      setSent(false);
+      setFailed(true, sim);
+      return;
+    }
+    warmUp();
+    if (fresh) {
+      agent.newSession();
+      setShownData(new Set());
+    }
     setFailed(false);
     setSent(false);
     try {
       await agent.send(q, scope ? { clientContext: regionScopeContext(scope.name) } : undefined);
       setSent(true);
-    } catch {
-      setFailed(true);
+    } catch (err) {
+      setFailed(true, chatErrorKind(err) as ChatErrorKind);
     }
   }
+
+  /** Clears the thread and starts a fresh session (header button + error action). */
+  function newChat() {
+    agent.newSession();
+    setShownData(new Set());
+    setFailed(false);
+    setSent(false);
+    lastQ.current = '';
+    setInput('');
+    window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
+  }
+
+  function retry() {
+    if (!lastQ.current) return;
+    // A capped or expired session can't take more questions: retry in a fresh one.
+    void ask(lastQ.current, errorKind === 'cap' || needsFreshSession(agent.error));
+  }
+
+  const registerNewChat = useContext(NewChatCtx);
+  const newChatRef = useRef(newChat);
+  newChatRef.current = newChat;
+  const canReset = messages.length > 0 || failed;
+  useEffect(() => {
+    registerNewChat?.(canReset ? () => newChatRef.current() : null);
+  }, [registerNewChat, canReset]);
+  useEffect(() => () => registerNewChat?.(null), [registerNewChat]);
 
   // Questions from outside the chat (thought-starter cards).
   useEffect(() => {
@@ -369,7 +472,12 @@ function EveChat({
 
   return (
     <>
-      {messages.length ? (
+      {(messages.length || failed) && !registerNewChat ? (
+        <div className="-mb-1 flex justify-end">
+          <NewChatButton onClick={newChat} />
+        </div>
+      ) : null}
+      {messages.length || failed ? (
       <div
         ref={scroller}
         className={panel
@@ -379,6 +487,11 @@ function EveChat({
       >
         {(
           <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
+            {!messages.length && failed && lastQ.current ? (
+              <li className="flex justify-end" data-testid="home-ask-user-pending">
+                <p className="max-w-[85%] rounded-[20px] rounded-br-[6px] bg-[var(--bubble-user)] px-4 py-2 text-[16px] leading-snug text-[var(--bubble-user-fg)]">{lastQ.current}</p>
+              </li>
+            ) : null}
             {messages.map((m: any) => {
               if (m.role === 'user') {
                 const text = (m.parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
@@ -425,20 +538,39 @@ function EveChat({
             })}
             {showTyping ? <li><TypingBubble label={typingLabel} /></li> : null}
             {failed ? (
-              <li className="flex flex-wrap items-center gap-3 rounded-[20px] bg-[var(--bubble-agent)] px-4 py-3 text-sm" data-testid="home-chat-error" role="alert">
-                <span>Sorry, the snow desk didn&rsquo;t answer. Try again in a moment.</span>
-                <button type="button" className="rounded-full bg-primary px-3.5 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/85" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
-                  Retry
-                </button>
+              <li className="flex flex-wrap items-center gap-3 rounded-[20px] bg-[var(--bubble-agent)] px-4 py-3 text-sm" data-testid="home-chat-error" data-kind={errorKind} role="alert">
+                <span>{CHAT_ERROR_COPY[errorKind || 'generic']}</span>
+                <span className="flex flex-wrap gap-2">
+                  {errorKind === 'cap' ? null : (
+                    <button type="button" className="rounded-full bg-primary px-3.5 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/85" data-testid="home-chat-retry" onClick={retry}>
+                      Retry
+                    </button>
+                  )}
+                  {errorKind === 'cap' && lastQ.current ? (
+                    <button type="button" className="rounded-full px-3.5 py-1 text-sm font-medium ring-1 ring-[var(--surface-line)] hover:bg-[var(--surface-raised)]" data-testid="home-chat-retry" onClick={retry}>
+                      Ask again in a new chat
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={errorKind === 'cap'
+                      ? 'rounded-full bg-primary px-3.5 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/85'
+                      : 'rounded-full px-3.5 py-1 text-sm font-medium ring-1 ring-[var(--surface-line)] hover:bg-[var(--surface-raised)]'}
+                    data-testid="home-chat-error-new"
+                    onClick={newChat}
+                  >
+                    New chat
+                  </button>
+                </span>
               </li>
             ) : null}
           </ol>
         )}
       </div>
       ) : null}
-      {panel && !messages.length ? <div className="min-h-0 flex-1 overflow-y-auto px-1"><EmptyState onPick={q => void ask(q)} /></div> : null}
-      <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} inputRef={inputRef} />
-      {!panel && !messages.length ? <EmptyState onPick={q => void ask(q)} /> : null}
+      {panel && !messages.length && !failed ? <div className="min-h-0 flex-1 overflow-y-auto px-1"><EmptyState onPick={q => void ask(q)} /></div> : null}
+      <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length && !failed} inputRef={inputRef} onWarm={warmUp} />
+      {!panel && !messages.length && !failed ? <EmptyState onPick={q => void ask(q)} /> : null}
     </>
   );
 }

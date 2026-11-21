@@ -95,3 +95,18 @@ test('tapping a region tile opens the region page scrolled to the top', async ({
   expect(Math.max(...top)).toBe(0);
   await expect(page.getByTestId('region-heading')).toBeInViewport();
 });
+
+test('mountain summary card: forecast row visible without scrolling, storm line in plain words', async ({ page }) => {
+  await page.goto('/explore/california');
+  await expect(page.getByTestId('region-heading')).toHaveText('California', { timeout: 30_000 });
+  await page.getByTestId('home-list-row').first().click();
+  const peek = page.getByTestId('region-chat').getByTestId('resort-peek');
+  await expect(peek).toBeVisible();
+  const status = await peek.getByTestId('resort-peek-status').innerText();
+  expect(status).not.toMatch(/SNOTEL|CDEC|snow-depth|water equivalent|SWE|still on the forecast/);
+  const fc = (await peek.getByTestId('resort-peek-forecast').boundingBox())!;
+  const body = (await peek.getByTestId('resort-peek-body').boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  expect(fc.y + fc.height).toBeLessThanOrEqual(Math.min(vh, body.y + body.height) + 1);
+  expect(await peek.getByTestId('resort-peek-body').evaluate(el => el.scrollTop)).toBe(0);
+});
