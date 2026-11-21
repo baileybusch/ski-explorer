@@ -183,7 +183,7 @@ console.log('\neve agent tools\n');
 for (const line of eveAgent.lines) console.log(line);
 console.log(`\n${eveAgent.total - eveAgent.fail}/${eveAgent.total} eve-agent evals passed`);
 
-const reliability = runChatReliabilityEvals();
+const reliability = await runChatReliabilityEvals();
 console.log('\nchat reliability\n');
 for (const line of reliability.lines) console.log(line);
 console.log(`\n${reliability.total - reliability.fail}/${reliability.total} chat-reliability evals passed`);

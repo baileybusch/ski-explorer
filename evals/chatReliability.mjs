@@ -12,9 +12,9 @@ import { normalizeChatText } from '../src/lib/chatText.js';
 import { stormStatus } from '../lib/stormStatus.js';
 import { catalog } from '../lib/eve/skiTools.js';
 
-const req = (method, path, ip = '1.2.3.4') => new Request(`https://skiscope.test${path}`, { method, headers: { 'x-forwarded-for': `${ip}, 10.0.0.1` } });
+const req = (method, path, ip = '1.2.3.4', body) => new Request(`https://skiscope.test${path}`, { method, headers: { 'x-forwarded-for': `${ip}, 10.0.0.1`, 'content-type': 'application/json' }, body: method === 'POST' ? (body ?? (/\/session\/[^/]+$/.test(path) ? JSON.stringify({ message: 'hi' }) : '{}')) : undefined });
 
-export function runChatReliabilityEvals() {
+export async function runChatReliabilityEvals() {
   const lines = [];
   let fail = 0;
   const check = (id, ok, detail = '') => {
@@ -28,30 +28,39 @@ export function runChatReliabilityEvals() {
   check('kind-stream', requestKind('GET', '/eve/v1/session/wrun_abc/stream') === 'background');
   check('kind-cancel', requestKind('POST', '/eve/v1/session/wrun_abc/cancel') === 'background');
   check('kind-get-session', requestKind('GET', '/eve/v1/session/wrun_abc') === 'background');
+  check('kind-prewarm-existing', requestKind('POST', '/eve/v1/session/wrun_abc', { hasBody: false }) === 'background');
+  {
+    const l = createLimiter({ now: () => 0 });
+    let ok = 0;
+    for (let i = 0; i < 40; i++) if ((await l.check(req('POST', '/eve/v1/session/wrun_p', '5.5.5.5', '{}'))).ok) ok++;
+    check('prewarm-posts-not-questions', ok === 40, `${ok}/40`);
+    check('prewarm-kind', (await l.check(req('POST', '/eve/v1/session/wrun_p', '5.5.5.5', ''))).kind === 'background');
+    check('turn-kind', (await l.check(req('POST', '/eve/v1/session/wrun_p', '5.5.5.5', JSON.stringify({ message: 'x' })))).kind === 'message');
+  }
   check('limits', LIMITS.message === 20 && LIMITS.background >= 200, JSON.stringify(LIMITS));
 
   let t = 0;
   const lim = createLimiter({ now: () => t });
   // An idle tab for an hour: page-load session + stream reconnect every 60s.
   let bgOk = 0;
-  for (let i = 0; i < 6; i++) { t = i * 10 * 60_000; if (lim.check(req('POST', '/eve/v1/session')).ok) bgOk++; }
-  for (let s = 0; s < 60; s++) { t = s * 60_000; if (lim.check(req('GET', '/eve/v1/session/wrun_a/stream')).ok) bgOk++; }
+  for (let i = 0; i < 6; i++) { t = i * 10 * 60_000; if ((await lim.check(req('POST', '/eve/v1/session'))).ok) bgOk++; }
+  for (let s = 0; s < 60; s++) { t = s * 60_000; if ((await lim.check(req('GET', '/eve/v1/session/wrun_a/stream'))).ok) bgOk++; }
   check('idle-tab-never-limited', bgOk === 66, `bg ok ${bgOk}/66`);
   // Three idle tabs plus 20 questions inside one window: all questions go through.
   t = 70 * 60_000;
-  for (let i = 0; i < 30; i++) lim.check(req('GET', '/eve/v1/session/wrun_b/stream'));
+  for (let i = 0; i < 30; i++) await lim.check(req('GET', '/eve/v1/session/wrun_b/stream'));
   let qOk = 0;
-  for (let i = 0; i < 20; i++) if (lim.check(req('POST', '/eve/v1/session/wrun_b')).ok) qOk++;
+  for (let i = 0; i < 20; i++) if ((await lim.check(req('POST', '/eve/v1/session/wrun_b'))).ok) qOk++;
   check('twenty-questions-allowed', qOk === 20, `${qOk}/20`);
-  check('question-21-limited', lim.check(req('POST', '/eve/v1/session/wrun_b')).ok === false);
-  check('limit-per-ip', lim.check(req('POST', '/eve/v1/session/wrun_c', '9.9.9.9')).ok === true);
-  check('stream-ok-while-questions-limited', lim.check(req('GET', '/eve/v1/session/wrun_b/stream')).ok === true);
+  check('question-21-limited', (await lim.check(req('POST', '/eve/v1/session/wrun_b'))).ok === false);
+  check('limit-per-ip', (await lim.check(req('POST', '/eve/v1/session/wrun_c', '9.9.9.9'))).ok === true);
+  check('stream-ok-while-questions-limited', (await lim.check(req('GET', '/eve/v1/session/wrun_b/stream'))).ok === true);
   t += 10 * 60_000 + 1;
-  check('limit-clears-after-window', lim.check(req('POST', '/eve/v1/session/wrun_b')).ok === true);
+  check('limit-clears-after-window', (await lim.check(req('POST', '/eve/v1/session/wrun_b'))).ok === true);
   // Background abuse is still capped (loosely).
   const lim2 = createLimiter({ now: () => 0 });
   let bg2 = 0;
-  for (let i = 0; i < LIMITS.background + 5; i++) if (lim2.check(req('GET', '/eve/v1/session/x/stream')).ok) bg2++;
+  for (let i = 0; i < LIMITS.background + 5; i++) if ((await lim2.check(req('GET', '/eve/v1/session/x/stream'))).ok) bg2++;
   check('background-loose-cap', bg2 === LIMITS.background, `${bg2}`);
 
   // --- Error copy.

@@ -12,11 +12,12 @@ const anonymous = none();
 const dev = localDev();
 
 const publicChat: EveAuthFn = async (request) => {
-  const verdict = limiter.check(request);
+  const verdict = await limiter.check(request);
   // TEMP diagnostics (remove before merge): which instance counted what.
   seen++;
-  const ipTag = [ipOf(request)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
-  console.log(`[rl] inst=${INSTANCE} seen=${seen} kind=${verdict.kind} ok=${verdict.ok} ip#${ipTag} ${request.method} ${new URL(request.url).pathname.replace(/wrun_\w+/, 'wrun_X')}`);
+  const ip = ipOf(request);
+  const ipTag = [...ip].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
+  console.log(`[rl] inst=${INSTANCE} seen=${seen} kind=${verdict.kind} ok=${verdict.ok} ip#${ipTag} n=${limiter.count(verdict.kind, ip)} ${request.method} ${new URL(request.url).pathname.replace(/wrun_\w+/, 'wrun_X')}`);
   if (!verdict.ok) {
     throw new ForbiddenError({ code: RATE_LIMITED_CODE, message: RATE_LIMITED_MESSAGE });
   }
