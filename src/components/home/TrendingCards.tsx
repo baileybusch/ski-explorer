@@ -44,7 +44,7 @@ export function TrendingCards({
             data-testid="home-trending-card"
             data-resort={r.id}
             data-estimated={d.estimated ? '1' : '0'}
-            aria-label={`Ask SkiScope how ${r.name} is looking`}
+            aria-label={`See ${r.name} snow`}
             onClick={() => onAsk({ id: r.id, name: r.name })}
           >
             <div className="flex min-h-[6.5rem] flex-col justify-between gap-3 px-3.5 min-[640px]:min-h-[8.25rem] pt-3 pb-3.5" style={{ background: TINTS[i % TINTS.length] }} data-testid="home-trending-preview">
@@ -101,7 +101,7 @@ export function FullList({
                 className={`grid w-full ${COLS} items-center gap-x-3 px-3.5 py-2.5 text-left outline-offset-[-2px] hover:bg-foreground/[0.04] focus-visible:outline-2 focus-visible:outline-ring`}
                 data-testid="home-list-row"
                 data-resort={r.id}
-                aria-label={`Ask about ${r.name}: ${snowAmount(d.past72Cm, units)}${d.estimated ? ' estimated' : ''} last 72 hours, ${snowAmount(d.next7Cm, units)} forecast next 7 days`}
+                aria-label={`${r.name}: ${snowAmount(d.past72Cm, units)}${d.estimated ? ' estimated' : ''} last 72 hours, ${snowAmount(d.next7Cm, units)} forecast next 7 days`}
                 onClick={() => onAsk({ id: r.id, name: r.name })}
               >
                 <span className="font-display tabular text-lg leading-none text-muted-foreground">{start + i + 1}</span>

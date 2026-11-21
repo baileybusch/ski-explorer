@@ -65,8 +65,16 @@ export function buildFollowups({ asked = '', main = null, hasOwnData = false }) 
       rows[0]?.name ? { label: `How's ${rows[0].name}?`, send: `How's ${rows[0].name} looking?` } : null,
     );
   } else {
+    // One mountain: the answer stays short; these chips peel back the layers.
     const name = main.resort?.name || main.name || 'there';
-    out.push(why, data, { label: 'Where else is good?', send: `Where else should I go instead of ${name}?` });
+    max = 4;
+    const askedSnow = /snow (quality|feel)|tell me more about the snow/.test(a);
+    out.push(
+      why,
+      askedSnow ? null : { label: 'Tell me more about the snow', send: `Tell me more about the snow at ${name}: how it feels and why.` },
+      { label: "Where's better?", send: `Where's better than ${name} right now?` },
+      data,
+    );
   }
   // Never echo the question that was just asked.
   return out

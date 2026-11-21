@@ -1,5 +1,6 @@
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { normalizeChatText } from '@/lib/chatText.js';
 
 /**
  * Safe markdown for agent replies: react-markdown never renders raw HTML
@@ -44,7 +45,7 @@ export function ChatMarkdown({ text }: { text: string }) {
   return (
     <div className="chat-md min-w-0 break-words" data-testid="chat-md">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} skipHtml urlTransform={safeUrl}>
-        {text}
+        {normalizeChatText(text)}
       </ReactMarkdown>
     </div>
   );

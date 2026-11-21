@@ -1,3 +1,4 @@
+import { trackAgentCalls, expectNoQuestionSent } from './helpers/chat';
 import { expect, test } from '@playwright/test';
 
 test('home: "Browse by region" tiles sit under the trending cards, in the same column', async ({ page }) => {
@@ -63,7 +64,8 @@ test('tapping a region opens the region view with its resorts and a region-scope
   await expect(page.getByTestId('region-view')).toHaveCount(0);
 });
 
-test('/explore/<id> deep-links straight into the region view; row tap asks the chat', async ({ page }, info) => {
+test('/explore/<id> deep-links straight into the region view; row tap shows data, prompt asks the chat', async ({ page }, info) => {
+  const calls = trackAgentCalls(page);
   await page.goto('/explore/japan');
   await expect(page.getByTestId('region-heading')).toHaveText('Japan', { timeout: 30_000 });
   await expect(page.getByTestId('home-chat')).toHaveAttribute('data-mode', /eve|fallback/, { timeout: 15_000 });
@@ -71,6 +73,25 @@ test('/explore/<id> deep-links straight into the region view; row tap asks the c
   await page.getByTestId('home-list-row').first().click();
   const chat = page.getByTestId('region-chat');
   await expect(chat).toBeVisible();
+  const peek = chat.getByTestId('resort-peek');
+  await expect(peek.getByTestId('resort-peek-name')).toHaveText(name);
+  await page.waitForTimeout(800);
+  await expectNoQuestionSent(page, chat);
+  expect(calls).toHaveLength(0);
+  await peek.getByTestId('resort-peek-ask').click();
   await expect(chat.getByTestId('home-chat')).toContainText(name, { timeout: 40_000 });
   void info;
+});
+
+test('tapping a region tile opens the region page scrolled to the top', async ({ page }) => {
+  await page.goto('/');
+  const tile = page.locator('[data-testid=home-region-tile][data-region=california]');
+  await expect(tile).toBeVisible({ timeout: 30_000 });
+  await tile.scrollIntoViewIfNeeded();
+  await tile.click();
+  await expect(page.getByTestId('region-heading')).toBeVisible();
+  await page.waitForTimeout(600);
+  const top = await page.evaluate(() => [window.scrollY, ...[...document.querySelectorAll<HTMLElement>('[data-app-scroller]')].map(e => e.scrollTop)]);
+  expect(Math.max(...top)).toBe(0);
+  await expect(page.getByTestId('region-heading')).toBeInViewport();
 });

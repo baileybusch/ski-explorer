@@ -3,6 +3,7 @@ import { ArrowLeftIcon } from 'lucide-react';
 import { ChatDock } from '@/components/ChatDock';
 import { AgentChat } from '@/components/home/AgentChat';
 import { FullList } from '@/components/home/TrendingCards';
+import { ResortPeek } from '@/components/ResortPeek';
 import { snowAmount, type SnowUnits } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import type { RankOutput } from '@/lib/askTypes';
@@ -48,7 +49,7 @@ export function RegionTiles({
 /**
  * Region view (/explore/<id>): that region's resorts with a region-scoped chat.
  * Desktop: chat in a sticky side panel. Mobile: sticky "Ask about <region>" bar
- * opens the chat full screen. Rows ask the chat about that resort.
+ * opens the chat full screen. Row tap shows that resort's data with prompts (no agent call until one is tapped).
  */
 export function RegionView({
   region, catalog, units, onOpen, onShowBoard, onBack,
@@ -65,9 +66,16 @@ export function RegionView({
   const [ask, setAsk] = useState<{ text: string; n: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const scope = useMemo(() => ({ id: region.id, name: region.name, topName: rows[0]?.r.name || null }), [region, rows]);
+  const [peek, setPeek] = useState<string | null>(null);
+  const peekResort = peek ? (catalog.resorts || []).find((x: any) => x.id === peek) || null : null;
+  // Row tap shows that mountain's data first; the agent is asked only when a prompt is tapped.
   function askAbout(r: { id: string; name: string }) {
-    setAsk({ text: `How's ${r.name} looking?`, n: Date.now() });
+    setPeek(r.id);
     if (!wide) setChatOpen(true);
+  }
+  function send(text: string) {
+    setPeek(null);
+    setAsk({ text, n: Date.now() });
   }
 
   return (
@@ -78,7 +86,7 @@ export function RegionView({
         </button>
         <h1 className="mt-1 font-display text-[2rem] leading-none min-[720px]:text-[2.4rem]" data-testid="region-heading">{region.name}</h1>
         <p className="mt-2 text-sm text-muted-foreground" data-testid="region-summary">
-          {rows.length} resorts · most new snow first · tap one to ask about it
+          {rows.length} resorts · most new snow first · tap one for its snow
         </p>
         <div className="mt-5">
           {rows.length ? (
@@ -105,6 +113,20 @@ export function RegionView({
         barTestid="region-chat-bar"
         closeTestid="region-chat-close"
       >
+        {peekResort ? (
+          <ResortPeek
+            key={peekResort.id}
+            resort={peekResort}
+            snow={catalog.snow}
+            units={units}
+            onAsk={send}
+            onOpen={onOpen}
+            onClose={() => setPeek(null)}
+            className="min-h-0 flex-1"
+            showInput
+          />
+        ) : null}
+        <div className={peekResort ? 'hidden' : 'contents'} data-testid="region-chat-thread">
         <AgentChat
           key={region.id}
           layout="panel"
@@ -117,6 +139,7 @@ export function RegionView({
           topNames={rows.slice(0, 3).map(x => x.r.name)}
           scope={scope}
         />
+        </div>
       </ChatDock>
     </div>
   );
