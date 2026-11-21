@@ -1,4 +1,5 @@
 import '../../lib/eve/embeddedData';
+import { ensureLiveData } from '../../lib/eve/liveData.js';
 import { defineTool } from 'eve/tools';
 import { json, resortForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
@@ -10,6 +11,7 @@ export default defineTool({
     resort: z.string().describe('Resort id or name, e.g. alta, Mammoth'),
   }),
   async execute(input) {
+    await ensureLiveData();
     return getResortConditionsLive(input);
   },
   // Model sees a compact gist; UI cards still get the full output.

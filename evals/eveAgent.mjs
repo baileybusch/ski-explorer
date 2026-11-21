@@ -13,6 +13,11 @@ import { EMAIL_ALERTS_ENABLED } from '../public/config.js';
 import { buildFollowups, sameQuestion, isOpenEndedWhere } from '../src/lib/chatFollowups.js';
 import { HOME_REGIONS, regionTiles, regionRows, regionScopeContext, regionStarters, parseExplorePath, explorePath } from '../lib/homeRegions.js';
 import { vercelSpa } from '../lib/vercelSpa.js';
+import { ensureLiveData, resetLiveData, liveOrigin, LIVE_TTL_MS } from '../lib/eve/liveData.js';
+import { loadRaw, buildCatalog, setCatalog } from '../lib/skiscope-tools/catalog.js';
+import { weekendIdx, weekendSnow } from '../lib/skiscope-tools/weekend.js';
+import { voiceIssues, isWeekendQuestion } from '../lib/eve/voiceLint.js';
+import { json as modelJson, BANNED_MODEL_PHRASES } from '../lib/eve/modelView.js';
 
 function skill(name) {
   return readFileSync(new URL(`../agent/skills/${name}/SKILL.md`, import.meta.url), 'utf8');
@@ -190,6 +195,92 @@ export async function runEveAgentEvals() {
     check('regions-explore-path', parseExplorePath(explorePath('pacific-nw')) === 'pacific-nw' && parseExplorePath('/explore/../x') === null && parseExplorePath('/region/utah') === null);
     check('regions-explore-rewrite', vercelSpa.rewrites.some(r => r.source === '/explore/:id' && r.destination === '/'));
     check('regions-instructions', /Region pages \(page context\)/.test(persona) && /best \*\*in that region\*\*/.test(persona));
+  }
+
+  // Live data: tools read the same /api/observed the page loads; chat and list agree.
+  {
+    const raw = loadRaw();
+    const gazRegions = raw.gaz?.regions || [];
+    const utahRegion = gazRegions.find(g => g.id === 'utah');
+    const snapCat = { ...buildCatalog({ ...raw, snow: { ...raw.snow } }), regions: gazRegions };
+    const snapshotTop = regionRows(utahRegion, snapCat)[0].r.id;
+    // A live snapshot where a different Utah resort leads, with a distinct number.
+    const bump = snapshotTop === 'brighton' ? 'solitude' : 'brighton';
+    const live = JSON.parse(JSON.stringify(raw.observed));
+    live.resorts[bump] = { ...(live.resorts[bump] || {}), snow72hCm: 99.1, snow24hCm: 30.5, source: 'snotel:test:UT:SNTL', method: 'snwd-peak' };
+    live.fetched = '2099-01-01T00:00:00Z';
+    let calls = 0;
+    const okFetch = async url => { calls++; return { ok: url.endsWith('/api/observed'), status: 200, json: async () => live }; };
+    let t = 1_000_000;
+    const now = () => t;
+    resetLiveData();
+    const env = { VERCEL_ENV: 'preview', VERCEL_BRANCH_URL: 'skiscope-git-x-bbusch.vercel.app', VERCEL_URL: 'skiscope-abc.vercel.app' };
+    const st = await ensureLiveData({ fetchImpl: okFetch, env, now });
+    check('live-data-fetched', st.source === 'live' && st.origin === 'https://skiscope-git-x-bbusch.vercel.app' && calls === 1, JSON.stringify(st));
+    const chatTop = getTrending({ region: 'Utah', limit: 3 }).data.rows[0];
+    // The page: browser-style catalog from the same live observed -> lib/homeRegions.regionRows.
+    const pageCat = { ...buildCatalog({ ...raw, snow: { ...raw.snow }, observed: live }), regions: gazRegions };
+    const pageTop = regionRows(utahRegion, pageCat)[0];
+    check('live-data-chat-matches-list', chatTop.id === bump && pageTop.r.id === bump && Math.abs(chatTop.actual72Cm - pageTop.dump.past72Cm) < 0.05, `${chatTop.id} ${chatTop.actual72Cm} vs ${pageTop.r.id} ${pageTop.dump.past72Cm}`);
+    t += LIVE_TTL_MS - 1000;
+    await ensureLiveData({ fetchImpl: okFetch, env, now });
+    check('live-data-cached', calls === 1);
+    t += 2000;
+    await ensureLiveData({ fetchImpl: okFetch, env, now });
+    check('live-data-ttl-refresh', calls === 2 && LIVE_TTL_MS <= 5 * 60 * 1000);
+    t += LIVE_TTL_MS + 1;
+    const bad = await ensureLiveData({ fetchImpl: async () => { throw new Error('boom'); }, env, now });
+    const afterFail = getTrending({ region: 'Utah', limit: 1 }).data.rows[0].id;
+    check('live-data-fallback-snapshot', bad.source === 'snapshot' && /boom/.test(bad.error) && afterFail === snapshotTop, `${bad.source} ${afterFail} vs ${snapshotTop}`);
+    t += 120_000;
+    const http = await ensureLiveData({ fetchImpl: async () => ({ ok: false, status: 503, json: async () => ({}) }), env, now });
+    check('live-data-fallback-http', http.source === 'snapshot');
+    resetLiveData();
+    let noCalls = 0;
+    const local = await ensureLiveData({ fetchImpl: async () => { noCalls++; return null; }, env: {}, now });
+    check('live-data-no-origin-no-fetch', local.source === 'snapshot' && noCalls === 0);
+    check('live-origin-env', liveOrigin({ VERCEL_ENV: 'production', VERCEL_PROJECT_PRODUCTION_URL: 'skiscope.vercel.app', VERCEL_URL: 'x.vercel.app' }) === 'https://skiscope.vercel.app'
+      && liveOrigin({ VERCEL_ENV: 'preview', VERCEL_URL: 'x.vercel.app' }) === 'https://x.vercel.app' && liveOrigin({}) === null);
+    const toolSrc = ['getTrending', 'getResortConditions', 'searchResorts', 'getSnowForecast', 'compareResorts']
+      .map(n => [n, readFileSync(new URL(`../agent/tools/${n}.ts`, import.meta.url), 'utf8')]);
+    check('live-data-all-tools', toolSrc.every(([, src]) => /await ensureLiveData\(\)/.test(src)), toolSrc.filter(([, src]) => !/await ensureLiveData/.test(src)).map(([n]) => n).join(','));
+    check('live-data-embedded-base', /setBaseRaw\(embeddedRaw\)/.test(readFileSync(new URL('../lib/eve/embeddedData.ts', import.meta.url), 'utf8')));
+    resetLiveData();
+    setCatalog(buildCatalog({ ...raw, snow: { ...raw.snow } }));
+  }
+
+  // Voice: never "depth rise"; weekend = Sat + Sun only; no unsupported color.
+  {
+    check('voice-instructions-depth-rise', /Never say "depth rise"/.test(persona));
+    check('voice-instructions-weekend', /only the weekend days' forecast/i.test(persona) && /sort: "weekend"/.test(persona) && /never the 7-day total/i.test(persona));
+    check('voice-instructions-no-color', /Don't add unsupported color/i.test(persona) && /higher-altitude powder/.test(persona));
+    const toolDescs = ['getTrending', 'getResortConditions', 'searchResorts', 'getSnowForecast', 'compareResorts']
+      .map(n => readFileSync(new URL(`../agent/tools/${n}.ts`, import.meta.url), 'utf8').match(/description: '([^\n]*)'/)?.[1] || '');
+    check('voice-tool-descriptions-no-depth-rise', toolDescs.every(d => !BANNED_MODEL_PHRASES.test(d)));
+    const ids = catalog().resorts.slice(0, 40).map(r => r.id);
+    const views = [
+      ...ids.map(id => modelJson(resortForModel(getResortConditions({ resort: id })))),
+      modelJson(rankForModel(getTrending({ limit: 8 }))),
+      modelJson(rankForModel(getTrending({ sort: 'weekend', limit: 8 }))),
+      modelJson(compareForModel(compareResorts({ resorts: ids.slice(0, 4) }))),
+    ];
+    const leaky = views.map(v => JSON.stringify(v.value)).filter(x => BANNED_MODEL_PHRASES.test(x));
+    check('voice-model-views-no-depth-rise', leaky.length === 0, leaky[0]?.match(/.{0,40}(depth[-_ ]?rise|peak[-_ ]?rise|snwd).{0,40}/i)?.[0]);
+    const ds = ['2026-11-20', '2026-11-21', '2026-11-22', '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28', '2026-11-29'];
+    check('weekend-days', JSON.stringify(weekendIdx(ds, 0)) === '[1,2]' && JSON.stringify(weekendIdx(ds, 2)) === '[2]' && JSON.stringify(weekendIdx(ds, 3)) === '[8,9]', JSON.stringify([weekendIdx(ds, 0), weekendIdx(ds, 2), weekendIdx(ds, 3)]));
+    const wk = getTrending({ sort: 'weekend', limit: 8 });
+    const cat = catalog();
+    const manual = cat.resorts.map(r => ({ id: r.id, cm: weekendSnow(r, cat.snow).cm })).sort((a, b) => b.cm - a.cm);
+    check('weekend-rank-uses-weekend-days', wk.data.sortLabel === 'This weekend' && wk.data.rows[0].weekendCm === manual[0].cm && wk.data.rows.every(r => r.weekendIn <= r.next7In + 0.05), JSON.stringify(wk.data.rows.slice(0, 2).map(r => [r.name, r.weekendIn, r.next7In])));
+    const wkView = rankForModel(wk);
+    check('weekend-model-view-no-7day', wkView.rows.every(r => !('next7In' in r) && 'weekendIn' in r) && /never a 7-day total/.test(wkView.howToAnswer) && !!wkView.weekendDays, JSON.stringify(wkView.rows[0]));
+    const altaView = resortForModel(getResortConditions({ resort: 'alta' }));
+    check('weekend-resort-field', !!altaView.weekend && /Sat|Sun/.test(altaView.weekend.label) && Number.isFinite(altaView.weekend.snowIn), JSON.stringify(altaView.weekend));
+    check('voice-lint-flags-bad', voiceIssues("Snowbird's the call: 18\" of depth rise, and fresh lift-runs with higher-altitude powder.").join() === 'depth-rise,unsupported-color'
+      && voiceIssues('Stevens Pass: about 24 in over the next 7 days.', { weekend: true }).includes('weekend-uses-7-day'));
+    check('voice-lint-passes-good', voiceIssues('Snowbasin is the call: about 22 inches in three days. Alta is close behind.').length === 0
+      && voiceIssues('Hakuba for Sat–Sun: about 14 inches forecast. Les 3 Vallées gets about 11.', { weekend: true }).length === 0);
+    check('voice-weekend-detector', isWeekendQuestion('Where should I ski this weekend?') && !isWeekendQuestion("Where's it dumping right now?"));
   }
 
   // Compact model views: small, honest, and free of internal labels.

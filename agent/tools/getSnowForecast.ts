@@ -1,4 +1,5 @@
 import '../../lib/eve/embeddedData';
+import { ensureLiveData } from '../../lib/eve/liveData.js';
 import { defineTool } from 'eve/tools';
 import { json, forecastForModel } from '../../lib/eve/modelView.js';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ export default defineTool({
     units: z.enum(['in', 'cm']).optional(),
   }),
   async execute(input) {
+    await ensureLiveData();
     return getSnowForecast(input);
   },
   // Model sees a compact gist; UI cards still get the full output.

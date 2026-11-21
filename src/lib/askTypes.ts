@@ -36,7 +36,7 @@ export type Facts = {
   web: string | null;
 };
 
-export type AskSort = 'actual72h' | 'actual24h' | 'forecast7d';
+export type AskSort = 'actual72h' | 'actual24h' | 'forecast7d' | 'weekend';
 type Leader = { id: string; name: string; cm: number; in: number } | null;
 
 export type RankOutput = SourceMeta & {

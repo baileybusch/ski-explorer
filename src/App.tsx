@@ -71,6 +71,7 @@ const ASK_TO_BOARD_SORT: Record<RankOutput['sort'], BoardSortId> = {
   actual72h: 'actual72',
   actual24h: 'actual24',
   forecast7d: 'forecast7d',
+  weekend: 'forecast7d',
 };
 
 type Landing = { kind: 'region' | 'pass' | 'resort'; id: string } | null;
