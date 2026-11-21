@@ -110,34 +110,43 @@ Everything brand-facing reads `lib/brand.js`: name, both wordmarks, logo mark id
 - Tried: 2-up phone cards (pass 9). Rejected: numbers didn't line up between cards, and the sort column couldn't stay put.
 - Tried: uppercase micro-labels on stats. Rejected: template tell, and they truncated at 320px.
 
-## Navy surfaces + chat-first resorts page (Nov 2026 design pass)
+## iOS / Muse palette + chat-first resorts page (Nov 2026)
 
-Supersedes the pure-black "Ink" ground and the docked-Ask notes above. Bailey asked for clearer containment: where the chat starts and ends, and where each section begins.
+Supersedes the pure-black "Ink" mono palette above and the short-lived navy pass. Bailey wanted
+SkiScope to feel like the Muse iOS chat app (iMessage-style dark mode): true black, iOS system
+grays, one iOS-blue accent, glassy round controls, system font.
 
-Defined in `src/index.css` under `.dark`. Components use these through Tailwind
-(`bg-card`, `text-muted-foreground`) or as `var(--token)`; avoid raw colors.
+| Token | Value | Use |
+| --- | --- | --- |
+| `--background` | `#000000` | Page and chat surface. |
+| `--card` / `--surface` / `--cta-bg` / `--chat-input` | `#1C1C1E` | Sections, list panel, cards, CTAs, message bar. |
+| `--surface-raised` / `--bubble-agent` / `--accent` | `#2C2C2E` | Agent bubbles, chips, hover, nested blocks. |
+| `--surface-line` / `--border` / `--chat-panel-line` | `#38383A` | iOS separator: borders and hairlines. |
+| `--ice` / `--ring` | `#0A84FF` | iOS blue for icons, focus rings and accents on black. |
+| `--link` | `#409CFF` | Text links (AA on every surface). |
+| `--primary` / `--bubble-user` | `#0B6FE8` | Filled buttons + user bubbles with white text (4.72:1; `#0A84FF` with white is only 3.65:1). |
+| `--muted-foreground` | `#A1A1A6` | Secondary text (≥5.4:1 on every surface). |
+| `--glass-bg`, `--glass-line` | `rgb(44 44 46 / .62)`, `rgb(255 255 255 / .14)` | Frosted round/pill controls (`.glass`, 20px blur). |
 
-| Token | Use |
-| --- | --- |
-| `--background` | Page. Deep navy slate (~#111a27), not pure black. |
-| `--card` / `--surface` | Sections, list panel, cards. Lighter and a bit more saturated than the page. |
-| `--surface-raised` | Chips, active nav pill, nested blocks. |
-| `--surface-line` | Visible 1px borders around contained surfaces. |
-| `--header-bg` | Sticky app header (blurred). |
-| `--ice` / `--ring` / `--accent` | Ice-blue accent tied to the snowflake mark: send button, focus rings, icons, eyebrow text. |
-| `--chat-panel`, `--chat-panel-line` | The chat's own tinted surface (`.chat-surface`). |
-| `--chat-input` | Chat composer field. |
-| `--bubble-user(-fg)` | User message bubble (ice-blue, white text). |
-| `--bubble-agent(-fg)` | Agent message bubble (raised slate). |
-| `--cta-bg`, `--cta-line` | CTA / promo container (`.cta-card`, `CtaCard`). |
+Type: `-apple-system` / SF first (Sora as the non-Apple fallback). Snow numbers stay in Barlow
+Condensed 800 with the solid (actual) vs hatched (forecast) stakes at equal billing.
 
-Utility classes (`@layer components`): `.surface-card`, `.chat-surface`, `.cta-card`.
+Chat (iMessage / Muse):
+- User: right-aligned `#0B6FE8` bubble, white 16px text, 20px radius with a 6px tail corner.
+- Agent: left-aligned `#2C2C2E` bubble, white text, 20px radius, 6px tail corner.
+- Typing: three 8px gray (`#8E8E93`) dots pulsing in a `#2C2C2E` pill.
+- Docked/sheet panels: one rounded `#1C1C1E` pill message bar ("Message") with a blue round send
+  button. The home hero keeps the larger rounded input box (28px radius) Bailey picked earlier.
+- Dock header: snowflake avatar in a blue circle, bold name, live status on a frosted pill
+  ("Checking the snow…", "Reading the forecast…", "Typing…"), else the scope line.
+
+Utility classes (`@layer components`): `.surface-card`, `.chat-surface`, `.cta-card`, `.glass`.
 
 Layout pieces:
-- `AppHeader`: logo · Resorts · account menu (top right). Used on home, region view, resorts page.
+- `AppHeader`: logo · Resorts (frosted pill) · account menu (frosted round button, top right).
 - `ChatDock`: one chat instance, docked side panel (≥1024px) or a sheet that opens from a sticky
-  "Ask SkiScope…" bar and starts below the header.
+  "Ask SkiScope…" pill and starts below the header. Provides `ChatStatusCtx` for the status line.
 - `CtaCard`: every signup/alert/promo block. Fills its column, copy left, action right.
 
 Contrast: `node scripts/check-contrast.mjs` checks every text/surface pair against WCAG AA
-(4.5:1 text, 3:1 accent/UI).
+(reads hex or oklch tokens from `.dark`).

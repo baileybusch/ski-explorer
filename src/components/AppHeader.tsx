@@ -22,12 +22,12 @@ export function AppHeader({
   const nav = (id: AppSection) =>
     `inline-flex min-h-10 items-center rounded-full px-3.5 text-sm font-medium outline-offset-2 transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
       active === id
-        ? 'bg-[var(--surface-raised)] text-foreground ring-1 ring-[var(--surface-line)]'
-        : 'text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground'
+        ? 'glass text-foreground'
+        : 'border border-transparent text-muted-foreground hover:bg-[var(--glass-bg)] hover:text-foreground'
     }`;
   return (
     <header
-      className="sticky top-0 z-30 w-full border-b border-[var(--surface-line)] bg-[var(--header-bg)] pt-[env(safe-area-inset-top)] backdrop-blur-md"
+      className="sticky top-0 z-30 w-full bg-[var(--header-bg)] pt-[env(safe-area-inset-top)] backdrop-blur-xl"
       data-testid={testid}
     >
       <div className="mx-auto flex h-14 w-full items-center gap-2 px-3 min-[840px]:h-16 min-[840px]:gap-4 min-[840px]:px-6" style={{ maxWidth }}>
@@ -54,7 +54,7 @@ export function AppHeader({
         <span className="flex-1" />
         <button
           type="button"
-          className="grid size-11 shrink-0 place-items-center rounded-full text-foreground outline-offset-2 ring-1 ring-[var(--surface-line)] transition-colors hover:bg-foreground/[0.06] focus-visible:outline-2 focus-visible:outline-ring"
+          className="glass grid size-11 shrink-0 place-items-center rounded-full text-foreground outline-offset-2 transition-colors hover:bg-[var(--surface-raised)] focus-visible:outline-2 focus-visible:outline-ring"
           aria-label="Menu"
           data-testid="menu-button"
           onClick={onMenu}

@@ -188,7 +188,7 @@ export function ResortProfile({
                 {onAsk ? (
                   <button
                     type="button"
-                    className="mt-3 min-h-11 text-left text-sm text-muted-foreground underline-offset-4 outline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    className="mt-3 min-h-11 text-left text-sm text-[var(--link)] underline-offset-4 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     data-testid="profile-ask"
                     onClick={() => onAsk(resort)}
                   >

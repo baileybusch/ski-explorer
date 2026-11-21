@@ -94,7 +94,7 @@ export function HomeLanding({
             {rows.length > TOP ? (
               <button
                 type="button"
-                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className="text-sm text-[var(--link)] underline-offset-4 hover:underline"
                 data-testid="home-see-all"
                 aria-expanded={expanded}
                 onClick={() => setExpanded(v => !v)}

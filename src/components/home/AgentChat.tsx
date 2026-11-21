@@ -17,6 +17,7 @@ import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 import { ChatMarkdown } from '@/components/home/ChatMarkdown';
 import { prefersReducedMotion } from '@/lib/motion';
+import { ChatStatusCtx } from '@/components/ChatDock';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -125,17 +126,20 @@ function Composer({
   return (
     // Claude-style input card: text at top-left, controls along the bottom.
     <form
-      className={`flex flex-col rounded-2xl bg-[var(--chat-input)] px-4 pt-3.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0/0.25),0_8px_24px_-12px_rgb(0_0_0/0.45)] ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-2 focus-within:ring-[var(--ice)] ${panel ? 'min-h-[6.5rem]' : 'min-h-[8.25rem]'}`}
+      className={panel
+        // iOS / Muse message bar: one rounded pill, send button inside on the right.
+        ? 'flex min-h-12 items-end gap-2 rounded-[24px] bg-[var(--chat-input)] py-1.5 pr-1.5 pl-4 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'
+        : 'flex min-h-[8.25rem] flex-col rounded-[28px] bg-[var(--chat-input)] px-5 pt-4 pb-3 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'}
       onSubmit={onSubmit}
       data-testid="home-chat-composer"
     >
-      <div className="relative min-w-0 flex-1">
+      <div className={`relative min-w-0 flex-1 ${panel ? 'self-center py-1.5' : ''}`}>
         {showGhost && !typing ? (
           <GhostPrompt
             lines={ghosts}
             paused={typing}
             testid="home-chat-ghost"
-            className="ghost-prompt ghost-prompt-wrap pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground"
+            className={`ghost-prompt pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground ${panel ? '' : 'ghost-prompt-wrap'} ${panel ? 'top-1.5' : ''}`}
           />
         ) : null}
         <textarea
@@ -149,27 +153,29 @@ function Composer({
             }
           }}
           aria-label={`Ask ${BRAND.name}`}
-          rows={2}
-          className="block h-full min-h-12 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground"
+          rows={panel ? 1 : 2}
+          className={`block w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground ${panel ? 'max-h-32 min-h-6' : 'h-full min-h-12'}`}
           autoComplete="off"
           enterKeyHint="send"
           maxLength={400}
-          placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+          placeholder={showGhost && !typing ? '' : panel ? 'Message' : 'Ask a follow-up…'}
         />
       </div>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
-          <SnowflakeIcon className="size-3.5" aria-hidden />
-          Live snow data · Ikon &amp; Epic
-        </span>
+      <div className={panel ? 'flex shrink-0 items-center' : 'mt-1 flex items-center justify-between gap-3'}>
+        {panel ? null : (
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
+            <SnowflakeIcon className="size-3.5" aria-hidden />
+            Live snow data · Ikon &amp; Epic
+          </span>
+        )}
         {busy && onStop ? (
-          <button type="button" className="grid size-9 place-items-center rounded-full ring-1 ring-foreground/20 hover:bg-foreground/5" aria-label="Stop" onClick={onStop}>
+          <button type="button" className="grid size-9 place-items-center rounded-full bg-[var(--surface-raised)] hover:bg-foreground/10" aria-label="Stop" onClick={onStop}>
             <SquareIcon className="size-3.5" />
           </button>
         ) : (
           <button
             type="submit"
-            className="grid size-9 place-items-center rounded-full bg-[var(--ice)] text-[var(--accent-foreground)] transition-opacity disabled:opacity-30"
+            className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:bg-[var(--surface-raised)] disabled:text-muted-foreground"
             aria-label="Send"
             data-testid="home-chat-send"
             disabled={!input.trim()}
@@ -214,7 +220,7 @@ function Chip({ children, onClick, testid, active }: { children: ReactNode; onCl
       type="button"
       onClick={onClick}
       data-testid={testid}
-      className={`min-h-9 rounded-full px-3.5 py-1.5 text-[13px] leading-tight ring-1 transition-colors outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${active ? 'bg-[var(--surface-raised)] ring-[var(--ice)]/50' : 'bg-[var(--surface-raised)]/60 ring-[var(--surface-line)] hover:bg-[var(--surface-raised)] hover:ring-[var(--ice)]/40'}`}
+      className={`min-h-9 rounded-full px-3.5 py-1.5 text-[14px] leading-tight ring-1 transition-colors outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${active ? 'bg-[var(--surface-raised)] text-[var(--link)] ring-[var(--ice)]/60' : 'bg-[var(--surface)] ring-[var(--surface-line)] hover:bg-[var(--surface-raised)]'}`}
     >
       {children}
     </button>
@@ -224,7 +230,7 @@ function Chip({ children, onClick, testid, active }: { children: ReactNode; onCl
 function TypingBubble({ label }: { label?: string }) {
   return (
     <div className="flex items-center gap-2" data-testid="home-chat-typing" aria-live="polite" aria-label={label || 'Thinking'}>
-      <span className="inline-flex items-center gap-1 rounded-2xl rounded-bl-md bg-[var(--bubble-agent)] px-3 py-2.5 ring-1 ring-[var(--surface-line)]">
+      <span className="inline-flex items-center gap-[5px] rounded-full bg-[var(--bubble-agent)] px-4 py-3">
         <span className="chat-dot" />
         <span className="chat-dot [animation-delay:150ms]" />
         <span className="chat-dot [animation-delay:300ms]" />
@@ -355,6 +361,12 @@ function EveChat({
   const showTyping = busy && (!lastAssistant || !lastText || !!runningTool);
   const typingLabel = runningTool ? (TOOL_LABEL[runningTool.name] || 'Checking the snow') : undefined;
 
+  // Live status line in the dock header (Muse-style): what the agent is doing right now.
+  const reportStatus = useContext(ChatStatusCtx);
+  const statusLine = !busy ? null : typingLabel || (lastText ? 'Typing' : 'Checking the snow');
+  useEffect(() => { reportStatus?.(statusLine); }, [reportStatus, statusLine]);
+  useEffect(() => () => reportStatus?.(null), [reportStatus]);
+
   return (
     <>
       {messages.length ? (
@@ -362,7 +374,7 @@ function EveChat({
         ref={scroller}
         className={panel
           ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pt-1 pb-2'
-          : 'chat-surface max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain rounded-2xl p-3 min-[720px]:p-4'}
+          : 'chat-surface max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain rounded-[24px] p-3 min-[720px]:p-4'}
         data-testid="home-chat-scroll"
       >
         {(
@@ -372,7 +384,7 @@ function EveChat({
                 const text = (m.parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
                 return (
                   <li key={m.id} className="flex justify-end" data-testid="home-ask-user">
-                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--bubble-user)] px-3.5 py-2 text-[15px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
+                    <p className="max-w-[85%] rounded-[20px] rounded-br-[6px] bg-[var(--bubble-user)] px-4 py-2 text-[16px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
                   </li>
                 );
               }
@@ -385,7 +397,7 @@ function EveChat({
               return (
                 <li key={m.id} className="flex flex-col items-start gap-2" data-testid="home-ask-answer">
                   {text ? (
-                    <div className="max-w-[min(92%,62ch)] rounded-2xl rounded-bl-md bg-[var(--bubble-agent)] px-3.5 py-2.5 text-[15px] leading-relaxed text-[var(--bubble-agent-fg)] ring-1 ring-[var(--surface-line)]" data-testid="home-chat-bubble">
+                    <div className="max-w-[min(88%,62ch)] rounded-[20px] rounded-bl-[6px] bg-[var(--bubble-agent)] px-4 py-2.5 text-[16px] leading-relaxed text-[var(--bubble-agent-fg)]" data-testid="home-chat-bubble">
                       <ChatMarkdown text={text} />
                     </div>
                   ) : null}
@@ -413,9 +425,9 @@ function EveChat({
             })}
             {showTyping ? <li><TypingBubble label={typingLabel} /></li> : null}
             {failed ? (
-              <li className="flex flex-wrap items-center gap-3 rounded-xl bg-[var(--bubble-agent)] px-3.5 py-3 text-sm ring-1 ring-[var(--surface-line)]" data-testid="home-chat-error" role="alert">
+              <li className="flex flex-wrap items-center gap-3 rounded-[20px] bg-[var(--bubble-agent)] px-4 py-3 text-sm" data-testid="home-chat-error" role="alert">
                 <span>Sorry, the snow desk didn&rsquo;t answer. Try again in a moment.</span>
-                <button type="button" className="rounded-full px-3 py-1 text-sm font-medium ring-1 ring-foreground/20 hover:bg-foreground/5" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
+                <button type="button" className="rounded-full bg-primary px-3.5 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/85" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
                   Retry
                 </button>
               </li>
@@ -606,7 +618,7 @@ export function AgentChat({
         panel
           ? 'h-full min-h-0 flex-1'
           : fallbackOpen
-            ? 'chat-surface h-[min(34rem,68dvh)] overflow-hidden rounded-2xl min-[720px]:h-[min(38rem,62vh)]'
+            ? 'chat-surface h-[min(34rem,68dvh)] overflow-hidden rounded-[24px] min-[720px]:h-[min(38rem,62vh)]'
             : ''
       }`}
       data-testid="home-chat"

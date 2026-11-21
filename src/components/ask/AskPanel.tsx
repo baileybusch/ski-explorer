@@ -50,7 +50,7 @@ function Thread({
           const text = m.parts.map(p => (p.type === 'text' ? p.text : '')).join('');
           return (
             <li key={m.id} className="flex justify-end scroll-mt-4" data-testid="ask-user" data-msg={m.id}>
-              <p className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--bubble-user)] px-3.5 py-2 text-[15px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
+              <p className="max-w-[85%] rounded-[20px] rounded-br-[6px] bg-[var(--bubble-user)] px-4 py-2 text-[16px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
             </li>
           );
         }
@@ -86,7 +86,7 @@ function Thread({
         return (
           <li key={m.id} className="flex flex-col gap-3" data-testid="ask-answer" data-mode={m.metadata?.mode || ''}>
             {text ? (
-              <p className="max-w-[62ch] self-start rounded-2xl rounded-bl-md bg-[var(--bubble-agent)] px-3.5 py-2.5 text-[15px] leading-relaxed whitespace-pre-line text-[var(--bubble-agent-fg)] ring-1 ring-[var(--surface-line)]" data-testid="ask-answer-text">{text}</p>
+              <p className="max-w-[min(88%,62ch)] self-start rounded-[20px] rounded-bl-[6px] bg-[var(--bubble-agent)] px-4 py-2.5 text-[16px] leading-relaxed whitespace-pre-line text-[var(--bubble-agent-fg)]" data-testid="ask-answer-text">{text}</p>
             ) : null}
             {tools}
             <SourcesNote outputs={outputs} mode={m.metadata?.mode} />
@@ -247,7 +247,7 @@ export function AskPanel({
               <button
                 key={s}
                 type="button"
-                className="min-h-10 rounded-full border border-[var(--surface-line)] bg-[var(--surface-raised)]/60 px-3 text-left text-[13px] text-foreground/85 outline-offset-2 hover:border-[var(--ice)]/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="min-h-10 rounded-full border border-[var(--surface-line)] bg-[var(--surface)] px-3.5 text-left text-[14px] text-foreground/90 outline-offset-2 hover:border-[var(--ice)]/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 data-testid="ask-suggestion"
                 onClick={() => ask(s)}
               >
@@ -256,7 +256,7 @@ export function AskPanel({
             ))}
           </div>
         ) : null}
-        <InputGroup className="h-12 rounded-full border-[var(--chat-panel-line)] bg-[var(--chat-input)] dark:bg-[var(--chat-input)] has-[[data-slot=input-group-control]:focus-visible]:border-[var(--ice)]">
+        <InputGroup className="h-12 rounded-[24px] border-[var(--chat-panel-line)] bg-[var(--chat-input)] dark:bg-[var(--chat-input)] has-[[data-slot=input-group-control]:focus-visible]:border-[var(--ice)]">
           <InputGroupInput
             ref={inputRef}
             value={input}
@@ -274,7 +274,7 @@ export function AskPanel({
                 <SquareIcon />
               </InputGroupButton>
             ) : (
-              <InputGroupButton type="submit" size="icon-sm" variant="outline" className="rounded-full" aria-label="Send" data-testid="ask-send" disabled={!input.trim()}>
+              <InputGroupButton type="submit" size="icon-sm" variant="default" className="rounded-full" aria-label="Send" data-testid="ask-send" disabled={!input.trim()}>
                 <ArrowUpIcon />
               </InputGroupButton>
             )}

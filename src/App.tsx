@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BoardChrome } from '@/components/BoardChrome';
 import { AppHeader } from '@/components/AppHeader';
 import { ChatDock } from '@/components/ChatDock';
 import { AgentChat } from '@/components/home/AgentChat';
+import { AskPanel } from '@/components/ask/AskPanel';
 import { BlockBoard } from '@/components/BlockBoard';
 import type { RankOutput } from '@/lib/askTypes';
 import { TripOnboarding } from '@/components/TripOnboarding';
@@ -40,7 +41,6 @@ import { snowAmount } from '@/lib/format';
 import type { SnowUnits, TempUnits } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
-const AskPanel = lazy(() => import('@/components/ask/AskPanel').then(m => ({ default: m.AskPanel })));
 
 const PASSES = ['all', 'ikon', 'epic'] as const;
 /** Resorts page: chat docks beside the list at this width; below it, a sticky bar opens a sheet. */
@@ -799,7 +799,6 @@ export default function App() {
       ) : null}
 
       {askMounted ? (
-      <Suspense fallback={null}>
       <AskPanel
         open={askVisible}
         docked={false}
@@ -825,7 +824,6 @@ export default function App() {
           focusResortName: focusResort?.name || null,
         }}
       />
-      </Suspense>
       ) : null}
 
       <TripOnboarding

@@ -87,7 +87,7 @@ export function RegionView({
             <p className="text-sm text-muted-foreground">No mapped resorts in this region yet.</p>
           )}
         </div>
-        <a href={withAlerts(categoryPath('region', region.id))} className="mt-4 inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" data-testid="region-full-board">
+        <a href={withAlerts(categoryPath('region', region.id))} className="mt-4 inline-flex min-h-11 items-center text-sm text-[var(--link)] underline-offset-4 hover:underline" data-testid="region-full-board">
           Open {region.name} on the full board
         </a>
       </div>
