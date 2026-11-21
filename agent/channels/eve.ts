@@ -1,23 +1,17 @@
 import { ForbiddenError, localDev, none, vercelOidc } from 'eve/channels/auth';
 import { eveChannel, eveVercelOidc, type EveAuthFn } from 'eve/channels/eve';
-import { createLimiter, ipOf, RATE_LIMITED_CODE, RATE_LIMITED_MESSAGE } from '../../lib/eve/rateLimit.js';
+import { createLimiter, RATE_LIMITED_CODE, RATE_LIMITED_MESSAGE } from '../../lib/eve/rateLimit.js';
 
-// Questions: 20 per 10 min per IP. Session setup + stream reconnects: a separate,
-// much looser bucket (see lib/eve/rateLimit.js), so idle tabs don't eat the budget.
+// Questions: 20 per 10 min per IP. Session setup, prewarm and stream reconnects: a
+// separate, much looser bucket (see lib/eve/rateLimit.js), so idle tabs don't eat the
+// budget. In-memory, so it is per warm instance: a soft anti-abuse limit.
 const limiter = createLimiter();
-const INSTANCE = Math.random().toString(36).slice(2, 8);
-let seen = 0;
 
 const anonymous = none();
 const dev = localDev();
 
 const publicChat: EveAuthFn = async (request) => {
   const verdict = await limiter.check(request);
-  // TEMP diagnostics (remove before merge): which instance counted what.
-  seen++;
-  const ip = ipOf(request);
-  const ipTag = [...ip].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
-  console.log(`[rl] inst=${INSTANCE} seen=${seen} kind=${verdict.kind} ok=${verdict.ok} ip#${ipTag} n=${limiter.count(verdict.kind, ip)} ${request.method} ${new URL(request.url).pathname.replace(/wrun_\w+/, 'wrun_X')}`);
   if (!verdict.ok) {
     throw new ForbiddenError({ code: RATE_LIMITED_CODE, message: RATE_LIMITED_MESSAGE });
   }
