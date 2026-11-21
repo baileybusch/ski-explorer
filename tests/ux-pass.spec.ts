@@ -75,7 +75,8 @@ test('resort storm synopsis is natural, sourced, and has a restrained Ask entry'
   await expect(storm).toBeVisible();
   const text = await storm.innerText();
   expect(text).not.toMatch(/Storm status:/);
-  expect(text.toLowerCase()).toMatch(/last 72 hours/);
+  expect(text.toLowerCase()).toMatch(/new snow in 3 days|little new snow in the last 3 days|a little new snow/);
+  expect(text).not.toMatch(/SNOTEL|CDEC|snow-depth|water equivalent/);
   expect(text.toLowerCase()).not.toMatch(/measured snowfall|measured in the last 72/);
   await expect(page.getByTestId('storm-source')).toBeVisible();
   const source = await page.getByTestId('storm-source').innerText();

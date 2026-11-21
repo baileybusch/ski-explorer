@@ -1,34 +1,17 @@
 import { ForbiddenError, localDev, none, vercelOidc } from 'eve/channels/auth';
 import { eveChannel, eveVercelOidc, type EveAuthFn } from 'eve/channels/eve';
+import { createLimiter, RATE_LIMITED_CODE, RATE_LIMITED_MESSAGE } from '../../lib/eve/rateLimit.js';
 
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX = 30;
-const hits = new Map<string, number[]>();
-
-function ipOf(request: Request) {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0].trim();
-  return request.headers.get('x-real-ip') || 'unknown';
-}
-
-function rateOk(ip: string) {
-  const now = Date.now();
-  const arr = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
-  if (arr.length >= MAX) {
-    hits.set(ip, arr);
-    return false;
-  }
-  arr.push(now);
-  hits.set(ip, arr);
-  return true;
-}
+// Questions: 20 per 10 min per IP. Session setup + stream reconnects: a separate,
+// much looser bucket (see lib/eve/rateLimit.js), so idle tabs don't eat the budget.
+const limiter = createLimiter();
 
 const anonymous = none();
 const dev = localDev();
 
 const publicChat: EveAuthFn = async (request) => {
-  if (!rateOk(ipOf(request))) {
-    throw new ForbiddenError({ message: 'Slow down — try again in a few minutes.' });
+  if (!limiter.check(request).ok) {
+    throw new ForbiddenError({ code: RATE_LIMITED_CODE, message: RATE_LIMITED_MESSAGE });
   }
   return anonymous(request);
 };

@@ -58,12 +58,12 @@ export function ResortPeek({
       >
         <SparklesIcon className="size-4" aria-hidden /> Ask about {resort.name}
       </button>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]" data-testid="resort-peek-prompts">
         {prompts.slice(1).map(p => (
           <button
             key={p.label}
             type="button"
-            className="min-h-9 rounded-full border border-[var(--surface-line)] bg-[var(--surface-raised)] px-3 text-[14px] hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
+            className="min-h-9 shrink-0 whitespace-nowrap rounded-full border border-[var(--surface-line)] bg-[var(--surface-raised)] px-3 text-[14px] hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-ring"
             data-testid="resort-peek-prompt"
             onClick={() => onAsk(p.send)}
           >
@@ -73,7 +73,7 @@ export function ResortPeek({
         {onOpen ? (
           <button
             type="button"
-            className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[14px] text-[var(--link)] hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 text-[14px] text-[var(--link)] hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             data-testid="resort-peek-open"
             onClick={() => onOpen(resort.id)}
           >
@@ -107,24 +107,17 @@ export function ResortPeek({
       </div>
 
       <div className={`flex flex-col gap-3 ${showInput ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : ''}`} data-testid="resort-peek-body">
-      <div className="rounded-2xl bg-[var(--surface-raised)] px-3 pt-2.5 pb-3" data-testid="resort-peek-snow">
+      <div className="rounded-2xl bg-[var(--surface-raised)] px-3 pt-2 pb-2.5" data-testid="resort-peek-snow">
         <SnowSplit pastCm={d.past72Cm} nextCm={d.next7Cm} units={units} estimated={d.estimated} />
-        <p className="mt-2 text-xs text-muted-foreground" data-testid="resort-peek-24h">
+        <p className="mt-1.5 text-xs text-muted-foreground" data-testid="resort-peek-24h">
           Last 24h {snowAmount(d.past24Cm, units)}{d.estimated ? ' est.' : ''}
         </p>
-      </div>
-
-      <p className="text-[14px] leading-relaxed text-foreground/85" data-testid="resort-peek-status">{status.text}</p>
-
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground" data-testid="resort-peek-now">
-        <span aria-hidden className="text-base text-foreground">{glyph}</span>
-        <span>Today: high {tempLabel(hi, tempUnits)}, low {tempLabel(lo, tempUnits)}</span>
       </div>
 
       {days.length ? (
         <ol className="grid grid-cols-5 gap-1.5" data-testid="resort-peek-forecast" aria-label="Forecast snow by day">
           {days.map(x => (
-            <li key={x.date} className="flex flex-col items-center gap-0.5 rounded-xl bg-[var(--surface-raised)] px-1 py-1.5 text-center">
+            <li key={x.date} className="flex flex-col items-center gap-0 rounded-xl bg-[var(--surface-raised)] px-1 py-1 text-center">
               <span className="text-[11px] text-muted-foreground">{dow(x.date)}</span>
               <span aria-hidden className="text-sm">{weatherGlyph({ wcode: x.wcode, outlookCm: x.snowCm, tmax: x.tmax })}</span>
               <span className="text-[13px] font-medium tabular">{snowAmount(x.snowCm, units)}</span>
@@ -132,6 +125,13 @@ export function ResortPeek({
           ))}
         </ol>
       ) : null}
+      <p className="text-[14px] leading-relaxed text-foreground/85" data-testid="resort-peek-status">{status.text}</p>
+
+      <div className="flex items-center gap-2 text-[13px] text-muted-foreground" data-testid="resort-peek-now">
+        <span aria-hidden className="text-base text-foreground">{glyph}</span>
+        <span>Today: high {tempLabel(hi, tempUnits)}, low {tempLabel(lo, tempUnits)}</span>
+      </div>
+
 
       {showInput ? null : actions}
       </div>
