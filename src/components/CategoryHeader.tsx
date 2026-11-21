@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConsentNote } from '@/components/ConsentNote';
 import { sharePage } from '@/lib/share';
+import { CtaCard } from '@/components/CtaCard';
 
 export type CategoryPage = { kind: 'region' | 'pass'; id: string; name: string };
 
@@ -23,7 +24,7 @@ export function CategoryHeader({
   }
 
   return (
-    <section className="pb-3 pt-3" data-testid="category-header" data-kind={page.kind} data-id={page.id}>
+    <section className="mb-3 mt-3 rounded-[var(--radius-card)] border border-[var(--surface-line)] bg-[var(--surface-raised)]/40 p-4 min-[720px]:p-5" data-testid="category-header" data-kind={page.kind} data-id={page.id}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {page.kind === 'pass' ? 'Pass' : 'Region'} · live snow board
       </p>
@@ -49,13 +50,18 @@ export function CategoryHeader({
 /** Bottom-of-board repeat of the category CTA (replaces the home signup on category pages). */
 export function CategoryFooterCta({ name, cta, onAlert }: { name: string; cta: string; onAlert: () => void }) {
   return (
-    <section className="mx-auto mt-8 w-full max-w-xl px-3" data-testid="category-footer-cta">
-      <h2 className="font-display text-4xl tracking-wide">Don&apos;t miss the next {name} dump</h2>
-      <p className="mt-2 text-sm text-muted-foreground">One email when it actually snows or a storm is lining up. Nothing else.</p>
-      <Button type="button" className="mt-4 min-h-12 w-full text-base" onClick={onAlert} data-testid="category-footer-cta-btn">
-        {cta}
-      </Button>
-      <ConsentNote compact className="mt-2 text-xs" testId="category-footer-consent" />
-    </section>
+    <CtaCard
+      testid="category-footer-cta"
+      className="mt-8"
+      icon={<BellIcon className="size-5" />}
+      title={<>Don&apos;t miss the next {name} dump</>}
+      body="One email when it actually snows or a storm is lining up. Nothing else."
+      action={(
+        <Button type="button" className="min-h-12 w-full text-base" onClick={onAlert} data-testid="category-footer-cta-btn">
+          {cta}
+        </Button>
+      )}
+      note={<ConsentNote compact className="text-xs" testId="category-footer-consent" />}
+    />
   );
 }

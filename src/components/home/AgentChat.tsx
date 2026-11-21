@@ -7,7 +7,7 @@ import { GhostPrompt } from '@/components/GhostPrompt';
 import { HOME_GHOSTS } from '@/lib/ghosts';
 import { BRAND } from '@/lib/brand';
 import type { SnowUnits } from '@/lib/format';
-import type { RankOutput } from '@/lib/askTypes';
+import type { BoardScope, OfferTarget, RankOutput } from '@/lib/askTypes';
 import {
   CompareAnswer, PartPending, RankedAnswer, ResortAnswer, SourcesNote,
 } from '@/components/ask/AskParts';
@@ -17,6 +17,7 @@ import { snowAmount } from '@/lib/format';
 import { AskPanel } from '@/components/ask/AskPanel';
 import { ChatMarkdown } from '@/components/home/ChatMarkdown';
 import { prefersReducedMotion } from '@/lib/motion';
+import { ChatStatusCtx } from '@/components/ChatDock';
 
 function unwrap(out: any) {
   if (!out) return out;
@@ -120,21 +121,25 @@ function Composer({
 }) {
   const typing = input.length > 0;
   const scope = useContext(ScopeCtx);
+  const panel = useContext(PanelCtx);
   const ghosts = scope ? [`Ask about ${scope.name}, e.g. "${regionStarters(scope.name, scope.topName)[0]}"`] : HOME_GHOSTS;
   return (
     // Claude-style input card: text at top-left, controls along the bottom.
     <form
-      className="flex min-h-[8.25rem] flex-col rounded-2xl bg-card px-4 pt-3.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0/0.25),0_8px_24px_-12px_rgb(0_0_0/0.45)] ring-1 ring-foreground/12 transition-shadow focus-within:ring-foreground/25"
+      className={panel
+        // iOS / Muse message bar: one rounded pill, send button inside on the right.
+        ? 'flex min-h-12 items-end gap-2 rounded-[24px] bg-[var(--chat-input)] py-1.5 pr-1.5 pl-4 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'
+        : 'flex min-h-[8.25rem] flex-col rounded-[28px] bg-[var(--chat-input)] px-5 pt-4 pb-3 ring-1 ring-[var(--chat-panel-line)] transition-shadow focus-within:ring-[var(--ice)]'}
       onSubmit={onSubmit}
       data-testid="home-chat-composer"
     >
-      <div className="relative min-w-0 flex-1">
+      <div className={`relative min-w-0 flex-1 ${panel ? 'self-center py-1.5' : ''}`}>
         {showGhost && !typing ? (
           <GhostPrompt
             lines={ghosts}
             paused={typing}
             testid="home-chat-ghost"
-            className="ghost-prompt ghost-prompt-wrap pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground"
+            className={`ghost-prompt pointer-events-none absolute inset-x-0 top-0 min-w-0 text-base leading-6 text-muted-foreground ${panel ? '' : 'ghost-prompt-wrap'} ${panel ? 'top-1.5' : ''}`}
           />
         ) : null}
         <textarea
@@ -148,27 +153,29 @@ function Composer({
             }
           }}
           aria-label={`Ask ${BRAND.name}`}
-          rows={2}
-          className="block h-full min-h-12 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground"
+          rows={panel ? 1 : 2}
+          className={`block w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-muted-foreground ${panel ? 'max-h-32 min-h-6' : 'h-full min-h-12'}`}
           autoComplete="off"
           enterKeyHint="send"
           maxLength={400}
-          placeholder={showGhost && !typing ? '' : 'Ask a follow-up…'}
+          placeholder={showGhost && !typing ? '' : panel ? 'Message' : 'Ask a follow-up…'}
         />
       </div>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
-          <SnowflakeIcon className="size-3.5" aria-hidden />
-          Live snow data · Ikon &amp; Epic
-        </span>
+      <div className={panel ? 'flex shrink-0 items-center' : 'mt-1 flex items-center justify-between gap-3'}>
+        {panel ? null : (
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="home-chat-hint">
+            <SnowflakeIcon className="size-3.5" aria-hidden />
+            Live snow data · Ikon &amp; Epic
+          </span>
+        )}
         {busy && onStop ? (
-          <button type="button" className="grid size-9 place-items-center rounded-full ring-1 ring-foreground/20 hover:bg-foreground/5" aria-label="Stop" onClick={onStop}>
+          <button type="button" className="grid size-9 place-items-center rounded-full bg-[var(--surface-raised)] hover:bg-foreground/10" aria-label="Stop" onClick={onStop}>
             <SquareIcon className="size-3.5" />
           </button>
         ) : (
           <button
             type="submit"
-            className="grid size-9 place-items-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-25"
+            className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:bg-[var(--surface-raised)] disabled:text-muted-foreground"
             aria-label="Send"
             data-testid="home-chat-send"
             disabled={!input.trim()}
@@ -187,6 +194,8 @@ const CHAT_STALL_MS = 40_000;
 /** Region-scoped chat (region view): greeting, starters and model context follow the region. */
 export type ChatScope = { id: string; name: string; topName?: string | null };
 const ScopeCtx = createContext<ChatScope | null>(null);
+/** Docked side panel / sheet: thread fills the height, composer pinned to the bottom. */
+const PanelCtx = createContext(false);
 
 export const STARTER_PROMPTS = [
   "Where's it dumping right now?",
@@ -211,7 +220,7 @@ function Chip({ children, onClick, testid, active }: { children: ReactNode; onCl
       type="button"
       onClick={onClick}
       data-testid={testid}
-      className={`min-h-9 rounded-full px-3.5 py-1.5 text-[13px] leading-tight ring-1 transition-colors outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${active ? 'bg-foreground/[0.08] ring-foreground/25' : 'ring-foreground/15 hover:bg-foreground/[0.05]'}`}
+      className={`min-h-9 rounded-full px-3.5 py-1.5 text-[14px] leading-tight ring-1 transition-colors outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring ${active ? 'bg-[var(--surface-raised)] text-[var(--link)] ring-[var(--ice)]/60' : 'bg-[var(--surface)] ring-[var(--surface-line)] hover:bg-[var(--surface-raised)]'}`}
     >
       {children}
     </button>
@@ -221,7 +230,7 @@ function Chip({ children, onClick, testid, active }: { children: ReactNode; onCl
 function TypingBubble({ label }: { label?: string }) {
   return (
     <div className="flex items-center gap-2" data-testid="home-chat-typing" aria-live="polite" aria-label={label || 'Thinking'}>
-      <span className="inline-flex items-center gap-1 rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3 py-2.5">
+      <span className="inline-flex items-center gap-[5px] rounded-full bg-[var(--bubble-agent)] px-4 py-3">
         <span className="chat-dot" />
         <span className="chat-dot [animation-delay:150ms]" />
         <span className="chat-dot [animation-delay:300ms]" />
@@ -271,6 +280,7 @@ function EveChat({
 }) {
   const agent = useEveAgent({ prewarm: true });
   const scope = useContext(ScopeCtx);
+  const panel = useContext(PanelCtx);
   const rawBusy = agent.status === 'busy' || agent.status === 'resuming';
   const messages = agent.messages || [];
   const [failed, setFailed] = useState(false);
@@ -351,10 +361,22 @@ function EveChat({
   const showTyping = busy && (!lastAssistant || !lastText || !!runningTool);
   const typingLabel = runningTool ? (TOOL_LABEL[runningTool.name] || 'Checking the snow') : undefined;
 
+  // Live status line in the dock header (Muse-style): what the agent is doing right now.
+  const reportStatus = useContext(ChatStatusCtx);
+  const statusLine = !busy ? null : typingLabel || (lastText ? 'Typing' : 'Checking the snow');
+  useEffect(() => { reportStatus?.(statusLine); }, [reportStatus, statusLine]);
+  useEffect(() => () => reportStatus?.(null), [reportStatus]);
+
   return (
     <>
       {messages.length ? (
-      <div ref={scroller} className="max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain px-1 pt-1 pb-2" data-testid="home-chat-scroll">
+      <div
+        ref={scroller}
+        className={panel
+          ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pt-1 pb-2'
+          : 'chat-surface max-h-[min(36rem,60dvh)] min-h-0 overflow-y-auto overscroll-contain rounded-[24px] p-3 min-[720px]:p-4'}
+        data-testid="home-chat-scroll"
+      >
         {(
           <ol className="flex flex-col gap-3" data-testid="home-ask-thread">
             {messages.map((m: any) => {
@@ -362,7 +384,7 @@ function EveChat({
                 const text = (m.parts || []).map((p: any) => (p.type === 'text' ? p.text : '')).join('');
                 return (
                   <li key={m.id} className="flex justify-end" data-testid="home-ask-user">
-                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-[15px] leading-snug text-primary-foreground">{text}</p>
+                    <p className="max-w-[85%] rounded-[20px] rounded-br-[6px] bg-[var(--bubble-user)] px-4 py-2 text-[16px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
                   </li>
                 );
               }
@@ -375,7 +397,7 @@ function EveChat({
               return (
                 <li key={m.id} className="flex flex-col items-start gap-2" data-testid="home-ask-answer">
                   {text ? (
-                    <div className="max-w-[min(92%,62ch)] rounded-2xl rounded-bl-md bg-foreground/[0.06] px-3.5 py-2.5 text-[15px] leading-relaxed" data-testid="home-chat-bubble">
+                    <div className="max-w-[min(88%,62ch)] rounded-[20px] rounded-bl-[6px] bg-[var(--bubble-agent)] px-4 py-2.5 text-[16px] leading-relaxed text-[var(--bubble-agent-fg)]" data-testid="home-chat-bubble">
                       <ChatMarkdown text={text} />
                     </div>
                   ) : null}
@@ -403,9 +425,9 @@ function EveChat({
             })}
             {showTyping ? <li><TypingBubble label={typingLabel} /></li> : null}
             {failed ? (
-              <li className="flex flex-wrap items-center gap-3 rounded-xl bg-card px-3.5 py-3 text-sm ring-1 ring-foreground/10" data-testid="home-chat-error" role="alert">
+              <li className="flex flex-wrap items-center gap-3 rounded-[20px] bg-[var(--bubble-agent)] px-4 py-3 text-sm" data-testid="home-chat-error" role="alert">
                 <span>Sorry, the snow desk didn&rsquo;t answer. Try again in a moment.</span>
-                <button type="button" className="rounded-full px-3 py-1 text-sm font-medium ring-1 ring-foreground/20 hover:bg-foreground/5" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
+                <button type="button" className="rounded-full bg-primary px-3.5 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/85" data-testid="home-chat-retry" onClick={() => { if (lastQ.current) void ask(lastQ.current); }}>
                   Retry
                 </button>
               </li>
@@ -414,8 +436,9 @@ function EveChat({
         )}
       </div>
       ) : null}
+      {panel && !messages.length ? <div className="min-h-0 flex-1 overflow-y-auto px-1"><EmptyState onPick={q => void ask(q)} /></div> : null}
       <Composer input={input} setInput={setInput} onSubmit={send} busy={busy} onStop={() => agent.cancel()} showGhost={!messages.length} inputRef={inputRef} />
-      {!messages.length ? <EmptyState onPick={q => void ask(q)} /> : null}
+      {!panel && !messages.length ? <EmptyState onPick={q => void ask(q)} /> : null}
     </>
   );
 }
@@ -506,7 +529,14 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
 
 export function AgentChat({
   units, catalog, onOpen, onShowBoard, board, externalAsk = null, topNames = [], scope = null,
+  layout = 'inline', fallbackBoard, onAlertSignup, onAsked,
 }: {
+  /** 'panel' = docked side panel or mobile sheet (fills its container). */
+  layout?: 'inline' | 'panel';
+  /** Full board scope for the deterministic fallback panel (resorts page). */
+  fallbackBoard?: BoardScope;
+  onAlertSignup?: (target: OfferTarget | null) => void;
+  onAsked?: (text: string) => void;
   /** Scope the chat to one region (region view). */
   scope?: ChatScope | null;
   units: SnowUnits;
@@ -575,18 +605,25 @@ export function AgentChat({
     askFallback(q);
   }
 
+  const panel = layout === 'panel';
+  // Resorts page (fallbackBoard given): the board-scoped Ask panel shows right away.
+  const fallbackOpen = mode === 'fallback' && (askOpen || (panel && !!fallbackBoard));
   return (
     <ScopeCtx.Provider value={scope}>
+    <PanelCtx.Provider value={panel}>
     <div
-      // Claude-style: no outer panel. Thread above, input card, greeting below.
-      // The fallback Ask panel keeps a fixed-height card.
+      // Inline (home): Claude-style input card, thread in a tinted chat surface above it.
+      // Panel (resorts page / sheets): fills its container, composer pinned at the bottom.
       className={`flex flex-col gap-3 ${
-        mode === 'fallback' && askOpen
-          ? 'h-[min(34rem,68dvh)] overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12 min-[720px]:h-[min(38rem,62vh)]'
-          : ''
+        panel
+          ? 'h-full min-h-0 flex-1'
+          : fallbackOpen
+            ? 'chat-surface h-[min(34rem,68dvh)] overflow-hidden rounded-[24px] min-[720px]:h-[min(38rem,62vh)]'
+            : ''
       }`}
       data-testid="home-chat"
       data-mode={mode}
+      data-layout={layout}
     >
       {mode === 'eve' ? (
         <EveChat
@@ -598,7 +635,7 @@ export function AgentChat({
           askRequest={externalAsk}
           topNames={topNames}
         />
-      ) : mode === 'fallback' && askOpen ? (
+      ) : fallbackOpen ? (
         <AskPanel
           open
           docked
@@ -607,18 +644,22 @@ export function AgentChat({
           units={units}
           catalog={catalog}
           request={askRequest}
-          onAsked={() => {}}
+          onAsked={onAsked || (() => {})}
           onOpenResort={onOpen}
           onShowBoard={onShowBoard}
-          board={{ ...board, focusResortId: null, focusResortName: null }}
+          onAlertSignup={onAlertSignup}
+          hideTitle={panel}
+          board={fallbackBoard || { ...board, focusResortId: null, focusResortName: null }}
         />
       ) : (
         <>
+          {panel ? <div className="min-h-0 flex-1 overflow-y-auto px-1"><EmptyState onPick={askFallback} /></div> : null}
           <Composer input={input} setInput={setInput} onSubmit={submitFallback} busy={false} showGhost />
-          <EmptyState onPick={askFallback} />
+          {panel ? null : <EmptyState onPick={askFallback} />}
         </>
       )}
     </div>
+    </PanelCtx.Provider>
     </ScopeCtx.Provider>
   );
 }

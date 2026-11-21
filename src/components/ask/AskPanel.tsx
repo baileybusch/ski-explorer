@@ -50,7 +50,7 @@ function Thread({
           const text = m.parts.map(p => (p.type === 'text' ? p.text : '')).join('');
           return (
             <li key={m.id} className="flex justify-end scroll-mt-4" data-testid="ask-user" data-msg={m.id}>
-              <p className="max-w-[85%] rounded-2xl rounded-br-md bg-card px-3.5 py-2 text-[15px] leading-snug ring-1 ring-foreground/12">{text}</p>
+              <p className="max-w-[85%] rounded-[20px] rounded-br-[6px] bg-[var(--bubble-user)] px-4 py-2 text-[16px] leading-snug text-[var(--bubble-user-fg)]">{text}</p>
             </li>
           );
         }
@@ -86,7 +86,7 @@ function Thread({
         return (
           <li key={m.id} className="flex flex-col gap-3" data-testid="ask-answer" data-mode={m.metadata?.mode || ''}>
             {text ? (
-              <p className="max-w-[62ch] text-[15px] leading-relaxed whitespace-pre-line" data-testid="ask-answer-text">{text}</p>
+              <p className="max-w-[min(88%,62ch)] self-start rounded-[20px] rounded-bl-[6px] bg-[var(--bubble-agent)] px-4 py-2.5 text-[16px] leading-relaxed whitespace-pre-line text-[var(--bubble-agent-fg)]" data-testid="ask-answer-text">{text}</p>
             ) : null}
             {tools}
             <SourcesNote outputs={outputs} mode={m.metadata?.mode} />
@@ -105,8 +105,10 @@ function Thread({
 
 export function AskPanel({
   open, onClose, units, catalog, request, onAsked, onOpenResort, onShowBoard, onAlertSignup,
-  board, docked = false, embedded = false, focusTick = 0,
+  board, docked = false, embedded = false, focusTick = 0, hideTitle = false,
 }: {
+  /** The surrounding panel already shows a title (resorts page chat panel). */
+  hideTitle?: boolean;
   open: boolean;
   /** Desktop: a persistent side panel beside the board (no close, no Escape, no autofocus on load). */
   docked?: boolean;
@@ -192,7 +194,7 @@ export function AskPanel({
     <div
       className={embedded
         ? `${open ? 'flex' : 'hidden'} relative inset-auto z-0 min-h-0 w-full flex-1 flex-col bg-transparent`
-        : `${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-background min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 ${docked ? '' : 'min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]'}`}
+        : `${open ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col bg-[var(--chat-panel)] min-[840px]:inset-y-0 min-[840px]:right-0 min-[840px]:left-auto min-[840px]:w-[30rem] min-[840px]:border-l min-[840px]:border-foreground/10 ${docked ? '' : 'min-[840px]:shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.6)]'}`}
       data-testid="search"
       data-docked={docked ? '1' : '0'}
       data-embedded={embedded ? '1' : '0'}
@@ -206,7 +208,8 @@ export function AskPanel({
             <ChevronLeftIcon className="size-5" /> Board
           </Button>
         )}
-        <h2 className="flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1">Ask {BRAND.name}</h2>
+        <h2 className={hideTitle ? 'sr-only' : 'flex-1 text-[15px] font-semibold max-[839px]:text-center max-[839px]:pr-[4.5rem] min-[840px]:pl-1'}>Ask {BRAND.name}</h2>
+        {hideTitle ? <span className="flex-1" /> : null}
         {messages.length ? (
           <Button type="button" variant="ghost" className="min-h-11 px-3 text-sm max-[839px]:absolute max-[839px]:right-2" data-testid="ask-new" onClick={() => { stop(); setMessages([]); }}>
             New
@@ -234,7 +237,7 @@ export function AskPanel({
       </div>
 
       <form
-        className="border-t border-foreground/8 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="border-t border-[var(--surface-line)] px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         onSubmit={submit}
         data-testid="ask-composer"
       >
@@ -244,7 +247,7 @@ export function AskPanel({
               <button
                 key={s}
                 type="button"
-                className="min-h-10 rounded-full border border-foreground/15 px-3 text-left text-[13px] text-muted-foreground outline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="min-h-10 rounded-full border border-[var(--surface-line)] bg-[var(--surface)] px-3.5 text-left text-[14px] text-foreground/90 outline-offset-2 hover:border-[var(--ice)]/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 data-testid="ask-suggestion"
                 onClick={() => ask(s)}
               >
@@ -253,7 +256,7 @@ export function AskPanel({
             ))}
           </div>
         ) : null}
-        <InputGroup className="h-12 rounded-full">
+        <InputGroup className="h-12 rounded-[24px] border-[var(--chat-panel-line)] bg-[var(--chat-input)] dark:bg-[var(--chat-input)] has-[[data-slot=input-group-control]:focus-visible]:border-[var(--ice)]">
           <InputGroupInput
             ref={inputRef}
             value={input}
@@ -271,7 +274,7 @@ export function AskPanel({
                 <SquareIcon />
               </InputGroupButton>
             ) : (
-              <InputGroupButton type="submit" size="icon-sm" variant="outline" className="rounded-full" aria-label="Send" data-testid="ask-send" disabled={!input.trim()}>
+              <InputGroupButton type="submit" size="icon-sm" variant="default" className="rounded-full" aria-label="Send" data-testid="ask-send" disabled={!input.trim()}>
                 <ArrowUpIcon />
               </InputGroupButton>
             )}

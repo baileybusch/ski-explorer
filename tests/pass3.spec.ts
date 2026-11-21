@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openBoardChat } from './helpers/chat';
 
 test('home CTA opens the shared alert flow', async ({ page }) => {
   await page.goto('/?alerts=1');
@@ -14,7 +15,7 @@ test('Japan search shows interpretation chip and context CTA', async ({ page }) 
   test.setTimeout(60_000);
   await page.goto('/?alerts=1');
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('search-trigger').click();
+  await openBoardChat(page);
   await expect(page.getByTestId('search')).toBeVisible();
   await page.getByLabel('Ask SkiScope', { exact: true }).last().fill('Japan');
   await page.getByLabel('Ask SkiScope', { exact: true }).last().press('Enter');

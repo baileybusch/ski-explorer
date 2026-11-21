@@ -29,7 +29,7 @@ test('one full-width leaderboard list on every size; #1 only lightly featured', 
   expect(boxes[0].h).toBe(rowH);
   await expect(page.getByTestId('block').first()).toHaveAttribute('data-featured', '1');
   if (isDesktop(info.project.name)) {
-    await expect(page.getByTestId('board-shell')).toHaveCSS('max-width', '1200px');
+    await expect(page.getByTestId('board-shell')).toHaveCSS('max-width', '1440px');
     await expect(page.getByTestId('board-b')).toHaveAttribute('data-density', 'full');
   } else {
     await expect(page.getByTestId('board-b')).toHaveAttribute('data-density', 'compact');
@@ -95,18 +95,61 @@ test('iPhone 13 shows at least 8 resorts on the first screen', async ({ page }, 
   expect(visible).toBeGreaterThanOrEqual(8);
 });
 
-test('desktop docks Ask SkiScope beside the board', async ({ page }, info) => {
+test('desktop: chat docks under the header beside the list; menu is top-right; rows ask the chat', async ({ page }, info) => {
   test.skip(!isDesktop(info.project.name), 'docked panel is desktop only');
   await openBoard(page);
-  const panel = page.getByTestId('search');
-  await expect(panel).toBeVisible();
-  await expect(panel).toHaveAttribute('data-docked', '1');
+  await expect(page.getByTestId('nav-resorts')).toHaveText('Resorts');
+  const dock = page.getByTestId('board-chat');
+  await expect(dock).toHaveAttribute('data-presentation', 'docked');
+  await expect(dock).toBeVisible();
+  await expect(page.getByTestId('search')).toHaveAttribute('data-docked', '1');
   await expect(page.getByTestId('ask-close')).toHaveCount(0);
-  const p = (await panel.boundingBox())!;
-  const list = (await page.getByTestId('board-list').boundingBox())!;
-  expect(list.x + list.width).toBeLessThanOrEqual(p.x + 1);
+  await expect(page.getByTestId('search-trigger')).toHaveCount(0);
+  const d = (await dock.boundingBox())!;
+  const header = (await page.getByTestId('board-chrome').boundingBox())!;
+  const menu = (await page.getByTestId('menu-button').boundingBox())!;
+  const list = (await page.getByTestId('board-list-panel').boundingBox())!;
+  // Header spans the top; chat sits under it, to the right of the list, ~380-420px wide.
+  expect(d.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
+  expect(list.x + list.width).toBeLessThanOrEqual(d.x + 1);
+  expect(d.width).toBeGreaterThanOrEqual(380);
+  expect(d.width).toBeLessThanOrEqual(420);
+  expect(menu.x + menu.width).toBeGreaterThan(d.x + d.width - 40);
+  expect(menu.y + menu.height).toBeLessThanOrEqual(header.y + header.height);
+  // The list scrolls on its own; the chat stays put.
+  await page.getByTestId('board-b').evaluate(el => { el.scrollTop = 600; });
+  expect((await dock.boundingBox())!.y).toBe(d.y);
+  // Row tap asks the chat (board stays); chevron opens the resort page.
+  const first = page.getByTestId('block').first();
+  const name = (await first.getAttribute('aria-label'))!.split(':')[0];
+  await first.click();
+  await expect(dock.getByTestId('ask-user').last()).toContainText(name.split(' ')[0], { timeout: 15_000 });
+  await expect(page.getByTestId('board-b')).toBeVisible();
+  await page.getByTestId('row-open').first().click();
+  await expect(page.getByTestId('resort-profile')).toBeVisible({ timeout: 20_000 });
+});
+
+test('mobile: sticky Ask bar opens the chat sheet below the header; menu stays reachable', async ({ page }, info) => {
+  test.skip(isDesktop(info.project.name), 'sheet is mobile only');
+  await openBoard(page);
+  await expect(page.getByTestId('board-chat')).toHaveAttribute('data-open', '0');
+  const bar = page.getByTestId('search-trigger');
+  await expect(bar).toBeVisible();
+  await expect(bar).toContainText('Ask SkiScope');
+  await bar.click();
+  const sheet = page.getByTestId('board-chat');
+  await expect(sheet).toHaveAttribute('data-open', '1');
+  await expect(sheet).toHaveAttribute('data-presentation', 'sheet');
+  const header = (await page.getByTestId('board-chrome').boundingBox())!;
+  const s = (await sheet.boundingBox())!;
+  expect(s.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
+  await page.getByTestId('menu-button').click();
+  await expect(page.getByTestId('settings-sheet')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(panel).toBeVisible();
-  await page.getByTestId('search-trigger').click();
-  await expect(page.getByLabel('Ask SkiScope', { exact: true }).last()).toBeFocused();
+  await page.getByTestId('board-chat-close').click();
+  await expect(sheet).toHaveAttribute('data-open', '0');
+  // Row tap opens the sheet and asks about that resort.
+  await page.getByTestId('block').first().click();
+  await expect(sheet).toHaveAttribute('data-open', '1');
+  await expect(sheet.getByTestId('ask-user').last()).toBeVisible({ timeout: 15_000 });
 });

@@ -21,7 +21,7 @@ test('homepage leads with chat, then 3 thought-starter cards and a rotating ghos
 test('homepage board link opens the leaderboard', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('home-agent')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('home-open-board').click();
+  await page.getByTestId('nav-resorts').click();
   await expect(page.getByTestId('board-b')).toBeVisible({ timeout: 30_000 });
 });
 
